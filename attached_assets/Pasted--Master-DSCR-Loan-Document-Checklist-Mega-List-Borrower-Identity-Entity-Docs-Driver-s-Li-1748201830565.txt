@@ -1,0 +1,202 @@
+📂 🔍 Master DSCR Loan Document Checklist (Mega List)
+🧾 Borrower Identity & Entity Docs
+Driver’s License (front/back)
+
+Passport (alternative ID)
+
+Social Security Card (if applicable)
+
+EIN Letter from IRS
+
+Articles of Organization / Incorporation
+
+Operating Agreement (LLC)
+
+Certificate of Good Standing (entity)
+
+Entity Resolution / Authorization to Borrow
+
+Trust Documents (if vesting in a trust)
+
+Business License (if property owned in trade name)
+
+Corporate By-Laws (if S-Corp/C-Corp)
+
+🏦 Financials & Banking
+2–3 Months Business Bank Statements
+
+2–3 Months Personal Bank Statements
+
+Business Profit & Loss Statement (YTD)
+
+Balance Sheet (YTD)
+
+CPA Letter verifying self-employment
+
+VOE (Verification of Employment, if salaried)
+
+Pay Stubs (rare for DSCR, but may be asked if borrower income is borderline)
+
+Tax Returns (Business or Personal, 1–2 years — rare, but sometimes requested)
+
+Asset Statements (Brokerage, Retirement, etc. if using for reserves)
+
+📃 Loan Application & Disclosures
+Completed 1003 Loan Application
+
+Lender-Specific App/Intake Form
+
+Broker/Processor Submission Summary
+
+Borrower Certification & Authorization Form
+
+Credit Authorization Form
+
+Loan Estimate (LE) and Initial Disclosures
+
+Borrower Acknowledgement of DSCR Loan Terms / Non-Owner Occupied Use
+
+🏘️ Property-Level Docs
+Executed Purchase Contract
+
+Appraisal Report
+
+Rent Roll (actual or projected)
+
+Lease Agreements (all units)
+
+Market Rent Analysis (if vacant)
+
+DSCR Income Worksheet
+
+Property Management Agreement (if applicable)
+
+Section 8 Contract (if tenant receives housing voucher)
+
+Rehab Budget (if property recently renovated or is mid-rehab)
+
+Scope of Work (for Fix & Flip to DSCR transitions)
+
+📄 Title, Insurance & Closing Docs
+Preliminary Title Report / Commitment
+
+Title Company Contact Sheet
+
+Wire Instructions from Title (for disbursement)
+
+Hazard Insurance / Evidence of Insurance
+
+Insurance Declaration Page (showing dwelling coverage + deductible)
+
+Proof of Premium Paid or Invoice
+
+Loss Payee Clause
+
+Flood Cert / Flood Insurance (if in flood zone)
+
+Closing Protection Letter (CPL)
+
+ALTA Settlement Statement (for refi or purchase)
+
+Mortgage Payoff Statement (if refi or cash-out)
+
+Voicemail Authorization (for verbal VOE or doc chase)
+
+Wire Authorization Form (signed by borrower)
+
+🧾 Lender-Specific Extras
+DSCR Eligibility Form / Ratio Calculator (Roc360-style)
+
+Capital Reserve Verification (some require 3–6 months PITIA)
+
+Lender Portal Checklist (auto-generated checklists)
+
+Bridge Loan Conversion Request (if coming off interim loan)
+
+Occupancy Affidavit (non-owner-occupied statement)
+
+Non-QM Disclosure Packet
+
+COVID-19 Disclosure (yes, some still request this)
+
+Statement of Ownership (for properties in LLCs with multiple members)
+
+Statement of No-Tenant (if property is vacant)
+
+DSCR Acknowledgment that borrower doesn’t qualify for income-based financing
+
+💬 Want to Filter This?
+Once you mark which ones you actually use, I can help:
+
+Build tailored checklists per lender and purpose
+
+Create dynamic logic (e.g., only ask for Rent Roll if rental, only ask for payoff if refi)
+
+Would you like this organized in a spreadsheet or JSON for GPT integration next?
+
+
+
+
+
+
+
+You said:
+is there any more or does that cover everything they coudl ask for 
+
+
+ChatGPT said:
+That list covers virtually everything a lender could reasonably (or even unreasonably) ask for in a DSCR loan file — across purchase, refi, and cash-out, whether it's a clean SFR or a messy multi-entity 8-unit with Section 8 tenants and a mid-renovation story.
+
+But just to push the edges even more, here are a few rare, conditional, or edge-case documents that might come up depending on lender quirks, state regulations, or property complexities:
+
+🔍 Ultra-Niche / Edge-Case DSCR Docs
+🏗️ Property & Rehab / Condition
+Contractor License / Insurance (if borrower recently did work)
+
+Final Permit Sign-Offs (if recent renovations required permits)
+
+Certificate of Occupancy (COO) — often for new builds or conversions
+
+Environmental Report (if commercial or multifamily over 4 units)
+
+Pest/Termite Inspection (Florida and a few others sometimes request this)
+
+Condo Questionnaire (if condo — even for DSCR, yes)
+
+HOA Estoppel Letter or Dues Statement (if applicable)
+
+💼 Entity or Structure Specific
+Multi-member LLC Agreement (full agreement including member roles)
+
+Organizational Chart (for layered entities or trust holdings)
+
+Attorney Opinion Letter (rare, but requested on legal-structured ownerships)
+
+Trust Certification Form (if vesting in trust and not providing full docs)
+
+Sole Member Statement (for single-member LLCs)
+
+Foreign Entity Registration (if LLC is from out-of-state)
+
+🧮 DSCR-Specific or Non-QM Extras
+Business Purpose Affidavit (reaffirming not for personal use)
+
+DSCR Risk Scorecard (internal lender form)
+
+Appraisal Review or 2nd Appraisal (if LTV >75%)
+
+Income Waiver / DTI Acknowledgement (some require borrower to acknowledge no personal income used)
+
+Broker Certification Form (for compliance)
+
+📬 Borrower Circumstance Specific
+Gift Letter (if receiving gift funds for closing — rare but possible)
+
+Source of Funds Explanation (if deposit history doesn’t match)
+
+Bankruptcy Discharge (if recent)
+
+Letter of Explanation (for recent credit activity, ownership changes, etc.)
+
+Foreign National Docs (passport + visa + ITIN + CPA letter + credit letter)
+

@@ -98,54 +98,24 @@ export default function TaskList({ tasks, loanId }: TaskListProps) {
   
   return (
     <>
-      <div className="bg-white rounded-lg shadow" data-component="task-list">
-        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-          <h3 className="text-lg leading-6 font-heading font-medium text-gray-900">Action Items</h3>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            Tasks to complete for this loan file
-          </p>
-        </div>
-        <div className="divide-y divide-gray-200">
-          {sortedTasks.map((task) => (
-            <div key={task.id} className="px-4 py-4 sm:px-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Checkbox 
-                    id={`task-${task.id}`}
-                    checked={task.completed}
-                    onCheckedChange={(checked) => toggleTaskCompletion(task.id, checked as boolean)}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                  />
-                  <label 
-                    htmlFor={`task-${task.id}`} 
-                    className={`ml-3 block text-sm font-medium ${task.completed ? 'text-gray-500 line-through' : 'text-gray-700'}`}
-                  >
-                    {task.description}
-                    {task.priority === 'high' && <span className="text-red-600 text-xs font-medium ml-2">High Priority</span>}
-                  </label>
-                </div>
-                <div className="ml-4 flex-shrink-0 flex">
-                  <span className="text-xs text-gray-500">
-                    {task.completed 
-                      ? `Completed ${task.dueDate ? format(new Date(task.dueDate), 'MMM d') : ''}` 
-                      : `Due ${task.dueDate ? format(new Date(task.dueDate), 'MMM d') : 'soon'}`}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-          
-          {tasks.length === 0 && (
-            <div className="px-4 py-6 text-center text-gray-500 text-sm">
-              No tasks added yet
-            </div>
-          )}
-        </div>
-        <div className="px-4 py-3 bg-gray-50 text-right sm:px-6 border-t border-gray-200">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-100" data-component="task-list">
+        <div className="px-4 py-5 sm:px-6 border-b border-gray-100 flex justify-between items-center">
+          <div>
+            <h3 className="text-lg leading-6 font-heading font-medium text-gray-900 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              Action Items
+            </h3>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">
+              Tasks to complete for this loan file
+            </p>
+          </div>
           <Button 
             onClick={() => setIsAddTaskOpen(true)}
             variant="outline"
-            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200"
+            className="border-amber-300 text-amber-600 hover:bg-amber-50"
+            size="sm"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-1">
               <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -153,6 +123,65 @@ export default function TaskList({ tasks, loanId }: TaskListProps) {
             </svg>
             Add task
           </Button>
+        </div>
+        <div className="px-4 py-1">
+          <div className="divide-y divide-gray-100">
+            {sortedTasks.map((task) => (
+              <div key={task.id} className="py-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Checkbox 
+                      id={`task-${task.id}`}
+                      checked={task.completed}
+                      onCheckedChange={(checked) => toggleTaskCompletion(task.id, checked as boolean)}
+                      className={`h-4 w-4 rounded ${task.priority === 'high' ? 'text-red-500' : 'text-blue-500'}`}
+                    />
+                    <label 
+                      htmlFor={`task-${task.id}`} 
+                      className={`ml-3 block text-sm font-medium ${task.completed ? 'text-gray-400 line-through' : 'text-gray-700'}`}
+                    >
+                      {task.description}
+                      {task.priority === 'high' && 
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                          High Priority
+                        </span>
+                      }
+                      {task.priority === 'medium' && 
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                          Medium
+                        </span>
+                      }
+                    </label>
+                  </div>
+                  <div className="ml-4 flex-shrink-0 flex">
+                    <span className={`text-xs rounded-full px-2 py-1 ${
+                      task.completed 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {task.completed 
+                        ? `Completed ${task.dueDate ? format(new Date(task.dueDate), 'MMM d') : ''}` 
+                        : `Due ${task.dueDate ? format(new Date(task.dueDate), 'MMM d') : 'soon'}`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {tasks.length === 0 && (
+              <div className="py-6 text-center text-gray-500 text-sm">
+                No tasks added yet
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="px-4 py-3 bg-gray-50 sm:px-6 border-t border-gray-100 flex justify-between items-center">
+          <span className="text-sm text-gray-500 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            {tasks.filter(task => task.completed).length} of {tasks.length} tasks completed
+          </span>
         </div>
       </div>
       

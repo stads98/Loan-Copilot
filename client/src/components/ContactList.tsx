@@ -176,8 +176,12 @@ export default function ContactList({ contacts, loanId }: ContactListProps) {
                         <SelectItem value="borrower">Borrower</SelectItem>
                         <SelectItem value="title">Title Company</SelectItem>
                         <SelectItem value="insurance">Insurance Agent</SelectItem>
-                        <SelectItem value="lender">Lender</SelectItem>
+                        <SelectItem value="payoff">Payoff Lender</SelectItem>
+                        <SelectItem value="lender">Current Lender</SelectItem>
                         <SelectItem value="realtor">Realtor</SelectItem>
+                        <SelectItem value="attorney">Attorney</SelectItem>
+                        <SelectItem value="cpa">CPA/Accountant</SelectItem>
+                        <SelectItem value="property_manager">Property Manager</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>

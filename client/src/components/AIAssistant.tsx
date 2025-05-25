@@ -133,10 +133,15 @@ export default function AIAssistant({ loanId, messages }: AIAssistantProps) {
   };
   
   return (
-    <div className="bg-white rounded-lg shadow" data-component="ai-assistant">
-      <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex justify-between items-center">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-100" data-component="ai-assistant">
+      <div className="px-4 py-5 sm:px-6 border-b border-gray-100 flex justify-between items-center">
         <div>
-          <h3 className="text-lg leading-6 font-heading font-medium text-gray-900">Loan Processing Co-Pilot</h3>
+          <h3 className="text-lg leading-6 font-heading font-medium text-gray-900 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Loan Processing Co-Pilot
+          </h3>
           <p className="mt-1 max-w-2xl text-sm text-gray-500">
             AI-powered guidance and document analysis
           </p>
@@ -147,10 +152,16 @@ export default function AIAssistant({ loanId, messages }: AIAssistantProps) {
         </span>
       </div>
 
-      <div className="bg-gray-50 p-4 h-80 overflow-y-auto" id="chat-messages">
+      <div className="bg-gray-50 p-4 h-96 overflow-y-auto" id="chat-messages">
         {localMessages.length === 0 ? (
           <div className="flex h-full items-center justify-center text-gray-500">
-            <p>Send a message to get started</p>
+            <div className="text-center p-6">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+              </svg>
+              <p className="text-gray-600">Send a message to get started</p>
+              <p className="text-sm text-gray-400 mt-2">Ask about document requirements, next steps, or request email templates</p>
+            </div>
           </div>
         ) : (
           localMessages.map((message) => (
@@ -160,7 +171,7 @@ export default function AIAssistant({ loanId, messages }: AIAssistantProps) {
             >
               {message.role === 'assistant' && (
                 <div className="flex-shrink-0 mr-3">
-                  <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center text-white">
+                  <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white shadow-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                       <path d="M12 8V4H8"></path>
                       <rect x="2" y="2" width="20" height="8" rx="2"></rect>
@@ -175,13 +186,20 @@ export default function AIAssistant({ loanId, messages }: AIAssistantProps) {
                 </div>
               )}
               
-              <div className={`${message.role === 'assistant' ? 'bg-white' : 'bg-primary-50'} rounded-lg shadow-sm p-3 max-w-3xl`}>
-                {formatMessageContent(message.content)}
+              <div className={`${message.role === 'assistant' ? 'bg-white border border-gray-200' : 'bg-blue-600 text-white'} rounded-lg shadow-sm p-4 max-w-3xl`}>
+                {message.role === 'assistant' ? (
+                  formatMessageContent(message.content)
+                ) : (
+                  <p className="text-sm whitespace-pre-line">{message.content}</p>
+                )}
+                <div className={`text-xs mt-2 ${message.role === 'assistant' ? 'text-gray-400' : 'text-blue-200'}`}>
+                  {new Date(message.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </div>
               </div>
               
               {message.role === 'user' && (
                 <div className="flex-shrink-0 ml-3">
-                  <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                  <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 shadow-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                       <circle cx="12" cy="7" r="4"></circle>
@@ -196,7 +214,7 @@ export default function AIAssistant({ loanId, messages }: AIAssistantProps) {
         {isLoading && (
           <div className="flex items-start mb-4">
             <div className="flex-shrink-0 mr-3">
-              <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center text-white">
+              <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                   <path d="M12 8V4H8"></path>
                   <rect x="2" y="2" width="20" height="8" rx="2"></rect>
@@ -209,11 +227,12 @@ export default function AIAssistant({ loanId, messages }: AIAssistantProps) {
                 </svg>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-sm p-3">
-              <div className="flex space-x-2">
-                <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+            <div className="bg-white rounded-lg shadow-sm p-3 border border-gray-200">
+              <div className="flex space-x-2 items-center">
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: "0.2s" }}></div>
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: "0.4s" }}></div>
+                <span className="text-sm text-gray-500 ml-2">Thinking...</span>
               </div>
             </div>
           </div>
@@ -222,23 +241,24 @@ export default function AIAssistant({ loanId, messages }: AIAssistantProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="px-4 py-3 border-t border-gray-200">
-        <form onSubmit={handleSendMessage}>
-          <div className="flex rounded-md shadow-sm">
+      <div className="px-4 py-4 border-t border-gray-100 bg-white rounded-b-lg">
+        <form onSubmit={handleSendMessage} className="bg-gray-50 rounded-lg border border-gray-200 p-2 shadow-sm">
+          <div className="flex rounded-md">
             <Input
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               disabled={isLoading}
-              className="focus:ring-primary-500 focus:border-primary-500 flex-grow block rounded-l-md sm:text-sm"
-              placeholder="Ask for guidance or request an email template..."
+              className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 flex-grow bg-transparent"
+              placeholder="Ask about DSCR loans, documents, or request email templates..."
             />
             <Button 
               type="submit"
               disabled={isLoading || !inputMessage.trim()}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-r-md text-white"
+              className="ml-2 bg-blue-600 hover:bg-blue-700 text-white"
+              size="sm"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-1">
                 <line x1="22" y1="2" x2="11" y2="13"></line>
                 <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
               </svg>
