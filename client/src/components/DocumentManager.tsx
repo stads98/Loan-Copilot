@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { Loader2 } from "lucide-react";
 
 interface DocumentManagerProps {
   documents: Document[];
@@ -37,6 +38,7 @@ const documentSchema = z.object({
 export default function DocumentManager({ documents, loanId, requiredDocuments }: DocumentManagerProps) {
   const [activeTab, setActiveTab] = useState("document-list");
   const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
   
   const form = useForm<z.infer<typeof documentSchema>>({
@@ -66,6 +68,36 @@ export default function DocumentManager({ documents, loanId, requiredDocuments }
         description: "Failed to add document. Please try again.",
         variant: "destructive"
       });
+    }
+  };
+  
+  // Function to sync documents from Google Drive
+  const syncDocumentsFromDrive = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await apiRequest("POST", `/api/loans/${loanId}/sync-documents`, {});
+      
+      if (response && response.success) {
+        queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+        toast({
+          title: "Documents synced",
+          description: response.message || "Documents have been successfully synced with Google Drive."
+        });
+      } else {
+        toast({
+          title: "Sync warning",
+          description: response && response.message ? response.message : "Some documents could not be synced."
+        });
+      }
+    } catch (error) {
+      console.error("Error syncing documents:", error);
+      toast({
+        title: "Sync failed",
+        description: "Failed to sync documents from Google Drive. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSyncing(false);
     }
   };
   
@@ -192,7 +224,30 @@ export default function DocumentManager({ documents, loanId, requiredDocuments }
               </div>
             ) : (
               <div className="p-4">
-                <p className="text-sm text-gray-700 mb-4">The following documents are still needed:</p>
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-sm text-gray-700">The following documents are still needed:</p>
+                  <Button 
+                    onClick={syncDocumentsFromDrive}
+                    variant="outline"
+                    size="sm"
+                    disabled={isSyncing}
+                    className="ml-2"
+                  >
+                    {isSyncing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Syncing...
+                      </>
+                    ) : (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/>
+                        </svg>
+                        Sync Documents
+                      </>
+                    )}
+                  </Button>
+                </div>
                 
                 {missingDocuments.borrower.length > 0 && (
                   <div className="mb-4">

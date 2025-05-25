@@ -211,6 +211,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const documents = await storage.getDocumentsByLoanId(loanId);
     res.json(documents);
   });
+  
+  // Sync documents from Google Drive for a loan
+  app.post("/api/loans/:id/sync-documents", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const loanId = parseInt(id, 10);
+      
+      // Get the loan details to access the Google Drive folder ID
+      const loanDetails = await storage.getLoanWithDetails(loanId);
+      
+      if (!loanDetails || !loanDetails.loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      // Use the Google Drive folder ID from the loan
+      // In a real implementation, this would be stored when the loan is created
+      const driveFolderId = loanDetails.loan.googleDriveFolderId || "";
+      
+      if (!driveFolderId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "No Google Drive folder is associated with this loan" 
+        });
+      }
+      
+      // Get files from Google Drive folder
+      const files = await getDriveFiles(driveFolderId);
+      
+      if (!files || files.length === 0) {
+        return res.status(200).json({ 
+          success: true, 
+          message: "No new documents found in the Google Drive folder",
+          documentsAdded: 0
+        });
+      }
+      
+      // Get existing documents to avoid duplicates
+      const existingDocuments = await storage.getDocumentsByLoanId(loanId);
+      const existingFileIds = existingDocuments.map(doc => doc.fileId);
+      
+      // Filter out documents that already exist
+      const newFiles = files.filter(file => !existingFileIds.includes(file.id));
+      
+      if (newFiles.length === 0) {
+        return res.status(200).json({ 
+          success: true, 
+          message: "All documents from Google Drive are already synced",
+          documentsAdded: 0
+        });
+      }
+      
+      // Process and add each new document
+      const addedDocuments = [];
+      for (const file of newFiles) {
+        // Extract text from the file name and metadata
+        let extractedText = `File: ${file.name}\n`;
+        
+        if (file.modifiedTime) {
+          extractedText += `Modified: ${file.modifiedTime}\n`;
+        }
+        
+        // Determine document category based on file name
+        let category = "other";
+        const fileName = file.name.toLowerCase();
+        
+        if (fileName.includes("license") || fileName.includes("id") || fileName.includes("passport") || 
+            fileName.includes("llc") || fileName.includes("entity") || fileName.includes("incorporation")) {
+          category = "borrower";
+        } else if (fileName.includes("property") || fileName.includes("appraisal") || fileName.includes("survey")) {
+          category = "property";
+        } else if (fileName.includes("title") || fileName.includes("deed") || fileName.includes("escrow")) {
+          category = "title";
+        } else if (fileName.includes("insurance") || fileName.includes("policy") || fileName.includes("binder")) {
+          category = "insurance";
+        } else if (fileName.includes("loan") || fileName.includes("mortgage") || fileName.includes("note")) {
+          category = "loan";
+        } else if (fileName.includes("bank") || fileName.includes("statement") || fileName.includes("financial")) {
+          category = "banking";
+        }
+        
+        // Create a document record
+        const document = await storage.createDocument({
+          loanId,
+          name: file.name,
+          fileId: file.id,
+          fileType: file.mimeType.split('/')[1] || "unknown",
+          fileSize: parseInt(file.size || "0", 10),
+          category,
+          status: "synced"
+        });
+        
+        addedDocuments.push(document);
+      }
+      
+      // Return success with the number of documents added
+      res.status(200).json({
+        success: true,
+        message: `Successfully synced ${addedDocuments.length} new document(s) from Google Drive`,
+        documentsAdded: addedDocuments.length,
+        documents: addedDocuments
+      });
+      
+    } catch (error) {
+      console.error("Error syncing documents from Google Drive:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to sync documents from Google Drive" 
+      });
+    }
+  });
 
   app.post("/api/loans/:loanId/documents", isAuthenticated, async (req, res) => {
     try {
