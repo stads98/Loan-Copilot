@@ -12,26 +12,34 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Loan, Property, Document, Contact, Task, Message, Lender } from "@/lib/types";
+import { useLocation, useRoute } from "wouter";
 
 interface DashboardProps {
   user: any;
   onLogout: () => void;
+  activeLoanId?: number | null;
+  currentPath?: string;
 }
 
-export default function Dashboard({ user, onLogout }: DashboardProps) {
-  const [activeLoanId, setActiveLoanId] = useState<number | null>(null);
+export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId, currentPath }: DashboardProps) {
+  const [activeLoanId, setActiveLoanId] = useState<number | null>(externalLoanId || null);
   const [isDriveConnected, setIsDriveConnected] = useState(false);
   const { toast } = useToast();
+  const [location, setLocation] = useLocation();
   
-  // Extract loan ID from URL if present (/loans/1, /loans/2, etc.)
+  // Use loan ID from props if provided, otherwise extract from URL
   useEffect(() => {
-    const path = window.location.pathname;
-    const match = path.match(/\/loans\/(\d+)/);
-    if (match && match[1]) {
-      const loanId = parseInt(match[1], 10);
-      setActiveLoanId(loanId);
+    if (externalLoanId) {
+      setActiveLoanId(externalLoanId);
+    } else {
+      const path = window.location.pathname;
+      const match = path.match(/\/loans\/(\d+)/);
+      if (match && match[1]) {
+        const loanId = parseInt(match[1], 10);
+        setActiveLoanId(loanId);
+      }
     }
-  }, [window.location.pathname]);
+  }, [externalLoanId, window.location.pathname]);
   
   // Fetch loans for the current user
   const { data: loans, isLoading: isLoadingLoans } = useQuery({

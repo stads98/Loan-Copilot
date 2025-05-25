@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, useRoute } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -12,7 +12,7 @@ import { apiRequest } from "./lib/queryClient";
 function Router() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -47,6 +47,10 @@ function Router() {
     }
   };
 
+  // Check if a loan ID route is matched
+  const [, loanParams] = useRoute("/loans/:id");
+  const loanId = loanParams ? parseInt(loanParams.id, 10) : null;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -58,28 +62,28 @@ function Router() {
   return (
     <Switch>
       <Route path="/login">
-        {user ? <Dashboard user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
+        {user ? <Dashboard user={user} onLogout={handleLogout} activeLoanId={loanId} currentPath={location} /> : <Login setUser={setUser} />}
       </Route>
       <Route path="/">
-        {user ? <Dashboard user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
+        {user ? <Dashboard user={user} onLogout={handleLogout} activeLoanId={loanId} currentPath={location} /> : <Login setUser={setUser} />}
       </Route>
       <Route path="/dashboard">
-        {user ? <Dashboard user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
+        {user ? <Dashboard user={user} onLogout={handleLogout} activeLoanId={loanId} currentPath={location} /> : <Login setUser={setUser} />}
       </Route>
       <Route path="/loans">
-        {user ? <Dashboard user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
+        {user ? <Dashboard user={user} onLogout={handleLogout} activeLoanId={loanId} currentPath={location} /> : <Login setUser={setUser} />}
       </Route>
       <Route path="/loans/:id">
-        {user ? <Dashboard user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
+        {user ? <Dashboard user={user} onLogout={handleLogout} activeLoanId={loanId} currentPath={location} /> : <Login setUser={setUser} />}
       </Route>
       <Route path="/contacts">
-        {user ? <Dashboard user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
+        {user ? <Dashboard user={user} onLogout={handleLogout} activeLoanId={loanId} currentPath={location} /> : <Login setUser={setUser} />}
       </Route>
       <Route path="/templates">
-        {user ? <Dashboard user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
+        {user ? <Dashboard user={user} onLogout={handleLogout} activeLoanId={loanId} currentPath={location} /> : <Login setUser={setUser} />}
       </Route>
       <Route path="/settings">
-        {user ? <Dashboard user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
+        {user ? <Dashboard user={user} onLogout={handleLogout} activeLoanId={loanId} currentPath={location} /> : <Login setUser={setUser} />}
       </Route>
       <Route component={NotFound} />
     </Switch>
