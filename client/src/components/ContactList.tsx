@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -109,18 +108,6 @@ export default function ContactList({ contacts, loanId }: ContactListProps) {
     }
   };
   
-  const handleEmailClick = (email: string) => {
-    if (email) {
-      window.location.href = `mailto:${email}`;
-    }
-  };
-  
-  const handlePhoneClick = (phone: string) => {
-    if (phone) {
-      window.location.href = `tel:${phone}`;
-    }
-  };
-  
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
       toast({
@@ -147,7 +134,17 @@ export default function ContactList({ contacts, loanId }: ContactListProps) {
             </p>
           </div>
           <button 
-            onClick={() => setIsAddContactOpen(true)}
+            onClick={() => {
+              setEditingContact(null);
+              form.reset({
+                name: "",
+                email: "",
+                phone: "",
+                company: "",
+                role: "borrower"
+              });
+              setIsAddContactOpen(true);
+            }}
             className="flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 rounded-md text-sm font-medium hover:bg-blue-100 transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -334,16 +331,15 @@ export default function ContactList({ contacts, loanId }: ContactListProps) {
           )}
         </div>
       </div>
-      
-      {/* Add Contact Dialog */}
+
       <Dialog open={isAddContactOpen} onOpenChange={setIsAddContactOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Add Contact</DialogTitle>
+            <DialogTitle>{editingContact ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
           </DialogHeader>
           
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2">
               <FormField
                 control={form.control}
                 name="name"
@@ -351,7 +347,7 @@ export default function ContactList({ contacts, loanId }: ContactListProps) {
                   <FormItem>
                     <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Smith" {...field} />
+                      <Input placeholder="Full name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -367,6 +363,7 @@ export default function ContactList({ contacts, loanId }: ContactListProps) {
                     <Select 
                       onValueChange={field.onChange} 
                       defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -375,14 +372,11 @@ export default function ContactList({ contacts, loanId }: ContactListProps) {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="borrower">Borrower</SelectItem>
-                        <SelectItem value="title">Title Company</SelectItem>
-                        <SelectItem value="insurance">Insurance Agent</SelectItem>
-                        <SelectItem value="payoff">Payoff Lender</SelectItem>
-                        <SelectItem value="lender">Current Lender</SelectItem>
-                        <SelectItem value="realtor">Realtor</SelectItem>
+                        <SelectItem value="title">Title</SelectItem>
+                        <SelectItem value="insurance">Insurance</SelectItem>
+                        <SelectItem value="lender">Lender</SelectItem>
+                        <SelectItem value="appraiser">Appraiser</SelectItem>
                         <SelectItem value="attorney">Attorney</SelectItem>
-                        <SelectItem value="cpa">CPA/Accountant</SelectItem>
-                        <SelectItem value="property_manager">Property Manager</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
@@ -396,55 +390,67 @@ export default function ContactList({ contacts, loanId }: ContactListProps) {
                 name="company"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Company (Optional)</FormLabel>
+                    <FormLabel>Company</FormLabel>
                     <FormControl>
-                      <Input placeholder="Company name" {...field} />
+                      <Input placeholder="Company name (optional)" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input placeholder="email@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="(555) 123-4567" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Email address (optional)" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
-              <DialogFooter>
-                <Button variant="outline" type="button" onClick={() => setIsAddContactOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Save Contact</Button>
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Phone number (optional)" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter className="pt-4">
+                <Button type="submit">{editingContact ? 'Update Contact' : 'Add Contact'}</Button>
               </DialogFooter>
             </form>
           </Form>
         </DialogContent>
       </Dialog>
+      
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the contact.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteContact} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
