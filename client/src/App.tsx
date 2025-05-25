@@ -6,6 +6,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import Login from "@/pages/Login";
+import Contacts from "@/pages/Contacts";
+import LoansPage from "@/pages/LoansPage";
+import Templates from "@/pages/Templates";
+import Settings from "@/pages/Settings";
 import { useEffect, useState } from "react";
 import { apiRequest } from "./lib/queryClient";
 
@@ -70,20 +74,20 @@ function Router() {
       <Route path="/dashboard">
         {user ? <Dashboard user={user} onLogout={handleLogout} activeLoanId={loanId} currentPath={location} /> : <Login setUser={setUser} />}
       </Route>
-      <Route path="/loans">
-        {user ? <Dashboard user={user} onLogout={handleLogout} activeLoanId={loanId} currentPath={location} /> : <Login setUser={setUser} />}
-      </Route>
       <Route path="/loans/:id">
         {user ? <Dashboard user={user} onLogout={handleLogout} activeLoanId={loanId} currentPath={location} /> : <Login setUser={setUser} />}
       </Route>
+      <Route path="/loans">
+        {user ? <LoansPage user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
+      </Route>
       <Route path="/contacts">
-        {user ? <Dashboard user={user} onLogout={handleLogout} activeLoanId={loanId} currentPath={location} /> : <Login setUser={setUser} />}
+        {user ? <Contacts user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
       </Route>
       <Route path="/templates">
-        {user ? <Dashboard user={user} onLogout={handleLogout} activeLoanId={loanId} currentPath={location} /> : <Login setUser={setUser} />}
+        {user ? <Templates user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
       </Route>
       <Route path="/settings">
-        {user ? <Dashboard user={user} onLogout={handleLogout} activeLoanId={loanId} currentPath={location} /> : <Login setUser={setUser} />}
+        {user ? <Settings user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

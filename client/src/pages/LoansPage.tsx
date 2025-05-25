@@ -1,0 +1,176 @@
+import { useState } from "react";
+import Layout from "@/components/Layout";
+import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Loan } from "@/lib/types";
+import { apiRequest } from "@/lib/queryClient";
+
+interface LoansPageProps {
+  user: any;
+  onLogout: () => void;
+}
+
+export default function LoansPage({ user, onLogout }: LoansPageProps) {
+  const { toast } = useToast();
+
+  // Fetch all loans
+  const { data: loans, isLoading: isLoadingLoans, refetch } = useQuery({
+    queryKey: ['/api/loans'],
+  });
+
+  // Fetch all lenders for filtering
+  const { data: lenders, isLoading: isLoadingLenders } = useQuery({
+    queryKey: ['/api/lenders'],
+  });
+
+  // Create a demo loan
+  const createDemoLoan = async () => {
+    try {
+      const response = await apiRequest("POST", "/api/demo-loan", {});
+      const data = await response.json();
+      toast({
+        title: "Demo loan created",
+        description: "A sample loan has been created for demonstration."
+      });
+      refetch();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create demo loan. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (isLoadingLoans || isLoadingLenders) {
+    return (
+      <Layout user={user} onLogout={onLogout}>
+        <div className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout user={user} onLogout={onLogout}>
+      <div className="py-6 px-4 sm:px-6 lg:px-8 bg-gray-50">
+        <div className="mb-6 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-lg shadow-lg p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-heading font-bold">Loan Files</h2>
+              <p className="mt-1 text-sm text-blue-100">
+                Manage all your DSCR loan files in one place
+              </p>
+            </div>
+            <div className="mt-4 md:mt-0 flex space-x-3">
+              <Button 
+                onClick={createDemoLoan}
+                className="bg-white text-blue-700 hover:bg-blue-50 inline-flex items-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                New Loan
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {loans && loans.length > 0 ? (
+            loans.map((loan: Loan) => (
+              <Card 
+                key={loan.id} 
+                className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => window.location.href = `/loans/${loan.id}`}
+              >
+                <div className={`h-2 ${
+                  loan.status === 'completed' ? 'bg-green-500' :
+                  loan.status === 'on_hold' ? 'bg-yellow-500' : 'bg-blue-500'
+                }`}></div>
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="text-lg">{loan.borrowerName}</CardTitle>
+                    <Badge variant={
+                      loan.status === 'completed' ? 'default' :
+                      loan.status === 'on_hold' ? 'secondary' : 'outline'
+                    }>
+                      {loan.status === 'in_progress' ? 'In Progress' :
+                       loan.status === 'completed' ? 'Completed' :
+                       loan.status === 'on_hold' ? 'On Hold' : 'New'}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Loan Type:</span>
+                      <span className="font-medium">{loan.loanType}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Purpose:</span>
+                      <span className="font-medium">{loan.loanPurpose}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Amount:</span>
+                      <span className="font-medium">{loan.loanAmount || 'Not specified'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Target Close Date:</span>
+                      <span className="font-medium">{loan.targetCloseDate || 'Not specified'}</span>
+                    </div>
+                    <div className="mt-4">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-medium">Completion</span>
+                        <span className="text-xs font-medium">{loan.completionPercentage || 0}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${
+                            (loan.completionPercentage || 0) < 30 ? 'bg-red-500' : 
+                            (loan.completionPercentage || 0) < 70 ? 'bg-yellow-500' : 'bg-green-500'
+                          }`}
+                          style={{ width: `${loan.completionPercentage || 0}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <div className="col-span-full flex flex-col items-center justify-center py-12">
+              <div className="rounded-full bg-blue-100 p-3 mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-1">No Loan Files Yet</h3>
+              <p className="text-gray-500 mb-4 text-center max-w-md">
+                You haven't created any loan files yet. Click the button below to create your first loan.
+              </p>
+              <Button 
+                onClick={createDemoLoan}
+                size="sm"
+                className="inline-flex items-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="12" y1="18" x2="12" y2="12"></line>
+                  <line x1="9" y1="15" x2="15" y2="15"></line>
+                </svg>
+                Create Demo Loan
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </Layout>
+  );
+}
