@@ -1,0 +1,61 @@
+You're building a Loan Processing Co-Pilot — a smart web app that helps inexperienced or overseas virtual assistants (VAs) process DSCR real estate loans like an expert.
+
+Here’s a clear, high-level explanation of what you’re trying to accomplish:
+
+🧠 What You're Building
+You’re creating a loan processing assistant web app that:
+
+Helps junior processors know what to do for each DSCR loan file
+
+Automatically checks which documents are uploaded and what’s still missing
+
+Provides step-by-step instructions and next actions
+
+Writes email drafts to send to borrowers, title companies, insurance agents, and lenders
+
+Works across multiple lenders (Kiavi, Roc Capital, AHL) — each with different document checklists
+
+Uses Google Drive to read loan file folders
+
+Uses ChatGPT (via the OpenAI API) to generate instructions, checklists, and emails dynamically
+
+💼 Your Use Case
+You run a private lending brokerage (Adler Capital) that submits DSCR and investor loan files to several lenders. Instead of hiring expensive U.S.-based processors, you want to:
+
+Hire low-cost, overseas VAs (like in the Philippines)
+
+Give them a tool that shows them exactly what to do — like a virtual senior processor
+
+Make the tool smart enough to answer their questions, flag missing docs, and help them move loans forward fast
+
+🎯 Your Goals
+Standardize your loan file processing — no matter who’s doing it
+
+Cut down errors and back-and-forth with VAs
+
+Scale your business without relying on hard-to-find (or expensive) experts
+
+Make onboarding new processors nearly instant
+
+🧱 Core Features You're Including
+Google Drive integration – so the tool can read a loan folder and detect what docs are present
+
+Lender-specific logic – like “what Kiavi needs for a DSCR purchase loan”
+
+OpenAI GPT integration – to generate task lists, doc checklists, and email drafts
+
+Simple UI – so VAs can chat with the tool and get clear answers, actions, and guidance
+
+Secure login (OAuth) – to keep access private and safe
+
+🛠️ Why You're Doing This
+Because the work is repeatable — but training and trust are hard to scale. By embedding expert knowledge into a tool, you make it easier to:
+
+Hire less experienced people
+
+Maintain quality
+
+Move files faster
+
+Stay organized without constant oversight
+

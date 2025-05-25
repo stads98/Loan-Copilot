@@ -1,0 +1,156 @@
+Perfect — here's exactly what you need to build in Replit (or Vercel) to achieve your vision of a ChatGPT-powered Loan Processing Co-Pilot that:
+
+✅ Integrates with OpenAI (ChatGPT API)
+
+✅ Reads loan files
+
+✅ Provides smart next-step guidance
+
+✅ Writes emails to all parties
+
+✅ Stores task progress and contact info per loan
+
+🏗️ Core Architecture Overview
+1. Frontend (React in Replit)
+Loan intake form (lender, loan type, property, borrower name, purpose)
+
+Chat interface (sends queries to GPT)
+
+File viewer (lists Google Drive or uploaded docs)
+
+Email generator section (GPT fills in drafts)
+
+Status tracker (checklist, current step, last update)
+
+2. Backend (Node/Express or Replit Server)
+Handles Google OAuth & Drive API
+
+Stores loan data + status in Supabase or SQLite
+
+Sends requests to OpenAI API
+
+Optionally sends emails using Resend or Nodemailer
+
+🔌 Key Integrations
+✅ OpenAI GPT (Core brain)
+Input: Lender, loan type, uploaded file list
+
+Output:
+
+What docs are present / missing
+
+What to do next
+
+Who to reach out to (borrower, title, insurance, payoff lender)
+
+Email drafts
+
+✅ Google Drive API
+Pulls file names from loan folder
+
+Optionally reads PDF text (OCR + classification in GPT)
+
+✅ Supabase (or Replit DB)
+Store loan-level data:
+
+Property info
+
+Assigned VA
+
+Loan stage
+
+File checklist status
+
+Contact info (borrower, title company, insurance agent)
+
+📋 Example Use Flow (for a Loan Processor)
+Logs in → Sees a new loan to work on
+
+Selects lender (e.g. Roc Capital) + loan type (DSCR purchase)
+
+Uploads or connects to Google Drive folder
+
+App:
+
+Scans file names
+
+Sends info to GPT
+
+GPT replies with:
+
+✅ Docs received
+
+❌ Missing items
+
+📋 Action plan
+
+✉️ Ready-to-send emails
+
+📞 "Call title to confirm wiring" or "Follow up with insurance by Tuesday"
+
+VA copies the emails or marks tasks complete
+
+📦 What You Need to Build First (MVP)
+Component	Function
+🔐 Google OAuth	Auth for Drive access
+📂 Drive folder picker	See files in the loan folder
+📝 Loan intake form	Select lender, loan type, property info
+🤖 GPT call	Prompt with lender + file list → returns actions/emails
+📬 Email template viewer	Show GPT output, allow VA to copy/send
+✅ Checklist manager	Mark what's done/missing
+💾 Basic DB	Store each loan’s info and status
+
+🧠 Prompt Logic Example (for GPT)
+When the app sends a request to ChatGPT, it should include:
+
+json
+Copy
+Edit
+{
+  "lender": "Kiavi",
+  "loan_type": "DSCR",
+  "loan_purpose": "Purchase",
+  "property_address": "321 NW 43rd St, Oakland Park, FL",
+  "uploaded_files": [
+    "DriverLicense.pdf",
+    "BankStatement-Jan.pdf",
+    "PurchaseContract.pdf"
+  ],
+  "borrower_name": "John Smith"
+}
+GPT returns:
+
+What’s missing
+
+What step is next
+
+Who to contact
+
+Email templates for:
+
+Borrower (to request missing docs)
+
+Title (for prelim or wiring)
+
+Insurance (for updated binder)
+
+Payoff lender (if refi)
+
+✅ Your Next Move
+If you're using Replit:
+
+Start a new React + Node.js template
+
+Add your Google API credentials and OpenAI key to .env
+
+Use the Chat + File viewer layout
+
+Hook GPT to your checklist logic
+
+Want me to:
+
+Generate the full GPT prompt to use in your API call?
+
+Build your first React component layout?
+
+Write your backend route for the GPT call?
