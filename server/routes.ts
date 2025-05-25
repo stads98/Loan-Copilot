@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertLoanSchema, insertPropertySchema, insertContactSchema, insertTaskSchema, insertDocumentSchema, insertMessageSchema } from "@shared/schema";
 import { z } from "zod";
-import { processLoanDocuments } from "./lib/openai";
+import { processLoanDocuments, analyzeDriveDocuments } from "./lib/openai";
 import { authenticateGoogle, getDriveFiles } from "./lib/google";
 import { createFallbackAssistantResponse } from "./lib/fallbackAI";
 import session from "express-session";
@@ -682,97 +682,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use OpenAI to analyze the documents
       const analysisResult = await analyzeDriveDocuments(processedDocuments);
       
-      // 1. Create property
+      // 1. Create property based on analysis
       const property = await storage.createProperty({
-        address: "456 Park Avenue",
-        city: "New York",
-        state: "NY",
-        zipCode: "10022",
-        propertyType: "Multi-Family Residence"
+        address: analysisResult.address,
+        city: analysisResult.city,
+        state: analysisResult.state,
+        zipCode: analysisResult.zipCode,
+        propertyType: analysisResult.propertyType
       });
 
-      // 2. Create loan
+      // 2. Create loan based on analysis
       const loan = await storage.createLoan({
-        borrowerName: "Sarah Johnson LLC",
-        loanAmount: "750,000",
-        loanType: "DSCR",
-        loanPurpose: "Refinance",
+        borrowerName: analysisResult.borrowerName,
+        loanAmount: analysisResult.loanAmount,
+        loanType: analysisResult.loanType,
+        loanPurpose: analysisResult.loanPurpose,
         status: "in_progress",
-        targetCloseDate: "2025-07-15",
+        targetCloseDate: "2025-07-15", // Default date if not extracted
         driveFolder: driveFolderId,
         propertyId: property.id,
-        lenderId: 1,
+        lenderId: 1, // Default lender ID
         processorId: (req.user as any).id,
-        completionPercentage: 25
+        completionPercentage: 25 // Start at 25% completion
       });
 
-      // 3. Create contacts based on document analysis
-      await storage.createContact({
-        name: "Sarah Johnson",
-        email: "sarah@johnsonllc.com",
-        phone: "(212) 555-7890",
-        company: "Sarah Johnson LLC",
-        role: "borrower",
-        loanId: loan.id
-      });
+      // 3. Create contacts based on analysis
+      for (const contact of analysisResult.contacts) {
+        await storage.createContact({
+          name: contact.name,
+          email: contact.email || `${contact.name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
+          phone: contact.phone || "(555) 123-4567",
+          company: contact.company,
+          role: contact.role,
+          loanId: loan.id
+        });
+      }
 
-      await storage.createContact({
-        name: "Robert Chen",
-        email: "robert@nytitle.com",
-        phone: "(212) 555-1234",
-        company: "New York Title Company",
-        role: "title",
-        loanId: loan.id
-      });
-
-      await storage.createContact({
-        name: "Jennifer Garcia",
-        email: "jennifer@metroinsurance.com",
-        phone: "(212) 555-5678",
-        company: "Metro Insurance Group",
-        role: "insurance",
-        loanId: loan.id
-      });
-
-      // 4. Create tasks based on document analysis
-      await storage.createTask({
-        description: "Verify property value assessment",
-        dueDate: "2025-06-05",
-        priority: "high",
-        completed: false,
-        loanId: loan.id
-      });
-
-      await storage.createTask({
-        description: "Update entity operating agreement",
-        dueDate: "2025-06-10",
-        priority: "medium",
-        completed: false,
-        loanId: loan.id
-      });
-
-      await storage.createTask({
-        description: "Request current rent roll",
-        dueDate: "2025-06-15",
-        priority: "high",
-        completed: false,
-        loanId: loan.id
-      });
-
-      // 5. Create documents based on Drive files
-      for (const file of files.slice(0, 5)) { // Limit to first 5 files
-        let category = "other";
+      // 4. Create tasks for missing documents
+      for (const missingDoc of analysisResult.missingDocuments) {
+        let taskDescription = `Obtain ${missingDoc}`;
+        let priority = "medium";
         
-        // Determine category based on filename
-        const fileName = file.name.toLowerCase();
-        if (fileName.includes("deed") || fileName.includes("property") || fileName.includes("appraisal")) {
-          category = "property";
-        } else if (fileName.includes("llc") || fileName.includes("license") || fileName.includes("id")) {
-          category = "borrower";
-        } else if (fileName.includes("insurance") || fileName.includes("policy")) {
-          category = "insurance";
-        } else if (fileName.includes("title") || fileName.includes("survey")) {
-          category = "title";
+        // Set higher priority for insurance and title documents
+        if (missingDoc.toLowerCase().includes("insurance") || 
+            missingDoc.toLowerCase().includes("binder")) {
+          taskDescription = `Request insurance binder/policy for ${property.address}`;
+          priority = "high";
+        } else if (missingDoc.toLowerCase().includes("title")) {
+          taskDescription = `Request title commitment from title company`;
+          priority = "high";
+        }
+        
+        await storage.createTask({
+          description: taskDescription,
+          dueDate: "2025-06-30", // Default due date
+          priority,
+          completed: false,
+          loanId: loan.id
+        });
+      }
+      
+      // Add a default task if no missing documents were found
+      if (analysisResult.missingDocuments.length === 0) {
+        await storage.createTask({
+          description: "Review all documents for completeness",
+          dueDate: "2025-06-15",
+          priority: "medium",
+          completed: false,
+          loanId: loan.id
+        });
+      }
+
+      // 5. Create documents based on the files with categories from analysis
+      for (const file of files) {
+        // Use the category from analysis or determine based on filename
+        let category = analysisResult.documentCategories[file.id] || "other";
+        
+        // If no category from analysis, determine from filename
+        if (category === "other") {
+          const fileName = file.name.toLowerCase();
+          if (fileName.includes("deed") || fileName.includes("property") || fileName.includes("appraisal")) {
+            category = "property";
+          } else if (fileName.includes("llc") || fileName.includes("license") || fileName.includes("id")) {
+            category = "borrower";
+          } else if (fileName.includes("insurance") || fileName.includes("policy")) {
+            category = "insurance";
+          } else if (fileName.includes("title") || fileName.includes("survey")) {
+            category = "title";
+          }
         }
         
         await storage.createDocument({
@@ -787,7 +784,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // 6. Create initial message with analysis summary
       await storage.createMessage({
-        content: `I've analyzed the documents from your Google Drive folder and created this loan file. I found ${files.length} documents in the folder with ID: ${driveFolderId}. Based on these documents, I've identified a DSCR refinance loan for Sarah Johnson LLC for the property at 456 Park Avenue, New York. I've also identified some missing documents that need to be collected, which I've added as tasks.`,
+        content: `I've analyzed the documents from your Google Drive folder and created this loan file. I found ${files.length} documents in the folder with ID: ${driveFolderId}. 
+
+Based on these documents, I've identified a ${analysisResult.loanType} ${analysisResult.loanPurpose.toLowerCase()} loan for ${analysisResult.borrowerName} for the property at ${analysisResult.address}, ${analysisResult.city}, ${analysisResult.state}.
+
+Documents identified:
+${files.map(f => `- ${f.name}`).join('\n')}
+
+${analysisResult.missingDocuments.length > 0 ? `Missing documents that need to be collected:
+${analysisResult.missingDocuments.map(doc => `- ${doc}`).join('\n')}
+
+I've added tasks for obtaining the missing documents.` : 'All required documents appear to be present.'}
+
+Would you like me to draft an email to request any specific documents or information?`,
         role: "assistant",
         loanId: loan.id
       });

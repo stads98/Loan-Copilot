@@ -77,12 +77,12 @@ Keep your responses professional, concise, and action-oriented. When asked to cr
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
-        { role: "system" as const, content: systemPrompt },
+        { role: "system", content: systemPrompt },
         ...messageHistory.map(msg => ({
-          role: (msg.role === "user" ? "user" : "assistant") as const,
+          role: msg.role === "user" ? "user" : "assistant",
           content: msg.content
         })),
-        { role: "user" as const, content: userQuery }
+        { role: "user", content: userQuery }
       ],
       temperature: 0.7,
       max_tokens: 1000,
