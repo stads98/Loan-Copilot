@@ -742,14 +742,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { driveFolderId } = req.body;
       
       if (!driveFolderId) {
-        return res.status(400).json({ message: "Drive folder ID is required" });
+        return res.status(400).json({ success: false, message: "Drive folder ID is required" });
       }
       
       // Get files from Google Drive folder
       const files = await getDriveFiles(driveFolderId);
       
       if (!files || files.length === 0) {
-        return res.status(400).json({ message: "No files found in the specified Google Drive folder" });
+        return res.status(400).json({ success: false, message: "No files found in the specified Google Drive folder" });
       }
       
       // Extract real text content from the files

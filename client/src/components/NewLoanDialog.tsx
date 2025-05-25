@@ -43,14 +43,39 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
     try {
       // Extract folder ID from Google Drive link
       let folderId = "";
-      if (driveLink.includes("folders/")) {
-        folderId = driveLink.split("folders/")[1].split("?")[0].split("/")[0];
-      } else if (driveLink.includes("id=")) {
-        folderId = driveLink.split("id=")[1].split("&")[0];
-      } else {
+      
+      try {
+        // Handle direct folder ID
+        if (/^[a-zA-Z0-9_-]{25,}$/.test(driveLink.trim())) {
+          // If the input is just a folder ID (alphanumeric string)
+          folderId = driveLink.trim();
+        } 
+        // Handle regular Drive folder URL
+        else if (driveLink.includes("folders/")) {
+          folderId = driveLink.split("folders/")[1].split("?")[0].split("/")[0];
+        } 
+        // Handle drive URL with id parameter
+        else if (driveLink.includes("id=")) {
+          folderId = driveLink.split("id=")[1].split("&")[0];
+        } 
+        // Try to extract anything that looks like a Drive ID
+        else {
+          const idMatch = driveLink.match(/[a-zA-Z0-9_-]{25,}/);
+          if (idMatch) {
+            folderId = idMatch[0];
+          } else {
+            throw new Error("Could not extract folder ID");
+          }
+        }
+        
+        // Validate we have a proper ID
+        if (!folderId || folderId.length < 25) {
+          throw new Error("Invalid folder ID format");
+        }
+      } catch (error) {
         toast({
           title: "Invalid link format",
-          description: "Could not extract folder ID from the provided link",
+          description: "Could not extract folder ID from the provided link. Please use a Google Drive folder link.",
           variant: "destructive",
         });
         setLoading(false);
@@ -61,24 +86,21 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
       setProcessingStatus("Accessing Google Drive folder...");
       
       // Call the backend API to process the Google Drive folder
-      const response = await apiRequest("POST", "/api/loans/from-drive", { 
+      setProcessingStatus("Analyzing documents...");
+      
+      const data = await apiRequest("POST", "/api/loans/from-drive", { 
         driveFolderId: folderId
       });
       
-      if (!response.ok) {
-        throw new Error("Failed to process Google Drive folder");
+      if (!data || !data.success) {
+        throw new Error(data?.message || "Failed to process Google Drive folder");
       }
-
-      setProcessingStatus("Analyzing documents...");
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
       setProcessingStatus("Extracting information...");
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       setProcessingStatus("Creating loan file...");
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const data = await response.json();
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
