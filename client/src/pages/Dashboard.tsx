@@ -7,6 +7,7 @@ import GoogleDriveConnect from "@/components/GoogleDriveConnect";
 import AIAssistant from "@/components/AIAssistant";
 import TaskList from "@/components/TaskList";
 import DocumentManager from "@/components/DocumentManager";
+import NewLoanDialog from "@/components/NewLoanDialog";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -203,13 +204,7 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
               </p>
             </div>
             <div className="mt-4 md:mt-0 flex space-x-3">
-              <Button className="bg-white text-blue-700 hover:bg-blue-50 inline-flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-2">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                New Loan
-              </Button>
+              <NewLoanDialog />
             </div>
           </div>
         </div>
