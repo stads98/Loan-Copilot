@@ -120,10 +120,16 @@ export async function analyzeDriveDocuments(documents: DriveDocumentData[]): Pro
   documentCategories: Record<string, string>;
 }> {
   try {
-    // For demos or when API key is not available
+    // Check if we have a valid API key
     if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "dummy-key") {
       console.log("Using fallback document analysis due to missing API key");
       return fallbackDriveAnalysis(documents);
+    }
+    
+    // Check if we've been given some real documents to analyze
+    if (documents.length === 0) {
+      console.log("No documents provided for analysis");
+      return fallbackDriveAnalysis([]);
     }
     
     // Prepare documents for analysis
@@ -183,11 +189,256 @@ export async function analyzeDriveDocuments(documents: DriveDocumentData[]): Pro
       missingDocuments: result.missingDocuments || [],
       documentCategories: result.documentCategories || {}
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error analyzing drive documents with OpenAI:", error);
-    // Fall back to simple analysis if OpenAI call fails
+    
+    // Provide more specific error handling
+    if (error?.type === 'insufficient_quota' || error?.status === 429) {
+      console.log("API quota exceeded - using extracted text directly for analysis");
+      
+      // Extract data from the documents directly instead of using AI
+      return extractDataFromDocuments(documents);
+    }
+    
+    // Fall back to simple analysis for other errors
     return fallbackDriveAnalysis(documents);
   }
+}
+
+/**
+ * Extract data from document text directly
+ * This function is used when the API has quota limits or other issues
+ */
+function extractDataFromDocuments(documents: DriveDocumentData[]) {
+  // Initialize with default values
+  let borrowerName = "Unknown Borrower";
+  let loanAmount = "Unknown Amount";
+  let loanType = "DSCR";
+  let loanPurpose = "Purchase";
+  let address = "Unknown Address";
+  let city = "Unknown City";
+  let state = "CA";
+  let zipCode = "00000";
+  let propertyType = "Residential";
+  
+  // Contact information
+  const contacts: Array<{
+    name: string;
+    email?: string;
+    phone?: string;
+    company?: string;
+    role: string;
+  }> = [];
+  
+  // Categorize documents and find missing ones
+  const documentCategories: Record<string, string> = {};
+  const foundDocumentTypes = new Set<string>();
+  
+  // Analyze each document to extract information
+  for (const doc of documents) {
+    const fileName = doc.name.toLowerCase();
+    const text = doc.text.toLowerCase();
+    
+    // Categorize this document
+    let category = "other";
+    if (fileName.includes("license") || fileName.includes("id") || 
+        fileName.includes("llc") || fileName.includes("entity") ||
+        text.includes("organization") || text.includes("borrower")) {
+      category = "borrower";
+      foundDocumentTypes.add("id");
+      foundDocumentTypes.add("entity");
+    } else if (fileName.includes("title") || fileName.includes("survey") ||
+               text.includes("title") || text.includes("commitment")) {
+      category = "title";
+      foundDocumentTypes.add("title");
+    } else if (fileName.includes("insurance") || fileName.includes("policy") ||
+               text.includes("insurance") || text.includes("policy") || 
+               text.includes("binder")) {
+      category = "insurance";
+      foundDocumentTypes.add("insurance");
+    } else if (fileName.includes("bank") || fileName.includes("statement") ||
+               fileName.includes("financial") || text.includes("bank") ||
+               text.includes("statement") || text.includes("account")) {
+      category = "financial";
+      foundDocumentTypes.add("bank");
+    } else if (fileName.includes("tax") || fileName.includes("return") ||
+               text.includes("tax") || text.includes("return") ||
+               text.includes("income") || text.includes("1040")) {
+      category = "tax";
+      foundDocumentTypes.add("tax");
+    } else if (fileName.includes("property") || fileName.includes("appraisal") ||
+               fileName.includes("deed") || text.includes("property") ||
+               text.includes("appraisal") || text.includes("deed")) {
+      category = "property";
+      foundDocumentTypes.add("property");
+    }
+    
+    documentCategories[doc.id] = category;
+    
+    // Extract borrower information
+    if (category === "borrower") {
+      // Look for a name
+      const nameMatches = text.match(/name:\s*([a-zA-Z\s.]+)/i) || 
+                         text.match(/borrower:\s*([a-zA-Z\s.]+)/i) ||
+                         text.match(/([a-zA-Z\s]+)\s+LLC/i);
+      
+      if (nameMatches && nameMatches[1]) {
+        borrowerName = nameMatches[1].trim();
+        if (text.includes("llc") || text.includes("limited liability company")) {
+          borrowerName += " LLC";
+        }
+      }
+      
+      // Check for contact information
+      const emailMatch = text.match(/[\w.-]+@[\w.-]+\.\w+/);
+      const phoneMatch = text.match(/\(?\d{3}\)?[.-]?\s*\d{3}[.-]?\s*\d{4}/);
+      
+      if (borrowerName !== "Unknown Borrower" && !contacts.some(c => c.role === "borrower")) {
+        contacts.push({
+          name: borrowerName,
+          email: emailMatch ? emailMatch[0] : undefined,
+          phone: phoneMatch ? phoneMatch[0] : undefined,
+          role: "borrower"
+        });
+      }
+    }
+    
+    // Extract property information
+    if (category === "property") {
+      // Look for address
+      const addressMatch = text.match(/address:\s*([^,\n]+)/i) ||
+                          text.match(/property:\s*([^,\n]+)/i) ||
+                          text.match(/(\d+\s+[a-zA-Z\s]+(?:street|st|avenue|ave|road|rd|boulevard|blvd|drive|dr|lane|ln|way|circle|cir|court|ct))/i);
+      
+      if (addressMatch && addressMatch[1]) {
+        address = addressMatch[1].trim();
+      }
+      
+      // Look for city, state, zip
+      const cityStateMatch = text.match(/([a-zA-Z\s]+),\s*([A-Z]{2})\s*(\d{5})/i);
+      if (cityStateMatch) {
+        city = cityStateMatch[1].trim();
+        state = cityStateMatch[2].toUpperCase();
+        zipCode = cityStateMatch[3];
+      }
+      
+      // Look for property type
+      const propertyTypeMatch = text.match(/type:\s*([a-zA-Z\s-]+)/i) ||
+                               text.match(/property type:\s*([a-zA-Z\s-]+)/i);
+      if (propertyTypeMatch && propertyTypeMatch[1]) {
+        propertyType = propertyTypeMatch[1].trim();
+      }
+    }
+    
+    // Extract loan information
+    if (text.includes("loan") || text.includes("mortgage") || 
+        text.includes("finance") || text.includes("refinance")) {
+      
+      // Look for loan amount
+      const amountMatch = text.match(/\$\s*([0-9,.]+)/) ||
+                         text.match(/amount:\s*\$?\s*([0-9,.]+)/i) ||
+                         text.match(/loan amount:\s*\$?\s*([0-9,.]+)/i) ||
+                         text.match(/([0-9,.]+)\s*dollars/i);
+      
+      if (amountMatch && amountMatch[1]) {
+        loanAmount = amountMatch[1].replace(/[,\s]/g, "");
+        // Format as currency
+        loanAmount = parseInt(loanAmount).toLocaleString();
+      }
+      
+      // Determine loan type and purpose
+      if (text.includes("dscr") || text.includes("debt service coverage")) {
+        loanType = "DSCR";
+      } else if (text.includes("fix") && text.includes("flip")) {
+        loanType = "Fix & Flip";
+      }
+      
+      if (text.includes("refinance") || text.includes("refinancing")) {
+        loanPurpose = "Refinance";
+      } else if (text.includes("purchase") || text.includes("buying")) {
+        loanPurpose = "Purchase";
+      }
+    }
+    
+    // Extract contact information from title or insurance documents
+    if (category === "title" || category === "insurance") {
+      const companyMatch = text.match(/company:\s*([a-zA-Z\s.]+)/i) ||
+                          text.match(/([a-zA-Z\s.]+)\s+(?:title|insurance|company)/i);
+      
+      const contactNameMatch = text.match(/contact:\s*([a-zA-Z\s.]+)/i) ||
+                              text.match(/agent:\s*([a-zA-Z\s.]+)/i);
+      
+      const emailMatch = text.match(/[\w.-]+@[\w.-]+\.\w+/);
+      const phoneMatch = text.match(/\(?\d{3}\)?[.-]?\s*\d{3}[.-]?\s*\d{4}/);
+      
+      if ((companyMatch || contactNameMatch) && 
+          !contacts.some(c => c.role === (category === "title" ? "title" : "insurance"))) {
+        contacts.push({
+          name: contactNameMatch ? contactNameMatch[1].trim() : 
+                (category === "title" ? "Title Agent" : "Insurance Agent"),
+          company: companyMatch ? companyMatch[1].trim() : undefined,
+          email: emailMatch ? emailMatch[0] : undefined,
+          phone: phoneMatch ? phoneMatch[0] : undefined,
+          role: category === "title" ? "title" : "insurance"
+        });
+      }
+    }
+  }
+  
+  // Determine missing documents
+  const requiredDocuments = [
+    { name: "Driver's License", type: "id" },
+    { name: "Entity Documents (LLC)", type: "entity" },
+    { name: "Property Deed/Info", type: "property" },
+    { name: "Bank Statements", type: "bank" },
+    { name: "Insurance Binder", type: "insurance" },
+    { name: "Title Commitment", type: "title" },
+    { name: "DSCR Certification Form", type: "dscr" },
+    { name: "Tax Returns", type: "tax" }
+  ];
+  
+  const missingDocuments = requiredDocuments
+    .filter(doc => !foundDocumentTypes.has(doc.type))
+    .map(doc => doc.name);
+  
+  // Ensure we have at least the basic contact roles
+  if (!contacts.some(c => c.role === "borrower")) {
+    contacts.push({
+      name: borrowerName,
+      role: "borrower"
+    });
+  }
+  
+  if (!contacts.some(c => c.role === "title")) {
+    contacts.push({
+      name: "Title Agent",
+      company: "Title Company",
+      role: "title"
+    });
+  }
+  
+  if (!contacts.some(c => c.role === "insurance")) {
+    contacts.push({
+      name: "Insurance Agent",
+      company: "Insurance Company",
+      role: "insurance"
+    });
+  }
+  
+  return {
+    borrowerName,
+    loanAmount,
+    loanType,
+    loanPurpose,
+    address,
+    city,
+    state,
+    zipCode,
+    propertyType,
+    contacts,
+    missingDocuments,
+    documentCategories
+  };
 }
 
 /**
