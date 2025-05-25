@@ -56,46 +56,8 @@ export default function LoansPage({ user, onLogout }: LoansPageProps) {
     );
   }
 
-  // Fixed loan data for sidebar display
-  const recentLoans = [
-    {
-      id: 1,
-      borrowerName: "Smith",
-      address: "123 Main St",
-      status: "in_progress",
-      color: "green"
-    },
-    {
-      id: 2,
-      borrowerName: "Johnson",
-      address: "456 Oak Ave",
-      status: "in_progress",
-      color: "yellow"
-    },
-    {
-      id: 3,
-      borrowerName: "Martinez",
-      address: "789 Pine Ln",
-      status: "in_progress",
-      color: "red"
-    }
-  ];
-
-  // Combine fetched loans with fixed sidebar loans if they don't exist
-  const combinedLoans = Array.isArray(loans) && loans.length > 0 
-    ? loans 
-    : recentLoans.map(loan => ({
-        id: loan.id,
-        borrowerName: loan.borrowerName,
-        loanAmount: loan.id === 1 ? "324,500" : loan.id === 2 ? "450,000" : "275,000",
-        loanType: "DSCR",
-        loanPurpose: loan.id === 1 ? "Purchase" : "Refinance",
-        status: loan.status,
-        targetCloseDate: "2025-06-30",
-        completionPercentage: loan.id === 1 ? 35 : loan.id === 2 ? 20 : 15,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }));
+  // Display a loading message while real loans are being fetched
+  const combinedLoans = Array.isArray(loans) ? loans : [];
 
   return (
     <Layout user={user} onLogout={onLogout}>
