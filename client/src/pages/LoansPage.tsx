@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loan } from "@/lib/types";
 import { apiRequest } from "@/lib/queryClient";
+import NewLoanDialog from "@/components/NewLoanDialog";
 
 interface LoansPageProps {
   user: any;
@@ -55,6 +56,47 @@ export default function LoansPage({ user, onLogout }: LoansPageProps) {
     );
   }
 
+  // Fixed loan data for sidebar display
+  const recentLoans = [
+    {
+      id: 1,
+      borrowerName: "Smith",
+      address: "123 Main St",
+      status: "in_progress",
+      color: "green"
+    },
+    {
+      id: 2,
+      borrowerName: "Johnson",
+      address: "456 Oak Ave",
+      status: "in_progress",
+      color: "yellow"
+    },
+    {
+      id: 3,
+      borrowerName: "Martinez",
+      address: "789 Pine Ln",
+      status: "in_progress",
+      color: "red"
+    }
+  ];
+
+  // Combine fetched loans with fixed sidebar loans if they don't exist
+  const combinedLoans = Array.isArray(loans) && loans.length > 0 
+    ? loans 
+    : recentLoans.map(loan => ({
+        id: loan.id,
+        borrowerName: loan.borrowerName,
+        loanAmount: loan.id === 1 ? "324,500" : loan.id === 2 ? "450,000" : "275,000",
+        loanType: "DSCR",
+        loanPurpose: loan.id === 1 ? "Purchase" : "Refinance",
+        status: loan.status,
+        targetCloseDate: "2025-06-30",
+        completionPercentage: loan.id === 1 ? 35 : loan.id === 2 ? 20 : 15,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }));
+
   return (
     <Layout user={user} onLogout={onLogout}>
       <div className="py-6 px-4 sm:px-6 lg:px-8 bg-gray-50">
@@ -67,23 +109,26 @@ export default function LoansPage({ user, onLogout }: LoansPageProps) {
               </p>
             </div>
             <div className="mt-4 md:mt-0 flex space-x-3">
+              <NewLoanDialog />
               <Button 
                 onClick={createDemoLoan}
                 className="bg-white text-blue-700 hover:bg-blue-50 inline-flex items-center"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-2">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="12" y1="18" x2="12" y2="12"></line>
+                  <line x1="9" y1="15" x2="15" y2="15"></line>
                 </svg>
-                New Loan
+                Demo Loan
               </Button>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {loans && loans.length > 0 ? (
-            loans.map((loan: Loan) => (
+          {combinedLoans && combinedLoans.length > 0 ? (
+            combinedLoans.map((loan: any) => (
               <Card 
                 key={loan.id} 
                 className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
@@ -154,19 +199,23 @@ export default function LoansPage({ user, onLogout }: LoansPageProps) {
               <p className="text-gray-500 mb-4 text-center max-w-md">
                 You haven't created any loan files yet. Click the button below to create your first loan.
               </p>
-              <Button 
-                onClick={createDemoLoan}
-                size="sm"
-                className="inline-flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="12" y1="18" x2="12" y2="12"></line>
-                  <line x1="9" y1="15" x2="15" y2="15"></line>
-                </svg>
-                Create Demo Loan
-              </Button>
+              <div className="flex space-x-3">
+                <NewLoanDialog />
+                <Button 
+                  onClick={createDemoLoan}
+                  size="sm"
+                  variant="outline"
+                  className="inline-flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="12" y1="18" x2="12" y2="12"></line>
+                    <line x1="9" y1="15" x2="15" y2="15"></line>
+                  </svg>
+                  Demo Loan
+                </Button>
+              </div>
             </div>
           )}
         </div>
