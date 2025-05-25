@@ -227,7 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Use the Google Drive folder ID from the loan
       // In a real implementation, this would be stored when the loan is created
-      const driveFolderId = loanDetails.loan.googleDriveFolderId || "";
+      const driveFolderId = loanDetails.loan.driveFolder || loanDetails.loan.googleDriveFolderId || "";
       
       if (!driveFolderId) {
         return res.status(400).json({ 
@@ -299,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fileType: file.mimeType.split('/')[1] || "unknown",
           fileSize: parseInt(file.size || "0", 10),
           category,
-          status: "synced"
+          status: "synced" // Status field is now in the schema
         });
         
         addedDocuments.push(document);

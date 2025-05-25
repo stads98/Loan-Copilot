@@ -53,6 +53,7 @@ export const loans = pgTable("loans", {
   status: text("status").default("in_progress"),
   targetCloseDate: text("target_close_date"),
   driveFolder: text("drive_folder"),
+  googleDriveFolderId: text("google_drive_folder_id"), // Added for direct integration with Google Drive
   propertyId: integer("property_id").notNull(),
   lenderId: integer("lender_id").notNull(),
   processorId: integer("processor_id").notNull(),
@@ -68,6 +69,7 @@ export const documents = pgTable("documents", {
   fileType: text("file_type"),
   fileSize: integer("file_size"),
   category: text("category"), // borrower, property, title, insurance, etc.
+  status: text("status").default("pending"), // pending, synced, processed, etc.
   loanId: integer("loan_id").notNull(),
   uploadedAt: timestamp("uploaded_at").defaultNow(),
 });
