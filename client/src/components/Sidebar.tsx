@@ -162,7 +162,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
             
             <a 
               href="/loans/3" 
-              onClick={handleNavigate("/loans/3")}
+              onClick={(e) => handleNavigation("/loans/3", e)}
               className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
                 location === "/loans/3" 
                   ? "bg-blue-700 text-white" 
