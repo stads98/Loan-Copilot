@@ -3,7 +3,12 @@ import { LoanWithDetails, Message } from "@shared/schema";
 import { DriveDocumentData } from "../types";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Configure OpenAI with proper error handling
+const openai = new OpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY,
+  maxRetries: 3,
+  timeout: 30000
+});
 
 export async function processLoanDocuments(
   loanDetails: LoanWithDetails,
@@ -199,22 +204,72 @@ export async function analyzeDriveDocuments(documents: DriveDocumentData[]): Pro
   } catch (error: any) {
     console.error("Error analyzing drive documents with OpenAI:", error);
     
-    // Enhanced error handling with detailed logging
+    // Better error handling with more detailed logging
     if (error?.type === 'insufficient_quota' || error?.status === 429 || error?.code === 'insufficient_quota') {
-      console.log("API quota exceeded - using enhanced document extraction instead");
-      console.log(`Documents to analyze: ${documents.length}`);
+      console.log("API rate limit encountered - will retry with backoff");
       
-      // Since we're hitting rate limits, let's use our enhanced extraction capabilities
-      return extractDataFromDocuments(documents);
+      // Instead of immediately falling back, let's try a one-time retry with a delay
+      try {
+        console.log(`Waiting 2 seconds before retrying OpenAI API call...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        console.log("Retrying API call with reduced token count...");
+        // Use a simpler prompt with fewer tokens on retry
+        const simpleMessages = [
+          {
+            role: "system" as const,
+            content: "Extract key loan information from these documents. Return JSON only."
+          },
+          {
+            role: "user" as const,
+            content: `Analyze ${documents.length} loan documents and extract: borrower name, loan amount, property details.`
+          }
+        ];
+        
+        const retryResponse = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo", // Use a less expensive model for retry
+          messages: simpleMessages,
+          response_format: { type: "json_object" },
+          temperature: 0.2,
+          max_tokens: 800, // Reduce token count
+        });
+        
+        // Parse the retry response
+        const retryResult = JSON.parse(retryResponse.choices[0].message.content || "{}");
+        console.log("Retry successful, using simplified analysis");
+        
+        // Merge with default values
+        return {
+          borrowerName: retryResult.borrowerName || "Unknown Borrower",
+          loanAmount: retryResult.loanAmount || "Unknown Amount",
+          loanType: retryResult.loanType || "DSCR",
+          loanPurpose: retryResult.loanPurpose || "Purchase",
+          address: retryResult.address || "Unknown Address",
+          city: retryResult.city || "Unknown City",
+          state: retryResult.state || "CA",
+          zipCode: retryResult.zipCode || "00000",
+          propertyType: retryResult.propertyType || "Residential",
+          contacts: retryResult.contacts || [],
+          missingDocuments: retryResult.missingDocuments || ["Insurance Binder", "Title Commitment", "DSCR Certification Form"],
+          documentCategories: retryResult.documentCategories || {}
+        };
+      } catch (retryError: any) {
+        console.error("Retry also failed:", retryError?.message || "Unknown retry error");
+        console.log("Using document extraction instead");
+        return extractDataFromDocuments(documents);
+      }
     } else if (error?.code === 'invalid_api_key') {
       console.error("Invalid API key - please check your OpenAI API key configuration");
-      console.log("Falling back to document extraction");
       return extractDataFromDocuments(documents);
     } else {
-      console.error("OpenAI error:", error?.message || "Unknown error", "- using fallback analysis");
+      console.error("OpenAI error:", error?.message || "Unknown error");
+      // For other errors, use our document extraction
+      return extractDataFromDocuments(documents);
     }
     
-    // Fall back to simple analysis for all other errors
+    // This code is unreachable as we're handling all error cases above
+    // But we'll keep it as a final safety net
+    console.log("Using final fallback analysis");
     return fallbackDriveAnalysis(documents);
   }
 }

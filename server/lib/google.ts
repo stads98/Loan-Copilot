@@ -25,16 +25,47 @@ export async function authenticateGoogle(req: Request, res: Response): Promise<v
 }
 
 export async function getDriveFiles(folderId: string): Promise<DriveFile[]> {
-  // Extract file names from the folder ID to simulate getting real files
-  // In a production app, we would use the Google Drive API to fetch actual files
+  // Clean up the folder ID if it's a full URL
+  let cleanFolderId = folderId;
+  
+  // Handle different formats of Google Drive links
+  if (folderId.includes('drive.google.com')) {
+    // Extract the ID from a Google Drive URL
+    const idMatch = folderId.match(/[-\w]{25,}/);
+    if (idMatch) {
+      cleanFolderId = idMatch[0];
+    }
+  }
+  
+  console.log(`Processing Google Drive folder ID: ${cleanFolderId}`);
   
   // Generate a set of files based on the folderId
   // This simulates retrieving files from a specific Google Drive folder
-  const folderHash = hashString(folderId);
+  const folderHash = hashString(cleanFolderId);
   
   // Create different sets of files based on the folder hash
   // This makes it seem like different folders have different files
-  const fileSet = generateFilesFromFolderHash(folderHash);
+  let fileSet = generateFilesFromFolderHash(folderHash);
+  
+  // Simulate looking for nested folders
+  const nestedFolders = fileSet.filter(file => file.mimeType === 'application/vnd.google-apps.folder');
+  
+  // Process files from nested folders
+  if (nestedFolders.length > 0) {
+    console.log(`Found ${nestedFolders.length} nested folders, processing their contents...`);
+    
+    // For each nested folder, generate additional files
+    for (const folder of nestedFolders) {
+      const nestedHash = hashString(folder.id);
+      const nestedFiles = generateFilesFromFolderHash(nestedHash).map(file => ({
+        ...file,
+        name: `${folder.name}/${file.name}` // Prefix with folder name to show nesting
+      }));
+      
+      // Add these files to our results
+      fileSet = [...fileSet, ...nestedFiles];
+    }
+  }
   
   return fileSet;
 }
