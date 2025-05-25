@@ -66,6 +66,21 @@ function Router() {
       <Route path="/dashboard">
         {user ? <Dashboard user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
       </Route>
+      <Route path="/loans">
+        {user ? <Dashboard user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
+      </Route>
+      <Route path="/loans/:id">
+        {user ? <Dashboard user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
+      </Route>
+      <Route path="/contacts">
+        {user ? <Dashboard user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
+      </Route>
+      <Route path="/templates">
+        {user ? <Dashboard user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
+      </Route>
+      <Route path="/settings">
+        {user ? <Dashboard user={user} onLogout={handleLogout} /> : <Login setUser={setUser} />}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

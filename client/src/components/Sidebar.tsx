@@ -6,12 +6,18 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ user, onLogout }: SidebarProps) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
+  
+  // Function to handle navigation
+  const handleNavigate = (path: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigate(path);
+  };
   
   return (
     <aside className="bg-gradient-to-b from-blue-800 to-blue-900 text-white w-64 flex-shrink-0 hidden md:flex md:flex-col shadow-lg">
       <div className="p-5 border-b border-blue-700 bg-blue-800">
-        <h1 className="text-xl font-heading font-bold flex items-center">
+        <h1 className="text-xl font-heading font-bold flex items-center cursor-pointer" onClick={handleNavigate("/dashboard")}>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
@@ -24,6 +30,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
         <div className="space-y-1">
           <a 
             href="/dashboard" 
+            onClick={handleNavigate("/dashboard")}
             className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
               location === "/dashboard" || location === "/" 
                 ? "bg-blue-700 text-white shadow-md" 
@@ -41,8 +48,9 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           
           <a 
             href="/loans" 
+            onClick={handleNavigate("/loans")}
             className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
-              location === "/loans" 
+              location.startsWith("/loans") && location !== "/loans/1" && location !== "/loans/2" && location !== "/loans/3"
                 ? "bg-blue-700 text-white shadow-md" 
                 : "text-blue-100 hover:bg-blue-700/50 hover:text-white"
             }`}
@@ -60,6 +68,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           
           <a 
             href="/contacts" 
+            onClick={handleNavigate("/contacts")}
             className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
               location === "/contacts" 
                 ? "bg-blue-700 text-white shadow-md" 
@@ -77,6 +86,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           
           <a 
             href="/templates" 
+            onClick={handleNavigate("/templates")}
             className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
               location === "/templates" 
                 ? "bg-blue-700 text-white shadow-md" 
@@ -92,6 +102,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           
           <a 
             href="/settings" 
+            onClick={handleNavigate("/settings")}
             className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
               location === "/settings" 
                 ? "bg-blue-700 text-white shadow-md" 
@@ -111,7 +122,15 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
             Recent Loan Files
           </h3>
           <div className="space-y-1">
-            <a href="/loans/1" className="flex items-center px-3 py-2 text-sm font-medium text-blue-100 hover:bg-blue-700/50 hover:text-white rounded-md transition-colors duration-200">
+            <a 
+              href="/loans/1" 
+              onClick={handleNavigate("/loans/1")}
+              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
+                location === "/loans/1" 
+                  ? "bg-blue-700 text-white" 
+                  : "text-blue-100 hover:bg-blue-700/50 hover:text-white"
+              }`}
+            >
               <div className="flex-shrink-0 h-8 w-8 bg-green-600 text-white rounded-md flex items-center justify-center mr-3">
                 <span className="text-xs font-bold">SM</span>
               </div>
@@ -122,7 +141,15 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
               <span className="ml-auto w-2 h-2 bg-green-400 rounded-full"></span>
             </a>
             
-            <a href="/loans/2" className="flex items-center px-3 py-2 text-sm font-medium text-blue-100 hover:bg-blue-700/50 hover:text-white rounded-md transition-colors duration-200">
+            <a 
+              href="/loans/2" 
+              onClick={handleNavigate("/loans/2")}
+              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
+                location === "/loans/2" 
+                  ? "bg-blue-700 text-white" 
+                  : "text-blue-100 hover:bg-blue-700/50 hover:text-white"
+              }`}
+            >
               <div className="flex-shrink-0 h-8 w-8 bg-yellow-600 text-white rounded-md flex items-center justify-center mr-3">
                 <span className="text-xs font-bold">JN</span>
               </div>
@@ -133,7 +160,15 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
               <span className="ml-auto w-2 h-2 bg-yellow-400 rounded-full"></span>
             </a>
             
-            <a href="/loans/3" className="flex items-center px-3 py-2 text-sm font-medium text-blue-100 hover:bg-blue-700/50 hover:text-white rounded-md transition-colors duration-200">
+            <a 
+              href="/loans/3" 
+              onClick={handleNavigate("/loans/3")}
+              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
+                location === "/loans/3" 
+                  ? "bg-blue-700 text-white" 
+                  : "text-blue-100 hover:bg-blue-700/50 hover:text-white"
+              }`}
+            >
               <div className="flex-shrink-0 h-8 w-8 bg-red-600 text-white rounded-md flex items-center justify-center mr-3">
                 <span className="text-xs font-bold">MZ</span>
               </div>
