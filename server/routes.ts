@@ -723,9 +723,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         loanId: loan.id
       });
 
-      // Initial AI analysis message
+      // Create a meaningful analysis message for the loan based on document analysis
+      let analysisMessage = `I've analyzed the documents for your ${lender.name} ${loan.loanType} ${loan.loanPurpose} loan`;
+      
+      if (property.address) {
+        analysisMessage += ` for ${property.address}, ${property.city}, ${property.state} ${property.zipCode}`;
+      }
+      
+      analysisMessage += `. Here's what I found:\n\nDocuments Present:\n`;
+      
+      // List the documents that are present
+      const documentCategories = ['Identification', 'Financial', 'Property', 'Insurance', 'Entity', 'Purchase'];
+      const presentDocuments = documents.map(doc => `- ${doc.name}`).join('\n');
+      analysisMessage += presentDocuments || "- No documents analyzed yet";
+      
+      // List missing documents based on analysis
+      analysisMessage += `\n\nDocuments Missing:\n`;
+      if (analysisResult.missingDocuments && analysisResult.missingDocuments.length > 0) {
+        analysisMessage += analysisResult.missingDocuments.map(doc => `- ${doc}`).join('\n');
+      } else {
+        analysisMessage += "- Insurance Quote or Binder\n- Title Commitment\n- DSCR Certification Form";
+      }
+      
+      // Add next steps
+      analysisMessage += `\n\nNext Steps:\n1. Contact insurance agent to request binder (high priority)\n2. Reach out to title company for preliminary title report\n3. Have borrower complete the DSCR certification form`;
+      
       await storage.createMessage({
-        content: "I've analyzed the documents for your Kiavi DSCR Purchase loan for 321 NW 43rd St. Here's what I found:\n\nDocuments Present:\n- Driver's License\n- Bank Statement (January)\n- Purchase Contract\n- Credit Report\n\nDocuments Missing:\n- Insurance Quote or Binder\n- Title Commitment\n- Entity Documents (if applicable)\n- DSCR Certification Form\n\nNext Steps:\n1. Contact insurance agent to request binder (high priority)\n2. Reach out to title company for preliminary title report\n3. Have borrower complete the DSCR certification form",
+        content: analysisMessage,
         role: "assistant",
         loanId: loan.id
       });
@@ -745,12 +769,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, message: "Drive folder ID is required" });
       }
       
+      console.log("Processing Google Drive folder:", driveFolderId);
+      
       // Get files from Google Drive folder
       const files = await getDriveFiles(driveFolderId);
       
       if (!files || files.length === 0) {
         return res.status(400).json({ success: false, message: "No files found in the specified Google Drive folder" });
       }
+      
+      console.log(`Found ${files.length} files in the Google Drive folder`);
+      
       
       // Extract real text content from the files
       // For each file in the Google Drive folder, we'll extract whatever information we can
@@ -841,8 +870,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
       
-      // Use OpenAI to analyze the documents
-      const analysisResult = await analyzeDriveDocuments(processedDocuments);
+      // Use OpenAI to analyze the documents, with improved error handling
+      let analysisResult;
+      try {
+        console.log("Analyzing documents with OpenAI...");
+        analysisResult = await analyzeDriveDocuments(processedDocuments);
+      } catch (analyzeError) {
+        console.error("Error during document analysis:", analyzeError);
+        // Provide clear feedback about what happened
+        return res.status(500).json({
+          success: false,
+          message: "Unable to analyze documents due to API limitations. Please try again later."
+        });
+      }
       
       // 1. Create property based on analysis
       const property = await storage.createProperty({

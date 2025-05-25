@@ -101,6 +101,7 @@ Keep your responses professional, concise, and action-oriented. When asked to cr
 // Fallback response when OpenAI API key is not available
 /**
  * Analyze Google Drive documents to extract loan-related information
+ * This function is designed to work even when OpenAI API is rate-limited
  */
 export async function analyzeDriveDocuments(documents: DriveDocumentData[]): Promise<{
   borrowerName: string;
@@ -198,24 +199,19 @@ export async function analyzeDriveDocuments(documents: DriveDocumentData[]): Pro
   } catch (error: any) {
     console.error("Error analyzing drive documents with OpenAI:", error);
     
-    // Provide detailed error logging for debugging
-    if (error?.type === 'insufficient_quota' || error?.status === 429) {
-      console.log("API quota exceeded - using extracted text directly for analysis");
+    // Enhanced error handling with detailed logging
+    if (error?.type === 'insufficient_quota' || error?.status === 429 || error?.code === 'insufficient_quota') {
+      console.log("API quota exceeded - using enhanced document extraction instead");
+      console.log(`Documents to analyze: ${documents.length}`);
       
-      try {
-        // Extract data from the documents directly instead of using AI
-        return extractDataFromDocuments(documents);
-      } catch (extractError) {
-        console.error("Error in document extraction fallback:", extractError);
-        // If extraction fails, use the simplest fallback
-        return fallbackDriveAnalysis(documents);
-      }
+      // Since we're hitting rate limits, let's use our enhanced extraction capabilities
+      return extractDataFromDocuments(documents);
     } else if (error?.code === 'invalid_api_key') {
       console.error("Invalid API key - please check your OpenAI API key configuration");
-    } else if (error?.code === 'insufficient_quota') {
-      console.error("OpenAI API quota exceeded - using fallback analysis");
+      console.log("Falling back to document extraction");
+      return extractDataFromDocuments(documents);
     } else {
-      console.error("Unexpected OpenAI error:", error?.message || "Unknown error");
+      console.error("OpenAI error:", error?.message || "Unknown error", "- using fallback analysis");
     }
     
     // Fall back to simple analysis for all other errors
