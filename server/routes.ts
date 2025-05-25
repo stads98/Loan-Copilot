@@ -5,6 +5,7 @@ import { insertUserSchema, insertLoanSchema, insertPropertySchema, insertContact
 import { z } from "zod";
 import { processLoanDocuments } from "./lib/openai";
 import { authenticateGoogle, getDriveFiles } from "./lib/google";
+import { createFallbackAssistantResponse } from "./lib/fallbackAI";
 import session from "express-session";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
@@ -427,19 +428,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all previous messages for context
       const previousMessages = await storage.getMessagesByLoanId(loanId);
 
-      // Generate AI response
-      const aiResponse = await processLoanDocuments(
-        loanDetails,
-        messageData.content,
-        previousMessages
-      );
-
-      // Save AI response
-      const assistantMessage = await storage.createMessage({
-        content: aiResponse,
-        role: "assistant",
-        loanId
-      });
+      // Try to use OpenAI API, fall back to local assistant if not available
+      let assistantMessage;
+      try {
+        // Generate AI response with OpenAI
+        const aiResponse = await processLoanDocuments(
+          loanDetails,
+          messageData.content,
+          previousMessages
+        );
+        
+        // Save AI response from OpenAI
+        assistantMessage = await storage.createMessage({
+          content: aiResponse,
+          role: "assistant",
+          loanId
+        });
+      } catch (apiError) {
+        console.error("Error calling OpenAI:", apiError);
+        
+        // Use fallback assistant instead
+        const fallbackMessage = await createFallbackAssistantResponse(
+          loanDetails,
+          messageData.content
+        );
+        
+        // Save fallback response
+        assistantMessage = await storage.createMessage({
+          content: fallbackMessage.content,
+          role: "assistant",
+          loanId
+        });
+      }
 
       res.status(201).json({
         userMessage,

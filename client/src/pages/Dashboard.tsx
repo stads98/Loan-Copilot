@@ -23,6 +23,16 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const [isDriveConnected, setIsDriveConnected] = useState(false);
   const { toast } = useToast();
   
+  // Extract loan ID from URL if present (/loans/1, /loans/2, etc.)
+  useEffect(() => {
+    const path = window.location.pathname;
+    const match = path.match(/\/loans\/(\d+)/);
+    if (match && match[1]) {
+      const loanId = parseInt(match[1], 10);
+      setActiveLoanId(loanId);
+    }
+  }, [window.location.pathname]);
+  
   // Fetch loans for the current user
   const { data: loans, isLoading: isLoadingLoans } = useQuery({
     queryKey: ['/api/loans'],
