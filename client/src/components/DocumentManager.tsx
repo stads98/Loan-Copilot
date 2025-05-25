@@ -294,12 +294,12 @@ export default function DocumentManager({ documents, loanId, requiredDocuments }
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="borrower">Borrower Documents</SelectItem>
-                        <SelectItem value="financial">Financial Documents</SelectItem>
-                        <SelectItem value="application">Application Documents</SelectItem>
                         <SelectItem value="property">Property Documents</SelectItem>
                         <SelectItem value="title">Title Documents</SelectItem>
                         <SelectItem value="insurance">Insurance Documents</SelectItem>
-                        <SelectItem value="lender">Lender-Specific Documents</SelectItem>
+                        <SelectItem value="payoff">Payoff Documents</SelectItem>
+                        <SelectItem value="banking">Banking Documents</SelectItem>
+                        <SelectItem value="kiavi">Kiavi Documents</SelectItem>
                         <SelectItem value="other">Other Documents</SelectItem>
                       </SelectContent>
                     </Select>
