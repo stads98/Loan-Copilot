@@ -543,7 +543,12 @@ function _disabledExtractDataFromDocuments(documents: DriveDocumentData[]) {
 /**
  * Fallback analysis for when OpenAI API is unavailable
  */
-function fallbackDriveAnalysis(documents: DriveDocumentData[]) {
+/**
+ * NOTE: This function has been intentionally disabled.
+ * As requested, we'll always use OpenAI API with proper rate limit handling
+ * and never fall back to alternative methods.
+ */
+function _disabledFallbackDriveAnalysis(documents: DriveDocumentData[]) {
   // Extract potential borrower name from documents
   let borrowerName = "Unknown Borrower";
   let address = "123 Main Street";
