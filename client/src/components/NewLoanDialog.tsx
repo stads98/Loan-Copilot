@@ -13,14 +13,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiRequest } from "@/lib/queryClient";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface NewLoanDialogProps {
   onLoanCreated?: (loanId: number) => void;
-  showButton?: boolean;
 }
 
-export default function NewLoanDialog({ onLoanCreated, showButton = true }: NewLoanDialogProps) {
+export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [driveLink, setDriveLink] = useState("");
@@ -42,18 +41,6 @@ export default function NewLoanDialog({ onLoanCreated, showButton = true }: NewL
     setProcessingStatus("Validating Google Drive link...");
 
     try {
-      // First, validate the link format
-      if (!driveLink.includes("drive.google.com") && !driveLink.includes("docs.google.com")) {
-        toast({
-          title: "Invalid link",
-          description: "Please enter a valid Google Drive folder link",
-          variant: "destructive",
-        });
-        setLoading(false);
-        setProcessingStatus(null);
-        return;
-      }
-
       // Extract folder ID from Google Drive link
       let folderId = "";
       if (driveLink.includes("folders/")) {
@@ -105,10 +92,10 @@ export default function NewLoanDialog({ onLoanCreated, showButton = true }: NewL
       setOpen(false);
       if (onLoanCreated && data.loanId) {
         onLoanCreated(data.loanId);
-        
-        // Navigate to the new loan page
-        window.location.href = `/loans/${data.loanId}`;
       }
+      
+      // Navigate to the new loan page
+      window.location.href = `/loans/${data.loanId}`;
     } catch (error) {
       console.error("Error processing Google Drive folder:", error);
       toast({
@@ -125,17 +112,15 @@ export default function NewLoanDialog({ onLoanCreated, showButton = true }: NewL
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {showButton && (
-        <DialogTrigger asChild>
-          <Button className="bg-white text-blue-700 hover:bg-blue-50 inline-flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-2">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            New Loan
-          </Button>
-        </DialogTrigger>
-      )}
+      <DialogTrigger asChild>
+        <Button className="bg-white text-blue-700 hover:bg-blue-50 inline-flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          New Loan
+        </Button>
+      </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Create New Loan from Google Drive</DialogTitle>

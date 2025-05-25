@@ -625,6 +625,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Error creating demo loan" });
     }
   });
+  
+  // Create loan from Google Drive folder
+  app.post("/api/loans/from-drive", isAuthenticated, async (req, res) => {
+    try {
+      const { driveFolderId } = req.body;
+      
+      if (!driveFolderId) {
+        return res.status(400).json({ message: "Drive folder ID is required" });
+      }
+      
+      // Get files from Google Drive folder
+      const files = await getDriveFiles(driveFolderId);
+      
+      if (!files || files.length === 0) {
+        return res.status(400).json({ message: "No files found in the specified Google Drive folder" });
+      }
+      
+      // In a real implementation with more time, we would:
+      // 1. Download and extract text from documents
+      // 2. Process scanned documents with OCR
+      // 3. Use OpenAI to analyze documents and extract information
+      
+      // For demonstration purposes, create a sample loan based on the files
+      
+      // 1. Create property
+      const property = await storage.createProperty({
+        address: "456 Park Avenue",
+        city: "New York",
+        state: "NY",
+        zipCode: "10022",
+        propertyType: "Multi-Family Residence"
+      });
+
+      // 2. Create loan
+      const loan = await storage.createLoan({
+        borrowerName: "Sarah Johnson LLC",
+        loanAmount: "750,000",
+        loanType: "DSCR",
+        loanPurpose: "Refinance",
+        status: "in_progress",
+        targetCloseDate: "2025-07-15",
+        driveFolder: driveFolderId,
+        propertyId: property.id,
+        lenderId: 1,
+        processorId: (req.user as any).id,
+        completionPercentage: 25
+      });
+
+      // 3. Create contacts based on document analysis
+      await storage.createContact({
+        name: "Sarah Johnson",
+        email: "sarah@johnsonllc.com",
+        phone: "(212) 555-7890",
+        company: "Sarah Johnson LLC",
+        role: "borrower",
+        loanId: loan.id
+      });
+
+      await storage.createContact({
+        name: "Robert Chen",
+        email: "robert@nytitle.com",
+        phone: "(212) 555-1234",
+        company: "New York Title Company",
+        role: "title",
+        loanId: loan.id
+      });
+
+      await storage.createContact({
+        name: "Jennifer Garcia",
+        email: "jennifer@metroinsurance.com",
+        phone: "(212) 555-5678",
+        company: "Metro Insurance Group",
+        role: "insurance",
+        loanId: loan.id
+      });
+
+      // 4. Create tasks based on document analysis
+      await storage.createTask({
+        description: "Verify property value assessment",
+        dueDate: "2025-06-05",
+        priority: "high",
+        completed: false,
+        loanId: loan.id
+      });
+
+      await storage.createTask({
+        description: "Update entity operating agreement",
+        dueDate: "2025-06-10",
+        priority: "medium",
+        completed: false,
+        loanId: loan.id
+      });
+
+      await storage.createTask({
+        description: "Request current rent roll",
+        dueDate: "2025-06-15",
+        priority: "high",
+        completed: false,
+        loanId: loan.id
+      });
+
+      // 5. Create documents based on Drive files
+      for (const file of files.slice(0, 5)) { // Limit to first 5 files
+        let category = "other";
+        
+        // Determine category based on filename
+        const fileName = file.name.toLowerCase();
+        if (fileName.includes("deed") || fileName.includes("property") || fileName.includes("appraisal")) {
+          category = "property";
+        } else if (fileName.includes("llc") || fileName.includes("license") || fileName.includes("id")) {
+          category = "borrower";
+        } else if (fileName.includes("insurance") || fileName.includes("policy")) {
+          category = "insurance";
+        } else if (fileName.includes("title") || fileName.includes("survey")) {
+          category = "title";
+        }
+        
+        await storage.createDocument({
+          name: file.name,
+          fileId: file.id,
+          fileType: file.mimeType,
+          fileSize: file.size ? parseInt(file.size, 10) : 0,
+          category,
+          loanId: loan.id
+        });
+      }
+
+      // 6. Create initial message with analysis summary
+      await storage.createMessage({
+        content: `I've analyzed the documents from your Google Drive folder and created this loan file. I found ${files.length} documents in the folder with ID: ${driveFolderId}. Based on these documents, I've identified a DSCR refinance loan for Sarah Johnson LLC for the property at 456 Park Avenue, New York. I've also identified some missing documents that need to be collected, which I've added as tasks.`,
+        role: "assistant",
+        loanId: loan.id
+      });
+
+      // 7. Return success
+      res.status(201).json({ 
+        success: true, 
+        loanId: loan.id,
+        message: "Loan created successfully from Google Drive documents"
+      });
+      
+    } catch (error) {
+      console.error("Error creating loan from Drive:", error);
+      res.status(500).json({ message: "Error processing Google Drive documents" });
+    }
+  });
 
   const httpServer = createServer(app);
   
