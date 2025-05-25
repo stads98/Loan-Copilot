@@ -1,0 +1,266 @@
+Rate limits
+API usage is subject to rate limits applied on tokens per minute (TPM), requests per minute or day (RPM/RPD), and other model-specific limits. Your organization's rate limits are listed below.
+Visit our rate limits guide to learn more about how rate limits work.
+Note: Limits for specific model versions may vary, expand the table to see all models.
+Model	Token limits	Request and other limits	Batch queue limits
+Chat
+gpt-3.5-turbo
+200,000 TPM
+500 RPM
+10,000 RPD
+2,000,000 TPD
+gpt-3.5-turbo-0125
+200,000 TPM
+500 RPM
+10,000 RPD
+2,000,000 TPD
+gpt-3.5-turbo-1106
+200,000 TPM
+500 RPM
+10,000 RPD
+2,000,000 TPD
+gpt-3.5-turbo-16k
+200,000 TPM
+500 RPM
+10,000 RPD
+2,000,000 TPD
+gpt-3.5-turbo-instruct
+90,000 TPM
+3,500 RPM
+200,000 TPD
+gpt-3.5-turbo-instruct-0914
+90,000 TPM
+3,500 RPM
+200,000 TPD
+gpt-4
+10,000 TPM
+500 RPM
+10,000 RPD
+100,000 TPD
+gpt-4-0613
+10,000 TPM
+500 RPM
+10,000 RPD
+100,000 TPD
+gpt-4-turbo
+Shared limits:
+gpt-4-turbo
+gpt-4-turbo-2024-04-09
+gpt-4-turbo-preview
+gpt-4-0125-preview
+gpt-4-1106-preview
+30,000 TPM
+500 RPM
+90,000 TPD
+gpt-4.1
+Shared limits:
+gpt-4.1-2025-04-14
+30,000 TPM
+500 RPM
+900,000 TPD
+gpt-4.1 (long context)
+200,000 TPM
+100 RPM
+2,000,000 TPD
+gpt-4.1-mini
+Shared limits:
+gpt-4.1-mini-2025-04-14
+200,000 TPM
+500 RPM
+2,000,000 TPD
+gpt-4.1-mini (long context)
+400,000 TPM
+200 RPM
+4,000,000 TPD
+gpt-4.1-nano
+Shared limits:
+gpt-4.1-nano-2025-04-14
+200,000 TPM
+500 RPM
+2,000,000 TPD
+gpt-4.1-nano (long context)
+400,000 TPM
+200 RPM
+4,000,000 TPD
+gpt-4.5-preview
+Shared limits:
+gpt-4.5-preview-2025-02-27
+125,000 TPM
+1,000 RPM
+50,000 TPD
+gpt-4o
+Shared limits:
+gpt-4o-2024-05-13
+gpt-4o-2024-08-06
+gpt-4o-2024-11-20
+gpt-4o-audio-preview
+gpt-4o-audio-preview-2024-10-01
+gpt-4o-audio-preview-2024-12-17
+30,000 TPM
+500 RPM
+90,000 TPD
+gpt-4o-mini
+Shared limits:
+gpt-4o-mini-2024-07-18
+gpt-4o-mini-audio-preview
+gpt-4o-mini-audio-preview-2024-12-17
+200,000 TPM
+500 RPM
+10,000 RPD
+2,000,000 TPD
+gpt-4o-mini-search-preview
+6,000 TPM
+100 RPM
+gpt-4o-mini-search-preview-2025-03-11
+6,000 TPM
+100 RPM
+gpt-4o-mini-transcribe
+50,000 TPM
+500 RPM
+gpt-4o-search-preview
+6,000 TPM
+100 RPM
+gpt-4o-search-preview-2025-03-11
+6,000 TPM
+100 RPM
+gpt-4o-transcribe
+10,000 TPM
+500 RPM
+Text
+babbage-002
+250,000 TPM
+3,000 RPM
+chatgpt-4o-latest
+500,000 TPM
+200 RPM
+codex-mini-latest
+200,000 TPM
+500 RPM
+2,000,000 TPD
+davinci-002
+250,000 TPM
+3,000 RPM
+o1
+30,000 TPM
+500 RPM
+90,000 TPD
+o1-2024-12-17
+30,000 TPM
+500 RPM
+90,000 TPD
+o1-mini
+200,000 TPM
+500 RPM
+2,000,000 TPD
+o1-mini-2024-09-12
+200,000 TPM
+500 RPM
+2,000,000 TPD
+o1-preview
+30,000 TPM
+500 RPM
+90,000 TPD
+o1-preview-2024-09-12
+30,000 TPM
+500 RPM
+90,000 TPD
+o1-pro
+Shared limits:
+o1-pro-2025-03-19
+30,000 TPM
+500 RPM
+90,000 TPD
+o3-mini
+Shared limits:
+o3-mini-2025-01-31
+200,000 TPM
+500 RPM
+2,000,000 TPD
+o4-mini
+Shared limits:
+o4-mini-2025-04-16
+200,000 TPM
+500 RPM
+2,000,000 TPD
+text-embedding-3-large
+1,000,000 TPM
+3,000 RPM
+3,000,000 TPD
+text-embedding-3-small
+1,000,000 TPM
+3,000 RPM
+3,000,000 TPD
+text-embedding-ada-002
+1,000,000 TPM
+3,000 RPM
+3,000,000 TPD
+Realtime
+gpt-4o-mini-realtime-preview
+Shared limits:
+gpt-4o-mini-realtime-preview-2024-12-17
+40,000 TPM
+200 RPM
+1,000 RPD
+gpt-4o-realtime-preview
+Shared limits:
+gpt-4o-realtime-preview-2024-10-01
+gpt-4o-realtime-preview-2024-12-17
+40,000 TPM
+200 RPM
+1,000 RPD
+Moderation
+omni-moderation-2024-09-26
+10,000 TPM
+500 RPM
+10,000 RPD
+omni-moderation-latest
+10,000 TPM
+500 RPM
+10,000 RPD
+text-moderation-latest
+150,000 TPM
+1,000 RPM
+text-moderation-stable
+150,000 TPM
+1,000 RPM
+Fine-Tuning Inference (shares limits with base model)
+babbage-002	250,000	3,000	
+davinci-002	250,000	3,000	
+gpt-3.5-turbo-0125	200,000	500	
+gpt-3.5-turbo-0613	200,000	500	
+gpt-3.5-turbo-1106	200,000	500	
+gpt-4-0613	10,000	500	
+gpt-4o-2024-05-13	30,000	500	
+gpt-4o-mini-2024-07-18	200,000	500	
+Fine-tuning Training	active / queued jobs	jobs per day	
+babbage-002	3	48	
+davinci-002	3	48	
+gpt-3.5-turbo-0613	3	48	
+Image
+dall-e-2
+500 RPM
+5 images per minute
+dall-e-3
+500 RPM
+5 images per minute
+gpt-image-1
+100,000 TPM
+5 images per minute
+Audio
+gpt-4o-mini-tts
+50,000 TPM
+500 RPM
+tts-1
+500 RPM
+tts-1-1106
+500 RPM
+tts-1-hd
+500 RPM
+tts-1-hd-1106
+500 RPM
+whisper-1
+500 RPM
+Other
+Default limits for all other models
+250,000 TPM
+3,000 RPM

@@ -18,15 +18,14 @@ export async function processLoanDocuments(
   userQuery: string,
   previousMessages: Message[]
 ): Promise<string> {
+  // Check for API key first
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OpenAI API key is required but not provided. Please set up your API key.");
+  }
+  
   try {
     // Convert loan details to a format suitable for the prompt
     const { loan, property, lender, documents, contacts, tasks } = loanDetails;
-
-    // We have the API key from environment variables
-    if (!process.env.OPENAI_API_KEY) {
-      console.log("API key not found - using fallback response");
-      return generateFallbackResponse(loanDetails, userQuery);
-    }
     
     // Prepare conversation history for context
     const messageHistory = previousMessages.map(msg => ({
@@ -92,17 +91,60 @@ Keep your responses professional, concise, and action-oriented. When asked to cr
       { role: "user" as const, content: userQuery }
     ];
     
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages,
-      temperature: 0.7,
-      max_tokens: 1000,
-    });
-
-    return response.choices[0].message.content || "I'm sorry, I couldn't generate a response.";
-  } catch (error) {
-    console.error("Error calling OpenAI:", error);
-    return "I apologize, but I'm having trouble processing your request right now. Please try again later.";
+    // Implement rate limit handling with exponential backoff
+    const maxRetries = 5;
+    let retryCount = 0;
+    let delayMs = 5000; // Start with 5 seconds
+    
+    while (true) {
+      try {
+        // If this isn't our first attempt, log that we're retrying
+        if (retryCount > 0) {
+          console.log(`Attempting chat completion retry ${retryCount}...`);
+        }
+        
+        // Make the API request
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages,
+          temperature: 0.7,
+          max_tokens: 1000,
+        });
+        
+        // If successful, return the response
+        return response.choices[0].message.content || "I'm sorry, I couldn't generate a response.";
+      } catch (error: any) {
+        console.error("Error calling OpenAI:", error);
+        
+        // Check if it's a rate limit error
+        if (error?.status === 429 || error?.type === 'insufficient_quota' || error?.code === 'insufficient_quota') {
+          retryCount++;
+          
+          // If we've exceeded our retry limit, throw an error
+          if (retryCount > maxRetries) {
+            throw new Error("Failed to process request after maximum retry attempts due to rate limits. Please try again later when API limits reset.");
+          }
+          
+          // Log the retry attempt
+          console.log(`Rate limit encountered. Retry attempt ${retryCount}/${maxRetries} after ${delayMs/1000} seconds...`);
+          
+          // Wait for the exponential backoff period
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          
+          // Increase the delay for the next retry (exponential backoff)
+          delayMs *= 2;
+          
+          // Continue to the next iteration of the loop
+          continue;
+        }
+        
+        // For any other types of errors, throw immediately
+        throw new Error(`OpenAI error: ${error?.message || "Unknown error"}. Cannot process without OpenAI API.`);
+      }
+    }
+  } catch (error: any) {
+    // For any uncaught errors, throw them to be handled by the API route
+    throw error;
   }
 }
 
@@ -131,17 +173,16 @@ export async function analyzeDriveDocuments(documents: DriveDocumentData[]): Pro
   missingDocuments: string[];
   documentCategories: Record<string, string>;
 }> {
+  // Check for API key first
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OpenAI API key is required but not provided. Please set up your API key.");
+  }
+  
   try {
-    // We know we have a valid API key from env, but let's handle any potential issues gracefully
-    if (!process.env.OPENAI_API_KEY) {
-      console.log("Using fallback document analysis due to missing API key");
-      return fallbackDriveAnalysis(documents);
-    }
-    
     // Check if we've been given some real documents to analyze
     if (documents.length === 0) {
       console.log("No documents provided for analysis");
-      return fallbackDriveAnalysis([]);
+      throw new Error("No documents provided for analysis");
     }
     
     // Prepare documents for analysis
@@ -156,7 +197,7 @@ export async function analyzeDriveDocuments(documents: DriveDocumentData[]): Pro
     });
     
     // Send to OpenAI for analysis with proper types
-    const analysisMessages = [
+    const messages = [
       {
         role: "system" as const,
         content: `You are an expert loan document analyzer. Extract key information from these loan documents:
@@ -178,102 +219,83 @@ export async function analyzeDriveDocuments(documents: DriveDocumentData[]): Pro
       }
     ];
     
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
-      messages: analysisMessages,
-      response_format: { type: "json_object" },
-      temperature: 0.2,
-      max_tokens: 2000, // Increase token limit to ensure we get a complete response
-    });
+    // Implement rate limit handling with exponential backoff
+    const maxRetries = 5;
+    let retryCount = 0;
+    let delayMs = 5000; // Start with 5 seconds
+    let responseData = null;
     
-    // Parse the response
-    const result = JSON.parse(response.choices[0].message.content || "{}");
+    while (true) {
+      try {
+        // If this isn't our first attempt, log that we're retrying
+        if (retryCount > 0) {
+          console.log(`Attempting document analysis retry ${retryCount}...`);
+        }
+        
+        // Make the API request
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+          messages,
+          response_format: { type: "json_object" },
+          temperature: 0.2,
+          max_tokens: 2000, // Increase token limit to ensure we get a complete response
+        });
+        
+        // Parse the response
+        responseData = JSON.parse(response.choices[0].message.content || "{}");
+        
+        // If we get here, the API call was successful
+        break;
+      } catch (error: any) {
+        console.error("Error calling OpenAI:", error);
+        
+        // Check if it's a rate limit error
+        if (error?.status === 429 || error?.type === 'insufficient_quota' || error?.code === 'insufficient_quota') {
+          retryCount++;
+          
+          // If we've exceeded our retry limit, throw an error
+          if (retryCount > maxRetries) {
+            throw new Error("Failed to process documents after maximum retry attempts due to rate limits. Please try again later when API limits reset.");
+          }
+          
+          // Log the retry attempt
+          console.log(`Rate limit encountered. Retry attempt ${retryCount}/${maxRetries} after ${delayMs/1000} seconds...`);
+          
+          // Wait for the exponential backoff period
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          
+          // Increase the delay for the next retry (exponential backoff)
+          delayMs *= 2;
+          
+          // Continue to the next iteration of the loop
+          continue;
+        }
+        
+        // For any other types of errors, throw immediately
+        throw new Error(`OpenAI error: ${error?.message || "Unknown error"}. Cannot process without OpenAI API.`);
+      }
+    }
     
     // Extract and return the structured data
     return {
-      borrowerName: result.borrowerName || "Unknown Borrower",
-      loanAmount: result.loanAmount || "Unknown Amount",
-      loanType: result.loanType || "DSCR",
-      loanPurpose: result.loanPurpose || "Purchase",
-      address: result.address || result.property?.address || "Unknown Address",
-      city: result.city || result.property?.city || "Unknown City",
-      state: result.state || result.property?.state || "CA",
-      zipCode: result.zipCode || result.property?.zipCode || "00000",
-      propertyType: result.propertyType || result.property?.type || "Residential",
-      contacts: result.contacts || [],
-      missingDocuments: result.missingDocuments || [],
-      documentCategories: result.documentCategories || {}
+      borrowerName: responseData?.borrowerName || "Unknown Borrower",
+      loanAmount: responseData?.loanAmount || "Unknown Amount",
+      loanType: responseData?.loanType || "DSCR",
+      loanPurpose: responseData?.loanPurpose || "Purchase",
+      address: responseData?.address || responseData?.property?.address || "Unknown Address",
+      city: responseData?.city || responseData?.property?.city || "Unknown City",
+      state: responseData?.state || responseData?.property?.state || "CA",
+      zipCode: responseData?.zipCode || responseData?.property?.zipCode || "00000",
+      propertyType: responseData?.propertyType || responseData?.property?.type || "Residential",
+      contacts: responseData?.contacts || [],
+      missingDocuments: responseData?.missingDocuments || [],
+      documentCategories: responseData?.documentCategories || {}
     };
   } catch (error: any) {
-    console.error("Error analyzing drive documents with OpenAI:", error);
-    
-    // Better error handling with more detailed logging
-    if (error?.type === 'insufficient_quota' || error?.status === 429 || error?.code === 'insufficient_quota') {
-      console.log("API rate limit encountered - will retry with backoff");
-      
-      // Instead of immediately falling back, let's try a one-time retry with a delay
-      try {
-        console.log(`Waiting 2 seconds before retrying OpenAI API call...`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        console.log("Retrying API call with reduced token count...");
-        // Use a simpler prompt with fewer tokens on retry
-        const simpleMessages = [
-          {
-            role: "system" as const,
-            content: "Extract key loan information from these documents. Return JSON only."
-          },
-          {
-            role: "user" as const,
-            content: `Analyze ${documents.length} loan documents and extract: borrower name, loan amount, property details.`
-          }
-        ];
-        
-        const retryResponse = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo", // Use a less expensive model for retry
-          messages: simpleMessages,
-          response_format: { type: "json_object" },
-          temperature: 0.2,
-          max_tokens: 800, // Reduce token count
-        });
-        
-        // Parse the retry response
-        const retryResult = JSON.parse(retryResponse.choices[0].message.content || "{}");
-        console.log("Retry successful, using simplified analysis");
-        
-        // Merge with default values
-        return {
-          borrowerName: retryResult.borrowerName || "Unknown Borrower",
-          loanAmount: retryResult.loanAmount || "Unknown Amount",
-          loanType: retryResult.loanType || "DSCR",
-          loanPurpose: retryResult.loanPurpose || "Purchase",
-          address: retryResult.address || "Unknown Address",
-          city: retryResult.city || "Unknown City",
-          state: retryResult.state || "CA",
-          zipCode: retryResult.zipCode || "00000",
-          propertyType: retryResult.propertyType || "Residential",
-          contacts: retryResult.contacts || [],
-          missingDocuments: retryResult.missingDocuments || ["Insurance Binder", "Title Commitment", "DSCR Certification Form"],
-          documentCategories: retryResult.documentCategories || {}
-        };
-      } catch (retryError: any) {
-        console.error("Retry also failed:", retryError?.message || "Unknown retry error");
-        console.log("Using document extraction instead");
-        return extractDataFromDocuments(documents);
-      }
-    } else if (error?.code === 'invalid_api_key') {
-      console.error("Invalid API key - please check your OpenAI API key configuration");
-      return extractDataFromDocuments(documents);
-    } else {
-      console.error("OpenAI error:", error?.message || "Unknown error");
-      // For other errors, use our document extraction
-      return extractDataFromDocuments(documents);
-    }
-    
-    // This code is unreachable as we're handling all error cases above
-    // But we'll keep it as a final safety net
-    console.log("Using final fallback analysis");
-    return fallbackDriveAnalysis(documents);
+    // This catch block is unnecessary and redundant since we have already 
+    // completely rewritten the implementation above using a retry loop.
+    // We'll just re-throw the error to be handled by the API route
+    throw error;
   }
 }
 
@@ -281,7 +303,12 @@ export async function analyzeDriveDocuments(documents: DriveDocumentData[]): Pro
  * Extract data from document text directly
  * This function is used when the API has quota limits or other issues
  */
-function extractDataFromDocuments(documents: DriveDocumentData[]) {
+/**
+ * NOTE: This function has been intentionally disabled.
+ * As requested, we'll always use OpenAI API with proper rate limit handling
+ * and never fall back to alternative methods.
+ */
+function _disabledExtractDataFromDocuments(documents: DriveDocumentData[]) {
   // Initialize with default values
   let borrowerName = "Unknown Borrower";
   let loanAmount = "Unknown Amount";
