@@ -72,6 +72,16 @@ export default function ContactList({ contacts, loanId }: ContactListProps) {
     }
   };
   
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({
+        title: "Copied to clipboard",
+        description: "Text has been copied to your clipboard",
+        duration: 2000
+      });
+    });
+  };
+  
   return (
     <>
       <div className="bg-white rounded-lg shadow" data-component="contact-list">
