@@ -9,7 +9,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
   const [location, navigate] = useLocation();
   
   // Function to handle navigation
-  const handleNavigate = (path: string) => (e: React.MouseEvent) => {
+  const handleNavigation = (path: string, e: React.MouseEvent) => {
     e.preventDefault();
     navigate(path);
   };
@@ -17,7 +17,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
   return (
     <aside className="bg-gradient-to-b from-blue-800 to-blue-900 text-white w-64 flex-shrink-0 hidden md:flex md:flex-col shadow-lg">
       <div className="p-5 border-b border-blue-700 bg-blue-800">
-        <h1 className="text-xl font-heading font-bold flex items-center cursor-pointer" onClick={handleNavigate("/dashboard")}>
+        <h1 className="text-xl font-heading font-bold flex items-center cursor-pointer" onClick={() => navigate("/dashboard")}>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
@@ -30,7 +30,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
         <div className="space-y-1">
           <a 
             href="/dashboard" 
-            onClick={handleNavigate("/dashboard")}
+            onClick={(e) => handleNavigation("/dashboard", e)}
             className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
               location === "/dashboard" || location === "/" 
                 ? "bg-blue-700 text-white shadow-md" 
@@ -48,7 +48,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           
           <a 
             href="/loans" 
-            onClick={handleNavigate("/loans")}
+            onClick={(e) => handleNavigation("/loans", e)}
             className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
               location.startsWith("/loans") && location !== "/loans/1" && location !== "/loans/2" && location !== "/loans/3"
                 ? "bg-blue-700 text-white shadow-md" 
@@ -68,7 +68,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           
           <a 
             href="/contacts" 
-            onClick={handleNavigate("/contacts")}
+            onClick={(e) => handleNavigation("/contacts", e)}
             className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
               location === "/contacts" 
                 ? "bg-blue-700 text-white shadow-md" 
@@ -86,7 +86,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           
           <a 
             href="/templates" 
-            onClick={handleNavigate("/templates")}
+            onClick={(e) => handleNavigation("/templates", e)}
             className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
               location === "/templates" 
                 ? "bg-blue-700 text-white shadow-md" 
@@ -102,7 +102,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           
           <a 
             href="/settings" 
-            onClick={handleNavigate("/settings")}
+            onClick={(e) => handleNavigation("/settings", e)}
             className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
               location === "/settings" 
                 ? "bg-blue-700 text-white shadow-md" 
@@ -124,7 +124,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           <div className="space-y-1">
             <a 
               href="/loans/1" 
-              onClick={handleNavigate("/loans/1")}
+              onClick={(e) => handleNavigation("/loans/1", e)}
               className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
                 location === "/loans/1" 
                   ? "bg-blue-700 text-white" 
@@ -143,7 +143,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
             
             <a 
               href="/loans/2" 
-              onClick={handleNavigate("/loans/2")}
+              onClick={(e) => handleNavigation("/loans/2", e)}
               className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
                 location === "/loans/2" 
                   ? "bg-blue-700 text-white" 
