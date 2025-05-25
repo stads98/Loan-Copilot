@@ -8,10 +8,10 @@ interface SidebarProps {
 export default function Sidebar({ user, onLogout }: SidebarProps) {
   const [location, navigate] = useLocation();
   
-  // Simplified navigation function
-  const goToPage = (path: string) => (e: React.MouseEvent) => {
+  // Function to handle navigation
+  const handleNavigate = (path: string) => (e: React.MouseEvent) => {
     e.preventDefault();
-    window.location.href = path;
+    navigate(path);
   };
   
   return (
@@ -30,7 +30,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
         <div className="space-y-1">
           <a 
             href="/dashboard" 
-            onClick={() => goToPage("/dashboard")}
+            onClick={handleNavigate("/dashboard")}
             className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
               location === "/dashboard" || location === "/" 
                 ? "bg-blue-700 text-white shadow-md" 
@@ -48,7 +48,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           
           <a 
             href="/loans" 
-            onClick={() => goToPage("/loans")}
+            onClick={handleNavigate("/loans")}
             className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
               location.startsWith("/loans") && location !== "/loans/1" && location !== "/loans/2" && location !== "/loans/3"
                 ? "bg-blue-700 text-white shadow-md" 
@@ -68,7 +68,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           
           <a 
             href="/contacts" 
-            onClick={() => goToPage("/contacts")}
+            onClick={handleNavigate("/contacts")}
             className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
               location === "/contacts" 
                 ? "bg-blue-700 text-white shadow-md" 
@@ -86,7 +86,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           
           <a 
             href="/templates" 
-            onClick={() => goToPage("/templates")}
+            onClick={handleNavigate("/templates")}
             className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
               location === "/templates" 
                 ? "bg-blue-700 text-white shadow-md" 
@@ -102,7 +102,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           
           <a 
             href="/settings" 
-            onClick={() => goToPage("/settings")}
+            onClick={handleNavigate("/settings")}
             className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
               location === "/settings" 
                 ? "bg-blue-700 text-white shadow-md" 
