@@ -3,12 +3,15 @@ import { LoanWithDetails, Message } from "@shared/schema";
 import { DriveDocumentData } from "../types";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-// Configure OpenAI with proper error handling
+// Configure OpenAI with proper error handling and authentication
 const openai = new OpenAI({ 
   apiKey: process.env.OPENAI_API_KEY,
-  maxRetries: 3,
-  timeout: 30000
+  maxRetries: 2,
+  timeout: 45000
 });
+
+// Log OpenAI configuration status
+console.log(`OpenAI configuration: API key ${process.env.OPENAI_API_KEY ? 'is set' : 'is NOT set'}`);
 
 export async function processLoanDocuments(
   loanDetails: LoanWithDetails,
