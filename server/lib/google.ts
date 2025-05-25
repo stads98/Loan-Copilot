@@ -93,14 +93,14 @@ function generateFilesFromFolderHash(hash: number): DriveFile[] {
     { type: 'tax', variations: ['Tax_Returns', 'Property_Tax', 'Income_Verification'] }
   ];
   
-  // Based on the hash, decide which borrower this is for
+  // Use generic borrower names
   const borrowerVariations = [
-    { name: "John Smith", company: "Smith Properties LLC" },
-    { name: "Sarah Johnson", company: "Johnson Investments LLC" },
-    { name: "Robert Chen", company: "Chen Real Estate LLC" },
-    { name: "Maria Garcia", company: "Garcia Holdings LLC" },
-    { name: "David Williams", company: "Williams Investment Properties LLC" },
-    { name: "Jennifer Brown", company: "Brown Real Estate Group LLC" }
+    { name: "Borrower Name", company: "Investment Properties LLC" },
+    { name: "Property Owner", company: "Real Estate Holdings LLC" },
+    { name: "Primary Investor", company: "Capital Investments LLC" },
+    { name: "Main Borrower", company: "Property Management LLC" },
+    { name: "DSCR Investor", company: "Real Estate Ventures LLC" },
+    { name: "Lead Investor", company: "Property Acquisitions LLC" }
   ];
   
   // Select borrower based on hash
