@@ -142,7 +142,7 @@ export async function analyzeDriveDocuments(documents: DriveDocumentData[]): Pro
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
       messages: [
         {
-          role: "system" as const,
+          role: "system",
           content: `You are an expert loan document analyzer. Extract key information from these loan documents:
             1. Borrower name and entity type
             2. Property details (address, city, state, zip, type)
@@ -154,7 +154,7 @@ export async function analyzeDriveDocuments(documents: DriveDocumentData[]): Pro
             Return your analysis in structured JSON format without any explanation.`
         },
         {
-          role: "user" as const,
+          role: "user",
           content: `Analyze these ${documents.length} documents from a Google Drive folder:
             ${JSON.stringify(documentSummaries, null, 2)}
             
