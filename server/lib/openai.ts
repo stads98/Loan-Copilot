@@ -3,7 +3,7 @@ import { LoanWithDetails, Message } from "@shared/schema";
 import { DriveDocumentData } from "../types";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "dummy-key" });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function processLoanDocuments(
   loanDetails: LoanWithDetails,
@@ -14,8 +14,9 @@ export async function processLoanDocuments(
     // Convert loan details to a format suitable for the prompt
     const { loan, property, lender, documents, contacts, tasks } = loanDetails;
 
-    // For demonstration when no API key is available
-    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "dummy-key") {
+    // We have the API key from environment variables
+    if (!process.env.OPENAI_API_KEY) {
+      console.log("API key not found - using fallback response");
       return generateFallbackResponse(loanDetails, userQuery);
     }
     
@@ -73,17 +74,19 @@ Your job is to:
 Keep your responses professional, concise, and action-oriented. When asked to create an email template, format it professionally with a subject line, greeting, body, and signature.
 `;
 
-    // Make the API request
+    // Make the API request with proper typing
+    const messages = [
+      { role: "system", content: systemPrompt } as const,
+      ...messageHistory.map(msg => ({
+        role: msg.role === "user" ? "user" as const : "assistant" as const,
+        content: msg.content
+      })),
+      { role: "user" as const, content: userQuery }
+    ];
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messageHistory.map(msg => ({
-          role: msg.role === "user" ? "user" : "assistant",
-          content: msg.content
-        })),
-        { role: "user", content: userQuery }
-      ],
+      messages,
       temperature: 0.7,
       max_tokens: 1000,
     });
@@ -120,8 +123,8 @@ export async function analyzeDriveDocuments(documents: DriveDocumentData[]): Pro
   documentCategories: Record<string, string>;
 }> {
   try {
-    // Check if we have a valid API key
-    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "dummy-key") {
+    // We know we have a valid API key from env, but let's handle any potential issues gracefully
+    if (!process.env.OPENAI_API_KEY) {
       console.log("Using fallback document analysis due to missing API key");
       return fallbackDriveAnalysis(documents);
     }
@@ -143,32 +146,35 @@ export async function analyzeDriveDocuments(documents: DriveDocumentData[]): Pro
       };
     });
     
-    // Send to OpenAI for analysis
+    // Send to OpenAI for analysis with proper types
+    const analysisMessages = [
+      {
+        role: "system" as const,
+        content: `You are an expert loan document analyzer. Extract key information from these loan documents:
+          1. Borrower name and entity type
+          2. Property details (address, city, state, zip, type)
+          3. Loan details (amount, type - DSCR/Fix & Flip, purpose - purchase/refinance)
+          4. Contact information for key parties (borrower, title, insurance, etc.)
+          5. Categorize each document (borrower, property, title, insurance)
+          6. Identify missing documents based on standard DSCR loan requirements
+          
+          Return your analysis in structured JSON format without any explanation.`
+      },
+      {
+        role: "user" as const,
+        content: `Analyze these ${documents.length} documents from a Google Drive folder:
+          ${JSON.stringify(documentSummaries, null, 2)}
+          
+          Based only on the available content, extract all possible loan information.`
+      }
+    ];
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert loan document analyzer. Extract key information from these loan documents:
-            1. Borrower name and entity type
-            2. Property details (address, city, state, zip, type)
-            3. Loan details (amount, type - DSCR/Fix & Flip, purpose - purchase/refinance)
-            4. Contact information for key parties (borrower, title, insurance, etc.)
-            5. Categorize each document (borrower, property, title, insurance)
-            6. Identify missing documents based on standard DSCR loan requirements
-            
-            Return your analysis in structured JSON format without any explanation.`
-        },
-        {
-          role: "user",
-          content: `Analyze these ${documents.length} documents from a Google Drive folder:
-            ${JSON.stringify(documentSummaries, null, 2)}
-            
-            Based only on the available content, extract all possible loan information.`
-        }
-      ],
+      messages: analysisMessages,
       response_format: { type: "json_object" },
       temperature: 0.2,
+      max_tokens: 2000, // Increase token limit to ensure we get a complete response
     });
     
     // Parse the response
@@ -192,15 +198,27 @@ export async function analyzeDriveDocuments(documents: DriveDocumentData[]): Pro
   } catch (error: any) {
     console.error("Error analyzing drive documents with OpenAI:", error);
     
-    // Provide more specific error handling
+    // Provide detailed error logging for debugging
     if (error?.type === 'insufficient_quota' || error?.status === 429) {
       console.log("API quota exceeded - using extracted text directly for analysis");
       
-      // Extract data from the documents directly instead of using AI
-      return extractDataFromDocuments(documents);
+      try {
+        // Extract data from the documents directly instead of using AI
+        return extractDataFromDocuments(documents);
+      } catch (extractError) {
+        console.error("Error in document extraction fallback:", extractError);
+        // If extraction fails, use the simplest fallback
+        return fallbackDriveAnalysis(documents);
+      }
+    } else if (error?.code === 'invalid_api_key') {
+      console.error("Invalid API key - please check your OpenAI API key configuration");
+    } else if (error?.code === 'insufficient_quota') {
+      console.error("OpenAI API quota exceeded - using fallback analysis");
+    } else {
+      console.error("Unexpected OpenAI error:", error?.message || "Unknown error");
     }
     
-    // Fall back to simple analysis for other errors
+    // Fall back to simple analysis for all other errors
     return fallbackDriveAnalysis(documents);
   }
 }
