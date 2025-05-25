@@ -642,12 +642,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No files found in the specified Google Drive folder" });
       }
       
-      // In a real implementation with more time, we would:
-      // 1. Download and extract text from documents
-      // 2. Process scanned documents with OCR
-      // 3. Use OpenAI to analyze documents and extract information
+      // Process files to extract text (in a real app, download and process each file)
+      // For the demo, we'll simulate having extracted text from the files
+      const processedDocuments = files.map(file => {
+        // Generate some simulated content based on the filename
+        // In a real app, we would download and extract text from each file
+        let extractedText = "";
+        const filename = file.name.toLowerCase();
+        
+        // Basic content generation based on filename patterns
+        if (filename.includes("license") || filename.includes("id")) {
+          extractedText = `DRIVER LICENSE\nIssue Date: 01/15/2022\nExpiration: 01/15/2026\nName: ${filename.includes("sarah") ? "Sarah Johnson" : "John Smith"}\nAddress: 456 Park Avenue, New York, NY 10022`;
+        } else if (filename.includes("bank") || filename.includes("statement")) {
+          extractedText = `BANK STATEMENT\nAccount: ****3456\nStatement Period: 05/01/2025 - 05/31/2025\nBalance: $125,432.67\nAccount Holder: ${filename.includes("llc") ? "Sarah Johnson LLC" : "Sarah Johnson"}\nAddress: 456 Park Avenue, New York, NY 10022`;
+        } else if (filename.includes("tax") || filename.includes("return")) {
+          extractedText = `TAX RETURN 2024\nForm 1040\nName: ${filename.includes("llc") ? "Sarah Johnson LLC" : "Sarah Johnson"}\nAddress: 456 Park Avenue, New York, NY 10022\nTaxable Income: $342,500\nFederal Tax: $78,450`;
+        } else if (filename.includes("llc") || filename.includes("entity")) {
+          extractedText = `ARTICLES OF ORGANIZATION\nEntity Name: Sarah Johnson LLC\nFilingDate: 03/12/2023\nState: New York\nPrincipal Address: 456 Park Avenue, New York, NY 10022\nRegistered Agent: Sarah Johnson`;
+        } else if (filename.includes("property") || filename.includes("appraisal")) {
+          extractedText = `PROPERTY APPRAISAL\nAddress: 456 Park Avenue, New York, NY 10022\nProperty Type: Multi-Family Residence\nUnits: 4\nSquare Footage: 3,200\nAppraised Value: $950,000\nDate: 05/10/2025`;
+        } else if (filename.includes("insurance")) {
+          extractedText = `INSURANCE QUOTE\nProperty: 456 Park Avenue, New York, NY 10022\nCoverage: $950,000\nDeductible: $5,000\nAnnual Premium: $4,250\nInsurer: Metro Insurance Group\nContact: Jennifer Garcia, (212) 555-5678`;
+        } else if (filename.includes("title")) {
+          extractedText = `PRELIMINARY TITLE REPORT\nProperty: 456 Park Avenue, New York, NY 10022\nOwner: Sarah Johnson LLC\nTitle Company: New York Title Company\nContact: Robert Chen, (212) 555-1234\nDate: 05/15/2025`;
+        } else {
+          extractedText = `Document: ${file.name}\nRelated to property at 456 Park Avenue, New York, NY 10022\nOwner: Sarah Johnson LLC`;
+        }
+
+        return {
+          id: file.id,
+          name: file.name,
+          mimeType: file.mimeType,
+          size: file.size,
+          modifiedTime: file.modifiedTime,
+          text: extractedText
+        };
+      });
       
-      // For demonstration purposes, create a sample loan based on the files
+      // Use OpenAI to analyze the documents
+      const analysisResult = await analyzeDriveDocuments(processedDocuments);
       
       // 1. Create property
       const property = await storage.createProperty({
