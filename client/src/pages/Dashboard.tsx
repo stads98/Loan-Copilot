@@ -200,7 +200,7 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Priority Tasks Across All Loans */}
           <div className="lg:col-span-2 space-y-6">
-            {/* High Priority Tasks */}
+            {/* Tasks Due Today */}
             <div className="bg-white rounded-lg shadow-md border-l-4 border-red-500">
               <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
                 <h3 className="text-lg leading-6 font-heading font-medium text-gray-900 flex items-center">
@@ -209,16 +209,23 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
                     <line x1="12" y1="8" x2="12" y2="12"></line>
                     <line x1="12" y1="16" x2="12.01" y2="16"></line>
                   </svg>
-                  High Priority Tasks (All Loans)
+                  Tasks Due Today
                   <span className="ml-auto bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                    {allTasks.filter((task: any) => task.priority === 'high' && !task.completed).length}
+                    {allTasks.filter((task: any) => {
+                      if (!task.dueDate || task.completed) return false;
+                      const today = new Date().toISOString().split('T')[0];
+                      return task.dueDate === today;
+                    }).length}
                   </span>
                 </h3>
               </div>
-              <div className="max-h-96 overflow-y-auto">
+              <div className="max-h-64 overflow-y-auto">
                 {allTasks
-                  .filter((task: any) => task.priority === 'high' && !task.completed)
-                  .sort((a: any, b: any) => new Date(a.dueDate || '9999-12-31').getTime() - new Date(b.dueDate || '9999-12-31').getTime())
+                  .filter((task: any) => {
+                    if (!task.dueDate || task.completed) return false;
+                    const today = new Date().toISOString().split('T')[0];
+                    return task.dueDate === today;
+                  })
                   .map((task: any) => {
                     const loanData = loans?.find((l: any) => l.id === task.loanId);
                     return (
@@ -230,20 +237,156 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
                             <p className="text-xs text-gray-500 mt-1">
                               Loan: {loanData?.borrowerName} - {loanData?.propertyAddress}
                             </p>
-                            {task.dueDate && (
-                              <p className="text-xs text-red-600 mt-1">Due: {task.dueDate}</p>
-                            )}
                           </div>
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            High Priority
+                            Due Today
                           </span>
                         </div>
                       </div>
                     );
                   })}
-                {allTasks.filter((task: any) => task.priority === 'high' && !task.completed).length === 0 && (
+                {allTasks.filter((task: any) => {
+                  if (!task.dueDate || task.completed) return false;
+                  const today = new Date().toISOString().split('T')[0];
+                  return task.dueDate === today;
+                }).length === 0 && (
                   <div className="px-4 py-8 text-center">
-                    <div className="text-sm text-gray-500">No high priority tasks</div>
+                    <div className="text-sm text-gray-500">No tasks due today</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Tasks Due This Week */}
+            <div className="bg-white rounded-lg shadow-md border-l-4 border-amber-500">
+              <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 className="text-lg leading-6 font-heading font-medium text-gray-900 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2 text-amber-500">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                  </svg>
+                  Tasks Due This Week
+                  <span className="ml-auto bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                    {allTasks.filter((task: any) => {
+                      if (!task.dueDate || task.completed) return false;
+                      const today = new Date();
+                      const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+                      const taskDate = new Date(task.dueDate);
+                      return taskDate > today && taskDate <= weekFromNow;
+                    }).length}
+                  </span>
+                </h3>
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                {allTasks
+                  .filter((task: any) => {
+                    if (!task.dueDate || task.completed) return false;
+                    const today = new Date();
+                    const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+                    const taskDate = new Date(task.dueDate);
+                    return taskDate > today && taskDate <= weekFromNow;
+                  })
+                  .sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+                  .map((task: any) => {
+                    const loanData = loans?.find((l: any) => l.id === task.loanId);
+                    const daysUntilDue = Math.ceil((new Date(task.dueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                    return (
+                      <div key={task.id} className="px-4 py-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+                           onClick={() => window.location.href = `/loans/${task.loanId}`}>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">{task.description}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Loan: {loanData?.borrowerName} - {loanData?.propertyAddress}
+                            </p>
+                            <p className="text-xs text-amber-600 mt-1">
+                              Due in {daysUntilDue} day{daysUntilDue !== 1 ? 's' : ''} ({task.dueDate})
+                            </p>
+                          </div>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                            This Week
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                {allTasks.filter((task: any) => {
+                  if (!task.dueDate || task.completed) return false;
+                  const today = new Date();
+                  const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+                  const taskDate = new Date(task.dueDate);
+                  return taskDate > today && taskDate <= weekFromNow;
+                }).length === 0 && (
+                  <div className="px-4 py-8 text-center">
+                    <div className="text-sm text-gray-500">No tasks due this week</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* All Upcoming Tasks */}
+            <div className="bg-white rounded-lg shadow-md border-l-4 border-blue-500">
+              <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 className="text-lg leading-6 font-heading font-medium text-gray-900 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2 text-blue-500">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  All Upcoming Tasks
+                  <span className="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                    {allTasks.filter((task: any) => !task.completed && task.dueDate).length}
+                  </span>
+                </h3>
+              </div>
+              <div className="max-h-96 overflow-y-auto">
+                {allTasks
+                  .filter((task: any) => !task.completed && task.dueDate)
+                  .sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+                  .map((task: any) => {
+                    const loanData = loans?.find((l: any) => l.id === task.loanId);
+                    const today = new Date();
+                    const taskDate = new Date(task.dueDate);
+                    const daysUntilDue = Math.ceil((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    const isOverdue = daysUntilDue < 0;
+                    const isDueToday = daysUntilDue === 0;
+                    const isDueThisWeek = daysUntilDue > 0 && daysUntilDue <= 7;
+                    
+                    return (
+                      <div key={task.id} className="px-4 py-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+                           onClick={() => window.location.href = `/loans/${task.loanId}`}>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">{task.description}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Loan: {loanData?.borrowerName} - {loanData?.propertyAddress}
+                            </p>
+                            <p className={`text-xs mt-1 ${
+                              isOverdue ? 'text-red-600' : 
+                              isDueToday ? 'text-red-600' : 
+                              isDueThisWeek ? 'text-amber-600' : 'text-gray-600'
+                            }`}>
+                              {isOverdue ? `${Math.abs(daysUntilDue)} days overdue` :
+                               isDueToday ? 'Due today' :
+                               `Due in ${daysUntilDue} days`} ({task.dueDate})
+                            </p>
+                          </div>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            isOverdue || isDueToday ? 'bg-red-100 text-red-800' :
+                            isDueThisWeek ? 'bg-amber-100 text-amber-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {task.priority || 'Normal'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                {allTasks.filter((task: any) => !task.completed && task.dueDate).length === 0 && (
+                  <div className="px-4 py-8 text-center">
+                    <div className="text-sm text-gray-500">No upcoming tasks with due dates</div>
                   </div>
                 )}
               </div>
