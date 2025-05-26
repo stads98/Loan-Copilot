@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Upload, CheckCircle, AlertCircle } from "lucide-react";
+import { FileText, Upload, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 
 interface SmartDocumentUploadProps {
   open: boolean;
