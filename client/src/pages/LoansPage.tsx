@@ -66,7 +66,7 @@ export default function LoansPage({ user, onLogout }: LoansPageProps) {
         <div className="mb-6 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-lg shadow-lg p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-2xl font-heading font-bold">Loan Files</h2>
+              <h2 className="text-2xl font-heading font-bold">Adler Capital Loan Files</h2>
               <p className="mt-1 text-sm text-blue-100">
                 Manage all your DSCR loan files in one place
               </p>

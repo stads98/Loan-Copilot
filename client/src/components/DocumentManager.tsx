@@ -103,18 +103,10 @@ export default function DocumentManager({ documents, loanId }: DocumentManagerPr
   
   // All missing documents based on requirements
   const missingDocuments = {
-    borrower: requiredDocuments.borrower.filter(
-      doc => !documents.some(d => d.category === "borrower" && d.name.toLowerCase().includes(doc.toLowerCase()))
-    ),
-    property: requiredDocuments.property.filter(
-      doc => !documents.some(d => d.category === "property" && d.name.toLowerCase().includes(doc.toLowerCase()))
-    ),
-    title: requiredDocuments.title.filter(
-      doc => !documents.some(d => d.category === "title" && d.name.toLowerCase().includes(doc.toLowerCase()))
-    ),
-    insurance: requiredDocuments.insurance.filter(
-      doc => !documents.some(d => d.category === "insurance" && d.name.toLowerCase().includes(doc.toLowerCase()))
-    )
+    borrower: [],
+    property: [],
+    title: [],
+    insurance: []
   };
   
   const allMissingDocuments = [
