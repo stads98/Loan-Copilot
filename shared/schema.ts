@@ -47,13 +47,19 @@ export const contacts = pgTable("contacts", {
 export const loans = pgTable("loans", {
   id: serial("id").primaryKey(),
   borrowerName: text("borrower_name").notNull(),
+  borrowerEntityName: text("borrower_entity_name"), // LLC or individual name
+  propertyAddress: text("property_address").notNull(),
+  propertyType: text("property_type").notNull(), // single_family, duplex, triplex, quadplex, condo, multi_family_5plus, commercial
+  estimatedValue: integer("estimated_value"), // Property value in dollars
   loanAmount: text("loan_amount"),
+  loanToValue: integer("loan_to_value"), // LTV as percentage
   loanType: text("loan_type").notNull(), // DSCR, etc.
   loanPurpose: text("loan_purpose").notNull(), // Purchase, Refinance, etc.
+  funder: text("funder").notNull(), // kiavi, ahl, visio, roc_capital, velocity
   status: text("status").default("in_progress"),
   targetCloseDate: text("target_close_date"),
   driveFolder: text("drive_folder"),
-  googleDriveFolderId: text("google_drive_folder_id"), // Added for direct integration with Google Drive
+  googleDriveFolderId: text("google_drive_folder_id"), // Optional - can be added later
   propertyId: integer("property_id").notNull(),
   lenderId: integer("lender_id").notNull(),
   processorId: integer("processor_id").notNull(),

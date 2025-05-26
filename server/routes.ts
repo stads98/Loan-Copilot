@@ -150,35 +150,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/loans", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
-      const loanData = insertLoanSchema.parse({
-        ...req.body,
+      
+      // Create a basic property record first
+      const property = await storage.createProperty({
+        address: req.body.propertyAddress,
+        city: "",
+        state: "",
+        zipCode: "",
+        propertyType: req.body.propertyType || "single_family"
+      });
+
+      // Create a basic lender record if needed
+      let lender = await storage.getLenders().then(lenders => 
+        lenders.find(l => l.name.toLowerCase() === req.body.funder?.toLowerCase())
+      );
+      
+      if (!lender) {
+        lender = await storage.createLender({
+          name: req.body.funder || "Unknown",
+          requirements: []
+        });
+      }
+
+      // Create a basic loan type if needed  
+      let loanType = await storage.getLoanTypes().then(types =>
+        types.find(t => t.name === req.body.loanType)
+      );
+      
+      if (!loanType) {
+        loanType = await storage.createLoanType({
+          name: req.body.loanType || "DSCR",
+          requirements: []
+        });
+      }
+
+      const loan = await storage.createLoan({
+        borrowerName: req.body.borrowerName,
+        borrowerEntityName: req.body.borrowerEntityName,
+        propertyAddress: req.body.propertyAddress,
+        propertyType: req.body.propertyType,
+        estimatedValue: req.body.estimatedValue,
+        loanAmount: req.body.loanAmount,
+        loanToValue: req.body.loanToValue,
+        loanType: req.body.loanType,
+        loanPurpose: req.body.loanPurpose,
+        funder: req.body.funder,
+        targetCloseDate: req.body.targetCloseDate,
+        googleDriveFolderId: req.body.googleDriveFolderId,
+        driveFolder: req.body.driveFolder,
+        propertyId: property.id,
+        lenderId: lender.id,
         processorId: user.id
       });
 
-      const propertyData = insertPropertySchema.parse(req.body.property);
-      const property = await storage.createProperty(propertyData);
-
-      const loan = await storage.createLoan({
-        ...loanData,
-        propertyId: property.id
-      });
-
-      // Create contacts if provided
-      if (req.body.contacts && Array.isArray(req.body.contacts)) {
-        for (const contactData of req.body.contacts) {
-          await storage.createContact({
-            ...contactData,
-            loanId: loan.id
-          });
-        }
-      }
-
-      res.status(201).json(loan);
+      res.status(201).json({ success: true, loanId: loan.id });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid loan data", errors: error.errors });
-      }
-      res.status(500).json({ message: "Error creating loan" });
+      console.error('Error creating loan:', error);
+      res.status(500).json({ message: "Error creating loan", error: error.message });
     }
   });
 
