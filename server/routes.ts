@@ -444,21 +444,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { name, category } = req.body;
       
-      const documentData = {
+      const documentData = insertDocumentSchema.parse({
         name: name || req.file.originalname,
         fileId: `upload_${Date.now()}_${req.file.originalname}`,
         fileType: req.file.mimetype.split('/')[1],
         fileSize: req.file.size,
         category: category || 'other',
         loanId
-      };
+      });
 
       const document = await storage.createDocument(documentData);
       res.status(201).json(document);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error("Document validation error:", error.errors);
         return res.status(400).json({ message: "Invalid document data", errors: error.errors });
       }
+      console.error("Document upload error:", error);
       res.status(500).json({ message: "Error uploading document" });
     }
   });
