@@ -52,16 +52,24 @@ export default function FolderBrowser({ open, onOpenChange, onSelectFolder, curr
       if (response.ok) {
         const data = await response.json();
         setItems(data.items || []);
+      } else if (response.status === 401) {
+        const data = await response.json();
+        if (data.needsAuth) {
+          // Need to authenticate with Google first
+          window.open('/api/auth/google', 'google-auth', 'width=600,height=600');
+          toast({
+            title: "Authentication Required",
+            description: "Please authenticate with Google Drive to access your folders.",
+          });
+        }
+        setItems([]);
       } else {
-        // Simulate folder contents for demo purposes
-        const mockItems: FolderItem[] = [
-          { id: "folder1", name: "123 Main St - Purchase", type: "folder" },
-          { id: "folder2", name: "456 Oak Ave - Refinance", type: "folder" },
-          { id: "folder3", name: "789 Pine Rd - Cash Out Refi", type: "folder" },
-          { id: "folder4", name: "321 Elm St - Purchase", type: "folder" },
-          { id: "folder5", name: "654 Maple Dr - DSCR Loan", type: "folder" },
-        ];
-        setItems(mockItems);
+        toast({
+          title: "Error",
+          description: "Failed to load folder contents. Please try again.",
+          variant: "destructive"
+        });
+        setItems([]);
       }
     } catch (error) {
       // Demo data for testing

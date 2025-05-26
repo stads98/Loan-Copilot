@@ -650,7 +650,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const folderId = req.params.folderId;
       
-      // Use Google Drive API to get folder contents
+      // Check if user has Google authentication
+      if (!req.session.googleAuthenticated) {
+        return res.status(401).json({ 
+          message: "Google Drive not authenticated",
+          needsAuth: true 
+        });
+      }
+
       const { google } = require('googleapis');
       const OAuth2 = google.auth.OAuth2;
       
@@ -660,22 +667,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `${req.protocol}://${req.get('host')}/api/auth/google/callback`
       );
 
-      // For now, we'll need to implement proper OAuth flow
-      // But let's return the actual folder structure based on your folder ID
+      // Set the access token from session
+      if (req.session.googleTokens) {
+        oauth2Client.setCredentials(req.session.googleTokens);
+      }
+
       const drive = google.drive({ version: 'v3', auth: oauth2Client });
       
-      // This would be the real Google Drive API call
-      // For now, let's return your actual folder structure
-      const items = [
-        { id: "folder1", name: "154 HIBISCUS DR", type: "folder" },
-        { id: "folder2", name: "3121 Northwest 60th Street", type: "folder" },
-        { id: "folder3", name: "Other Loan Files", type: "folder" },
-      ];
+      // Make actual Google Drive API call
+      const response = await drive.files.list({
+        q: `'${folderId}' in parents and trashed=false`,
+        fields: 'files(id,name,mimeType,size,modifiedTime)',
+        orderBy: 'name'
+      });
+
+      const items = response.data.files.map(file => ({
+        id: file.id,
+        name: file.name,
+        type: file.mimeType === 'application/vnd.google-apps.folder' ? 'folder' : 'file',
+        mimeType: file.mimeType,
+        size: file.size ? parseInt(file.size) : undefined
+      }));
       
       res.json({ items });
     } catch (error) {
       console.error('Error fetching folder contents:', error);
-      res.status(500).json({ message: "Error fetching folder contents" });
+      res.status(500).json({ 
+        message: "Error fetching folder contents",
+        error: error.message 
+      });
     }
   });
 
