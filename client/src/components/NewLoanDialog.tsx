@@ -131,13 +131,7 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
         driveFolder: data.googleDriveLink || null,
       };
 
-      const response = await fetch("/api/loans", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(loanData)
-      }).then(res => res.json());
+      const response = await apiRequest("POST", "/api/loans", loanData);
 
       if (response.success) {
         toast({
