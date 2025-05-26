@@ -94,6 +94,10 @@ const ahlRequirements: DocumentRequirement[] = [
   { id: "ahl_piti_reserves", name: "6 Months PITI Reserves", required: true, category: "lender_specific", funderSpecific: true, description: "Must be documented" },
   { id: "ahl_vom_12mo", name: "VOM showing 12 months payment history", required: false, category: "lender_specific", funderSpecific: true },
   { id: "ahl_mortgage_statements", name: "2 Recent Mortgage Statements", required: false, category: "lender_specific", funderSpecific: true, description: "For any open accounts on background check" },
+  // AHL-specific title documents
+  { id: "ahl_preliminary_title", name: "Preliminary Title Report / Title Commitment", required: true, category: "title", funderSpecific: true },
+  { id: "ahl_closing_protection", name: "Closing Protection Letter (CPL)", required: true, category: "title", funderSpecific: true },
+  { id: "ahl_wire_instructions", name: "Wire Instructions", required: true, category: "title", funderSpecific: true },
 ];
 
 // Velocity-specific requirements

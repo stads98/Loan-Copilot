@@ -42,7 +42,7 @@ const emailTemplates = [
   {
     id: 1,
     category: "borrower",
-    title: "Kiavi Initial Required Items",
+    title: "Initial Required Items",
     subject: "{PROPERTY_ADDRESS} (Loan #{LOAN_NUMBER}) - Required Items",
     body: `Hi {BORROWER_NAME},
 
@@ -141,13 +141,11 @@ Target Signing Date: {TARGET_CLOSING_DATE}
 Loan Purpose: {LOAN_PURPOSE}
 
 Loss Payee / Proposed Insured:
-Kiavi Funding, Inc
+Adler Capital Funding, LLC
 Its Successors and/or Assigns
-2 Allegheny Center, Nova Tower 2, Suite 200
-Pittsburgh, PA 15212
 RE: Loan no: {LOAN_NUMBER}
 
-Title policy must insure Kiavi in 1st lien position. ALTA standard form title policy required (2016, 2021, or Short Form acceptable).`,
+Title policy must insure Adler Capital in 1st lien position. ALTA standard form title policy required (2016, 2021, or Short Form acceptable).`,
   },
   {
     id: 4,

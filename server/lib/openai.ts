@@ -683,11 +683,11 @@ Hello [Insurance Agent Name],
 
 I hope this email finds you well. I'm reaching out regarding a ${loan.loanType} investment property loan for our client ${loan.borrowerName} at ${property.address}, ${property.city}, ${property.state} ${property.zipCode}.
 
-We urgently need an insurance binder for this property to proceed with the loan closing. The lender (${lender.name}) requires the following on the binder:
+We urgently need an insurance binder for this property to proceed with the loan closing. Adler Capital requires the following on the binder:
 
 - Property address: ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
 - Insured: ${loan.borrowerName} [and LLC name if applicable]
-- Loss Payee: ${lender.name}, ISAOA/ATIMA
+- Loss Payee: Adler Capital Funding, LLC, ISAOA/ATIMA
 - Minimum dwelling coverage: ${loan.loanAmount}
 
 Our target closing date is ${loan.targetCloseDate}, so we would appreciate receiving this as soon as possible.
