@@ -271,7 +271,7 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
         )}
 
         {/* Dashboard Overview - Show when no specific loan is selected */}
-        {!activeLoanId && (
+        {(!activeLoanId || (currentPath && !currentPath.includes('/loans/'))) && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column: All Loan Files Overview */}
             <div className="lg:col-span-2 space-y-6">
