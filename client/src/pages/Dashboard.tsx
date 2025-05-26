@@ -48,6 +48,12 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
     queryKey: ['/api/loans'],
   });
   
+  // Fetch all tasks across all loans for dashboard overview
+  const { data: allTasks = [], isLoading: isLoadingAllTasks } = useQuery({
+    queryKey: ['/api/tasks/all'],
+    enabled: !!loans && loans.length > 0
+  });
+  
   // Fetch active loan details
   const { data: loanDetails, isLoading: isLoadingLoanDetails } = useQuery({
     queryKey: [`/api/loans/${activeLoanId}`],
