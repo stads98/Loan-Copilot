@@ -33,7 +33,7 @@ export default function LoanPropertyCard({ loan, property }: LoanPropertyCardPro
         <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
           <div className="col-span-1">
             <dt className="text-xs font-medium text-gray-500">Lender</dt>
-            <dd className="mt-1 text-sm font-medium text-gray-900">{loan.lenderName}</dd>
+            <dd className="mt-1 text-sm font-medium text-gray-900">{loan.lenderName || loan.funder}</dd>
           </div>
           <div className="col-span-1">
             <dt className="text-xs font-medium text-gray-500">Loan Amount</dt>
