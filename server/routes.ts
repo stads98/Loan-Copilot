@@ -92,25 +92,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Google OAuth routes
   app.get("/api/auth/google", (req, res) => {
-    authenticateGoogle(req, res);
+    const { google } = require('googleapis');
+    const OAuth2 = google.auth.OAuth2;
+    
+    const oauth2Client = new OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      `${req.protocol}://${req.get('host')}/api/auth/google/callback`
+    );
+
+    const scopes = [
+      'https://www.googleapis.com/auth/drive.readonly'
+    ];
+
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: scopes,
+      prompt: 'consent'
+    });
+
+    res.redirect(authUrl);
   });
 
-  app.get("/api/auth/google/callback", (req, res) => {
-    // Store Google authentication success in session
-    if (req.user) {
-      req.session.googleAuthenticated = true;
+  app.get("/api/auth/google/callback", async (req, res) => {
+    try {
+      const { google } = require('googleapis');
+      const OAuth2 = google.auth.OAuth2;
+      
+      const oauth2Client = new OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        `${req.protocol}://${req.get('host')}/api/auth/google/callback`
+      );
+
+      const { code } = req.query;
+      const { tokens } = await oauth2Client.getToken(code as string);
+      
+      // Store tokens in session
+      (req.session as any).googleAuthenticated = true;
+      (req.session as any).googleTokens = tokens;
+      
+      // Close the popup window and refresh parent
+      res.send(`
+        <script>
+          if (window.opener) {
+            window.opener.location.reload();
+            window.close();
+          } else {
+            window.location.href = '/dashboard';
+          }
+        </script>
+      `);
+    } catch (error) {
+      console.error('Google OAuth error:', error);
+      res.status(500).send('Authentication failed');
     }
-    // Close the popup window and refresh parent
-    res.send(`
-      <script>
-        if (window.opener) {
-          window.opener.location.reload();
-          window.close();
-        } else {
-          window.location.href = '/dashboard';
-        }
-      </script>
-    `);
   });
 
   // Check Google Drive connection status
