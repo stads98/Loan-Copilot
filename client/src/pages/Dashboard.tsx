@@ -208,6 +208,7 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
               <DocumentProgress 
                 documents={documents || []}
                 requiredDocuments={getLenderSpecificRequirements(lender?.name || "AHL")}
+                contacts={contacts || []}
               />
 
               {/* Contact List */}

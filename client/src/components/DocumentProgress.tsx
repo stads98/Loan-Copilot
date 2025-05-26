@@ -1,4 +1,4 @@
-import { Document } from "@/lib/types";
+import { Document, Contact } from "@/lib/types";
 
 interface DocumentProgressProps {
   documents: Document[];
@@ -8,9 +8,21 @@ interface DocumentProgressProps {
     title: string[];
     insurance: string[];
   };
+  contacts?: Contact[];
 }
 
-export default function DocumentProgress({ documents, requiredDocuments }: DocumentProgressProps) {
+export default function DocumentProgress({ documents, requiredDocuments, contacts = [] }: DocumentProgressProps) {
+  // Helper function to find contact by role
+  const findContactByRole = (role: string) => {
+    return contacts.find(contact => 
+      contact.role.toLowerCase().includes(role.toLowerCase())
+    );
+  };
+
+  // Find specific contacts
+  const titleContact = findContactByRole("title");
+  const insuranceContact = findContactByRole("insurance");
+
   // Calculate the number of documents present in each category
   const borrowerDocs = documents.filter(doc => doc.category === "borrower").length;
   const titleDocs = documents.filter(doc => doc.category === "title").length;
@@ -151,9 +163,11 @@ export default function DocumentProgress({ documents, requiredDocuments }: Docum
                 style={{ width: `${titlePercentage}%` }}
               ></div>
             </div>
-            <div className="mt-1 text-xs text-purple-800">
-              Sunrise Title • Copy: (555) 987-6543 • info@sunrisetitle.com
-            </div>
+            {titleContact && (
+              <div className="mt-1 text-xs text-purple-800">
+                {titleContact.company || titleContact.name} • {titleContact.phone} • {titleContact.email}
+              </div>
+            )}
           </div>
           
           {/* Insurance Documents */}
@@ -189,9 +203,11 @@ export default function DocumentProgress({ documents, requiredDocuments }: Docum
                 style={{ width: `${insurancePercentage}%` }}
               ></div>
             </div>
-            <div className="mt-1 text-xs text-green-800">
-              AllState Insurance • Copy: (555) 789-0123 • claims@allstate.com
-            </div>
+            {insuranceContact && (
+              <div className="mt-1 text-xs text-green-800">
+                {insuranceContact.company || insuranceContact.name} • {insuranceContact.phone} • {insuranceContact.email}
+              </div>
+            )}
           </div>
         </div>
       </div>
