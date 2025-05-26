@@ -421,6 +421,7 @@ export default function DocumentManager({ documents, loanId, requiredDocuments }
                           id="file-upload" 
                           name="file-upload" 
                           type="file" 
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.bmp,.tiff"
                           className="sr-only"
                           onChange={(e) => {
                             if (e.target.files && e.target.files[0]) {
