@@ -8,6 +8,7 @@ import AIAssistant from "@/components/AIAssistant";
 import TaskList from "@/components/TaskList";
 import DocumentManager from "@/components/DocumentManager";
 import NewLoanDialog from "@/components/NewLoanDialog";
+import EditableLoanDetails from "@/components/EditableLoanDetails";
 import { getDocumentRequirements } from "@/components/DocumentChecklist";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -201,13 +202,10 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column: Loan Info & Status */}
             <div className="lg:col-span-1 space-y-6">
-              {/* Loan Property Card */}
-              <LoanPropertyCard 
-                loan={{
-                  ...loan,
-                  lenderName: lender?.name || "Unknown"
-                }} 
-                property={property} 
+              {/* Editable Loan Details */}
+              <EditableLoanDetails 
+                loanId={loan.id}
+                loanDetails={{ loan, property, lender }}
               />
 
               {/* Document Progress */}
