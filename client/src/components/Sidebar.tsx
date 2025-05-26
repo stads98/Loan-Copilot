@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 
 interface SidebarProps {
   user: any;
@@ -7,6 +8,11 @@ interface SidebarProps {
 
 export default function Sidebar({ user, onLogout }: SidebarProps) {
   const [location] = useLocation();
+  
+  // Fetch loans for Recent Loan Files section
+  const { data: loans = [] } = useQuery({
+    queryKey: ['/api/loans'],
+  });
   
   return (
     <aside className="bg-gradient-to-b from-blue-800 to-blue-900 text-white w-64 flex-shrink-0 hidden md:flex md:flex-col shadow-lg">
@@ -106,56 +112,45 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
             Recent Loan Files
           </h3>
           <div className="space-y-1">
-            <div 
-              onClick={() => window.location.href = "/loans/1"}
-              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 cursor-pointer ${
-                location === "/loans/1" 
-                  ? "bg-blue-700 text-white" 
-                  : "text-blue-100 hover:bg-blue-700/50 hover:text-white"
-              }`}>
-              <div className="flex-shrink-0 h-8 w-8 bg-green-600 text-white rounded-md flex items-center justify-center mr-3">
-                <span className="text-xs font-bold">SM</span>
+            {loans && loans.length > 0 ? (
+              loans.slice(0, 3).map((loan: any) => {
+                const initials = loan.borrowerName
+                  .split(' ')
+                  .map((name: string) => name.charAt(0).toUpperCase())
+                  .join('')
+                  .slice(0, 2);
+                
+                const statusColor = loan.status === 'completed' ? 'bg-green-600' :
+                                  loan.status === 'on_hold' ? 'bg-yellow-600' : 'bg-blue-600';
+                const dotColor = loan.status === 'completed' ? 'bg-green-400' :
+                               loan.status === 'on_hold' ? 'bg-yellow-400' : 'bg-blue-400';
+                
+                return (
+                  <div 
+                    key={loan.id}
+                    onClick={() => window.location.href = `/loans/${loan.id}`}
+                    className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 cursor-pointer ${
+                      location === `/loans/${loan.id}` 
+                        ? "bg-blue-700 text-white" 
+                        : "text-blue-100 hover:bg-blue-700/50 hover:text-white"
+                    }`}>
+                    <div className={`flex-shrink-0 h-8 w-8 ${statusColor} text-white rounded-md flex items-center justify-center mr-3`}>
+                      <span className="text-xs font-bold">{initials}</span>
+                    </div>
+                    <div className="flex-1 truncate">
+                      <div className="font-medium truncate">{loan.borrowerName}</div>
+                      <div className="text-xs text-blue-300 truncate">{loan.propertyAddress}</div>
+                    </div>
+                    <span className={`ml-2 w-2 h-2 ${dotColor} rounded-full flex-shrink-0`}></span>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="px-3 py-4 text-center">
+                <div className="text-xs text-blue-300 mb-2">No loan files yet</div>
+                <div className="text-xs text-blue-400">Create your first loan to see it here</div>
               </div>
-              <div>
-                <div className="font-medium">Smith</div>
-                <div className="text-xs text-blue-300">123 Main St</div>
-              </div>
-              <span className="ml-auto w-2 h-2 bg-green-400 rounded-full"></span>
-            </div>
-            
-            <div 
-              onClick={() => window.location.href = "/loans/2"}
-              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 cursor-pointer ${
-                location === "/loans/2" 
-                  ? "bg-blue-700 text-white" 
-                  : "text-blue-100 hover:bg-blue-700/50 hover:text-white"
-              }`}>
-              <div className="flex-shrink-0 h-8 w-8 bg-yellow-600 text-white rounded-md flex items-center justify-center mr-3">
-                <span className="text-xs font-bold">JN</span>
-              </div>
-              <div>
-                <div className="font-medium">Johnson</div>
-                <div className="text-xs text-blue-300">456 Oak Ave</div>
-              </div>
-              <span className="ml-auto w-2 h-2 bg-yellow-400 rounded-full"></span>
-            </div>
-            
-            <div 
-              onClick={() => window.location.href = "/loans/3"}
-              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 cursor-pointer ${
-                location === "/loans/3" 
-                  ? "bg-blue-700 text-white" 
-                  : "text-blue-100 hover:bg-blue-700/50 hover:text-white"
-              }`}>
-              <div className="flex-shrink-0 h-8 w-8 bg-red-600 text-white rounded-md flex items-center justify-center mr-3">
-                <span className="text-xs font-bold">MZ</span>
-              </div>
-              <div>
-                <div className="font-medium">Martinez</div>
-                <div className="text-xs text-blue-300">789 Pine Ln</div>
-              </div>
-              <span className="ml-auto w-2 h-2 bg-red-400 rounded-full"></span>
-            </div>
+            )}
           </div>
         </div>
       </nav>
