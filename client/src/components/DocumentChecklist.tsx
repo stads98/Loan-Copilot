@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, AlertCircle, FileText, Users, DollarSign, Home, ClipboardList, Shield, Building, CreditCard } from "lucide-react";
+import { CheckCircle, AlertCircle, FileText, Users, DollarSign, Home, ClipboardList, Shield, Building, CreditCard, Upload, Save } from "lucide-react";
 
 interface DocumentRequirement {
   id: string;
@@ -82,8 +83,6 @@ export const getDocumentRequirements = (funder: string): DocumentRequirement[] =
         ...baseRequirements,
         { id: "kiavi_auth_form", name: "Kiavi Borrowing Authorization Form (from Kiavi Portal)", required: true, category: "lender_specific", funderSpecific: true },
         { id: "kiavi_disclosure", name: "Kiavi Disclosure Form (from Kiavi Portal)", required: true, category: "lender_specific", funderSpecific: true },
-        { id: "kiavi_liquidity", name: "Proof of Liquidity/Down Payment", required: true, category: "lender_specific", funderSpecific: true },
-        { id: "kiavi_reserves", name: "Proof of Reserves (6 months PITI)", required: true, category: "lender_specific", funderSpecific: true },
         { id: "kiavi_background", name: "Kiavi Background Check Authorization (from Kiavi Portal)", required: true, category: "lender_specific", funderSpecific: true },
       ];
 
@@ -133,6 +132,32 @@ export const getDocumentRequirements = (funder: string): DocumentRequirement[] =
 export default function DocumentChecklist({ loanDetails, onDocumentToggle }: DocumentChecklistProps) {
   const [completedDocs, setCompletedDocs] = useState<Set<string>>(new Set());
   const requirements = getDocumentRequirements(loanDetails?.funder);
+
+  const handleUploadClick = (doc: any) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.jpg,.jpeg,.png,.doc,.docx';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        console.log('File selected:', file.name);
+        // TODO: Implement file upload functionality
+      }
+    };
+    input.click();
+  };
+
+  const handleSaveProgress = (docId: string, completed: boolean) => {
+    if (completed) {
+      setCompletedDocs(prev => new Set([...prev, docId]));
+    } else {
+      setCompletedDocs(prev => {
+        const updated = new Set(prev);
+        updated.delete(docId);
+        return updated;
+      });
+    }
+  };
 
   // Group requirements by category
   const groupedRequirements = requirements.reduce((acc, req) => {
