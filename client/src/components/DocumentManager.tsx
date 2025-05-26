@@ -379,14 +379,11 @@ export default function DocumentManager({ documents, loanId, requiredDocuments }
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="borrower">Borrower Documents</SelectItem>
-                        <SelectItem value="property">Property Documents</SelectItem>
-                        <SelectItem value="title">Title Documents</SelectItem>
-                        <SelectItem value="insurance">Insurance Documents</SelectItem>
-                        <SelectItem value="payoff">Payoff Documents</SelectItem>
-                        <SelectItem value="banking">Banking Documents</SelectItem>
-                        <SelectItem value="kiavi">Kiavi Documents</SelectItem>
-                        <SelectItem value="other">Other Documents</SelectItem>
+                        <SelectItem value="borrower">Borrower</SelectItem>
+                        <SelectItem value="title">Title</SelectItem>
+                        <SelectItem value="insurance">Insurance</SelectItem>
+                        <SelectItem value="current_lender">Current Lender</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
