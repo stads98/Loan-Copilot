@@ -112,9 +112,10 @@ export class MemStorage implements IStorage {
 
   private seedData() {
     // Add default lenders
-    this.createLender({ name: "Kiavi", requirements: ["Driver's License", "Bank Statements", "Purchase Contract", "Insurance Binder", "Title Commitment", "DSCR Certification"] });
-    this.createLender({ name: "Roc Capital", requirements: ["Driver's License", "Bank Statements", "Purchase Contract", "Insurance Binder", "Title Commitment"] });
-    this.createLender({ name: "AHL", requirements: ["Driver's License", "Bank Statements", "Purchase Contract", "Insurance Binder", "Title Commitment", "Entity Documents"] });
+    this.createLender({ name: "Kiavi Funding", requirements: ["Driver's License", "Bank Statements", "Purchase Contract", "Insurance Binder", "Title Commitment", "DSCR Certification"] });
+    this.createLender({ name: "Roc Capital 360", requirements: ["Driver's License", "Bank Statements", "Purchase Contract", "Insurance Binder", "Title Commitment"] });
+    this.createLender({ name: "American Heritage Lending (AHL)", requirements: ["Driver's License", "Bank Statements", "Purchase Contract", "Insurance Binder", "Title Commitment", "Entity Documents"] });
+    this.createLender({ name: "Visio Lending", requirements: ["Driver's License", "Bank Statements", "Purchase Contract", "Insurance Binder", "Title Commitment"] });
 
     // Add default loan types
     this.createLoanType({ name: "DSCR", description: "Debt Service Coverage Ratio" });
