@@ -163,9 +163,40 @@ export default function DocumentManager({ documents, loanId, requiredDocuments }
           </div>
           
           <TabsContent value="document-list" className="overflow-hidden">
+            {/* Quick Upload Section */}
+            <div className="border-b border-gray-200 px-4 py-4 bg-gray-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900">Document List</h3>
+                  <p className="text-xs text-gray-500">Upload and manage loan documents</p>
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={() => setIsAddDocumentOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="12" y1="11" x2="12" y2="17"></line>
+                    <line x1="9" y1="14" x2="15" y2="14"></line>
+                  </svg>
+                  Upload Document
+                </Button>
+              </div>
+            </div>
+
             {documents.length === 0 ? (
-              <div className="px-4 py-6 text-center text-gray-500 text-sm">
-                No documents uploaded yet
+              <div className="px-4 py-8 text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 mx-auto mb-4 text-gray-400">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <h3 className="text-sm font-medium text-gray-900 mb-2">No documents uploaded yet</h3>
+                <p className="text-sm text-gray-500 mb-4">Start by uploading your first loan document</p>
+                <Button onClick={() => setIsAddDocumentOpen(true)}>
+                  Upload Your First Document
+                </Button>
               </div>
             ) : (
               <ul className="divide-y divide-gray-200">
