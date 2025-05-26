@@ -196,8 +196,8 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
           </div>
         </div>
 
-        {/* Loan Files Container - Show detailed view only when a specific loan is selected */}
-        {activeLoanId && loan && property && (
+        {/* Loan Files Container - Show detailed view only when on a specific loan URL */}
+        {activeLoanId && currentPath && currentPath.includes('/loans/') && loan && property && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column: Loan Info & Status */}
             <div className="lg:col-span-1 space-y-6">
@@ -270,8 +270,8 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
           </div>
         )}
 
-        {/* Dashboard Overview - Show when no specific loan is selected */}
-        {(!activeLoanId || (currentPath && !currentPath.includes('/loans/'))) && (
+        {/* Dashboard Overview - Show when on dashboard page, not individual loan pages */}
+        {(!currentPath || currentPath === '/' || currentPath === '/dashboard' || (!currentPath.includes('/loans/') && !activeLoanId)) && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column: All Loan Files Overview */}
             <div className="lg:col-span-2 space-y-6">
