@@ -96,8 +96,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/auth/google/callback", (req, res) => {
-    // Handle the OAuth callback (would be implemented in google.ts)
-    res.redirect("/dashboard");
+    // Store Google authentication success in session
+    if (req.user) {
+      req.session.googleAuthenticated = true;
+    }
+    // Close the popup window and refresh parent
+    res.send(`
+      <script>
+        if (window.opener) {
+          window.opener.location.reload();
+          window.close();
+        } else {
+          window.location.href = '/dashboard';
+        }
+      </script>
+    `);
+  });
+
+  // Check Google Drive connection status
+  app.get("/api/auth/google/status", (req, res) => {
+    const isConnected = req.session?.googleAuthenticated || false;
+    res.json({ connected: isConnected });
   });
 
   // Lenders
