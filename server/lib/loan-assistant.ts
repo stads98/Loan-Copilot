@@ -159,6 +159,104 @@ Please provide your analysis in JSON format.`;
 }
 
 /**
+ * Generate lender-specific priority action items
+ */
+export function generateLenderSpecificActions(
+  loanDetails: any,
+  missingDocuments: string[]
+): string[] {
+  const funder = loanDetails.funder?.toLowerCase();
+  const loanPurpose = loanDetails.loanPurpose?.toLowerCase();
+  const actions: string[] = [];
+
+  // Base actions for all lenders
+  if (missingDocuments.includes("Insurance Policy") || missingDocuments.includes("insurance_policy")) {
+    actions.push("Contact insurance agent immediately - insurance binder required for all lenders");
+  }
+
+  if (missingDocuments.includes("Appraisal") || missingDocuments.includes("appraisal")) {
+    actions.push("Order appraisal through approved AMC - call to confirm valuation expectations");
+  }
+
+  // Lender-specific priority actions
+  switch (funder) {
+    case 'kiavi':
+      if (missingDocuments.some(doc => doc.includes("Authorization") || doc.includes("Disclosure"))) {
+        actions.push("URGENT: Access Kiavi portal and download signed Authorization & Disclosure forms");
+      }
+      if (missingDocuments.includes("Title") || missingDocuments.includes("title_contact")) {
+        actions.push("Send Kiavi title requirements immediately - specific ALTA endorsements required");
+      }
+      if (loanPurpose === "refinance" && missingDocuments.includes("Payoff")) {
+        actions.push("Request payoff statement from current lender with per diem interest");
+      }
+      actions.push("Confirm AMC appraisal meets Kiavi valuation guidelines");
+      break;
+
+    case 'ahl':
+      if (missingDocuments.some(doc => doc.includes("Entity Resolution") || doc.includes("Business Purpose"))) {
+        actions.push("CRITICAL: Download AHL-specific Entity Resolution and Business Purpose forms from portal");
+      }
+      if (missingDocuments.includes("PITI Reserves")) {
+        actions.push("Document 6 months PITI reserves - AHL requires verified proof of liquidity");
+      }
+      if (missingDocuments.includes("VOM")) {
+        actions.push("Request 12-month payment history VOM from current lender - AHL requirement");
+      }
+      actions.push("Verify all mortgage statements match credit report for AHL background check");
+      break;
+
+    case 'visio':
+      if (missingDocuments.some(doc => doc.includes("VFS") || doc.includes("Broker"))) {
+        actions.push("Complete VFS Loan Application and Broker Submission Form immediately");
+      }
+      if (missingDocuments.includes("Plaid")) {
+        actions.push("Set up Plaid connection for proof of liquidity - Visio requires automated verification");
+      }
+      if (missingDocuments.includes("Rent Collection")) {
+        actions.push("Provide rent roll and collection proof if lease rents exceed market rates");
+      }
+      actions.push("Submit Broker W9 for Visio processing");
+      break;
+
+    case 'roc_capital':
+      if (missingDocuments.includes("Background") || missingDocuments.includes("Credit Link")) {
+        actions.push("IMMEDIATE: Complete ROC Capital background/credit check link - cannot proceed without");
+      }
+      if (missingDocuments.includes("ACH Consent")) {
+        actions.push("Execute ACH Consent Form for ROC Capital funding");
+      }
+      if (missingDocuments.includes("Property Tax")) {
+        actions.push("Pull property tax document from county website for ROC submission");
+      }
+      if (missingDocuments.includes("3 Months Rent")) {
+        actions.push("Provide 3 months rent collection proof for all units - ROC requirement");
+      }
+      if (missingDocuments.includes("Security Deposit")) {
+        actions.push("Document security deposit receipts for leases under 30 days old");
+      }
+      break;
+
+    case 'velocity':
+      // Velocity-specific actions (add as requirements are provided)
+      if (missingDocuments.includes("Title")) {
+        actions.push("Coordinate with title agent for Velocity-specific requirements");
+      }
+      break;
+
+    default:
+      actions.push("Review lender-specific requirements for this funder");
+  }
+
+  // Common final actions
+  if (actions.length === 0) {
+    actions.push("All major documents appear complete - review for final submission readiness");
+  }
+
+  return actions.slice(0, 5); // Limit to top 5 priority actions
+}
+
+/**
  * Generate email drafts for missing documents
  */
 export async function generateMissingDocumentEmails(
