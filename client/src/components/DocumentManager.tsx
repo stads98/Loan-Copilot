@@ -9,7 +9,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
-import { z } from "zod";
 import { Loader2, FileText, Image, File, Download, Trash2, Eye } from "lucide-react";
 
 interface DocumentManagerProps {
@@ -23,30 +22,10 @@ interface DocumentManagerProps {
   };
 }
 
-const documentSchema = z.object({
-  name: z.string().min(1, "Filename is required"),
-  fileId: z.string().min(1, "File ID is required"),
-  fileType: z.string().optional(),
-  fileSize: z.number().optional(),
-  category: z.string().min(1, "Category is required")
-});
-
-export default function DocumentManager({ documents, loanId, requiredDocuments }: DocumentManagerProps) {
+export default function DocumentManager({ documents, loanId }: DocumentManagerProps) {
   const [activeTab, setActiveTab] = useState("document-list");
-  const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
-  
-  const form = useForm<z.infer<typeof documentSchema>>({
-    resolver: zodResolver(documentSchema),
-    defaultValues: {
-      name: "",
-      fileId: "",
-      fileType: "pdf",
-      fileSize: 0,
-      category: "borrower"
-    }
-  });
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
