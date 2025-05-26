@@ -388,6 +388,42 @@ export default function DocumentManager({ documents, loanId, requiredDocuments }
                 )}
               />
               
+              {/* Smart Missing Document Linking */}
+              <div className="space-y-2">
+                <FormLabel>Link to Missing Document (Optional)</FormLabel>
+                <Select onValueChange={(value) => {
+                  if (value !== 'none') {
+                    // Auto-set category based on missing document type
+                    const missingDoc = value.toLowerCase();
+                    if (missingDoc.includes('insurance') || missingDoc.includes('policy') || missingDoc.includes('binder')) {
+                      form.setValue('category', 'insurance');
+                    } else if (missingDoc.includes('license') || missingDoc.includes('passport') || missingDoc.includes('entity')) {
+                      form.setValue('category', 'borrower');
+                    } else if (missingDoc.includes('title') || missingDoc.includes('deed')) {
+                      form.setValue('category', 'title');
+                    }
+                  }
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select missing document this fulfills" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None - General Upload</SelectItem>
+                    {/* Generate missing documents from requirements */}
+                    {Object.entries(requiredDocuments).map(([category, docs]) => 
+                      docs.map((doc, index) => (
+                        <SelectItem key={`${category}-${index}`} value={doc}>
+                          {doc}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  Linking to a missing document will mark it as fulfilled and move it to your document list
+                </p>
+              </div>
+
               <FormField
                 control={form.control}
                 name="category"
