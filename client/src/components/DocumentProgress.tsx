@@ -165,7 +165,7 @@ export default function DocumentProgress({ documents, requiredDocuments, contact
             </div>
             {titleContact && (
               <div className="mt-1 text-xs text-purple-800">
-                {titleContact.company || titleContact.name} • {titleContact.phone} • {titleContact.email}
+                {titleContact.company ? titleContact.company : titleContact.name} • {titleContact.phone} • {titleContact.email}
               </div>
             )}
           </div>
@@ -205,7 +205,7 @@ export default function DocumentProgress({ documents, requiredDocuments, contact
             </div>
             {insuranceContact && (
               <div className="mt-1 text-xs text-green-800">
-                {insuranceContact.company || insuranceContact.name} • {insuranceContact.phone} • {insuranceContact.email}
+                {insuranceContact.company ? insuranceContact.company : insuranceContact.name} • {insuranceContact.phone} • {insuranceContact.email}
               </div>
             )}
           </div>
