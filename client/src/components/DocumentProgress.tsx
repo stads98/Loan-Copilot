@@ -1,4 +1,7 @@
 import { Document, Contact } from "@/lib/types";
+import { useState } from "react";
+import DocumentChecklist from "./DocumentChecklist";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface DocumentProgressProps {
   documents: Document[];
@@ -9,9 +12,12 @@ interface DocumentProgressProps {
     insurance: string[];
   };
   contacts?: Contact[];
+  loanDetails?: any;
 }
 
-export default function DocumentProgress({ documents, requiredDocuments, contacts = [] }: DocumentProgressProps) {
+export default function DocumentProgress({ documents, requiredDocuments, contacts = [], loanDetails }: DocumentProgressProps) {
+  const [showChecklist, setShowChecklist] = useState(false);
+
   // Helper function to find contact by role
   const findContactByRole = (role: string) => {
     return contacts.find(contact => 
@@ -57,7 +63,10 @@ export default function DocumentProgress({ documents, requiredDocuments, contact
             Current progress of required documents
           </p>
         </div>
-        <button className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center">
+        <button 
+          onClick={() => setShowChecklist(true)}
+          className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center"
+        >
           View full checklist
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -211,6 +220,18 @@ export default function DocumentProgress({ documents, requiredDocuments, contact
           </div>
         </div>
       </div>
+
+      {/* Document Checklist Modal */}
+      <Dialog open={showChecklist} onOpenChange={setShowChecklist}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Complete Document Checklist</DialogTitle>
+          </DialogHeader>
+          <DocumentChecklist 
+            loanDetails={loanDetails || { lender: { name: "AHL" } }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

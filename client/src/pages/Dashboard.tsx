@@ -209,6 +209,7 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
                 documents={documents || []}
                 requiredDocuments={getLenderSpecificRequirements(lender?.name || "AHL")}
                 contacts={contacts || []}
+                loanDetails={{ ...loan, lender, property }}
               />
 
               {/* Contact List */}
