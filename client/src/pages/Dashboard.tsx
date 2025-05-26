@@ -8,6 +8,7 @@ import AIAssistant from "@/components/AIAssistant";
 import TaskList from "@/components/TaskList";
 import DocumentManager from "@/components/DocumentManager";
 import NewLoanDialog from "@/components/NewLoanDialog";
+import { getDocumentRequirements } from "@/components/DocumentChecklist";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -85,54 +86,34 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
     }
   }, [loans, activeLoanId]);
   
-  // Define document categories and requirements - Kiavi-specific
-  const documentRequirements = {
-    borrower: [
-      "Driver's License (front/back)", 
-      "EIN Letter from IRS", 
-      "Articles of Organization", 
-      "Operating Agreement", 
-      "Certificate of Good Standing",
-      "Voided Check or ACH Form"
-    ],
-    property: [
-      "HUD Settlement Statement", 
-      "Deed (proof of ownership)",
-      "Current Lease Agreements", 
-      "Rent Roll",
-      "Property Photos"
-    ],
-    title: [
-      "Preliminary Title Report", 
-      "Title Agent Contact Information",
-      "Closing Protection Letter",
-      "Wire Instructions",
-      "Title Requirements Sheet"
-    ],
-    insurance: [
-      "Hazard Insurance Policy", 
-      "Insurance Declaration Page", 
-      "Insurance Agent Contact Information",
-      "Flood Certificate", 
-      "Flood Insurance (if required)"
-    ],
-    payoff: [
-      "Payoff Letter from Existing Lender",
-      "Existing Lender Contact Information",
-      "Free and Clear Statement (if applicable)"
-    ],
-    banking: [
-      "2 Recent Bank Statements",
-      "Voided Check", 
-      "ACH Authorization Form"
-    ],
-    kiavi: [
-      "Kiavi Portal Access",
-      "Kiavi Loan Application", 
-      "Kiavi Insurance Requirements Template",
-      "Kiavi Title Requirements Template",
-      "Kiavi Loan Terms Acknowledgement"
-    ]
+  // Get lender-specific document requirements
+  const getLenderSpecificRequirements = (lenderName: string) => {
+    const requirements = getDocumentRequirements(lenderName);
+    
+    // Group requirements by category for DocumentManager format
+    const grouped = {
+      borrower: [],
+      property: [],
+      title: [],
+      insurance: []
+    };
+    
+    requirements.forEach(req => {
+      if (req.category === "borrower_entity" || req.category === "financials") {
+        grouped.borrower.push(req.name);
+      } else if (req.category === "property" || req.category === "appraisal") {
+        grouped.property.push(req.name);
+      } else if (req.category === "title") {
+        grouped.title.push(req.name);
+      } else if (req.category === "insurance") {
+        grouped.insurance.push(req.name);
+      } else if (req.category === "lender_specific") {
+        // Add lender-specific docs to borrower category for simplicity
+        grouped.borrower.push(req.name);
+      }
+    });
+    
+    return grouped;
   };
   
   if (isLoadingLoans) {

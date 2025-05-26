@@ -80,28 +80,35 @@ const getDocumentRequirements = (funder: string): DocumentRequirement[] => {
     case 'kiavi':
       return [
         ...baseRequirements,
-        { id: "kiavi_auth_form", name: "Signed/Completed Borrowing Authorization Form", required: true, category: "lender_specific", funderSpecific: true },
-        { id: "kiavi_disclosure", name: "Signed/Completed Disclosure Form", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "kiavi_auth_form", name: "Kiavi Borrowing Authorization Form", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "kiavi_disclosure", name: "Kiavi Disclosure Form", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "kiavi_liquidity", name: "Proof of Liquidity/Down Payment", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "kiavi_reserves", name: "Proof of Reserves (6 months PITI)", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "kiavi_background", name: "Kiavi Background Check Authorization", required: true, category: "lender_specific", funderSpecific: true },
       ];
 
     case 'visio':
       return [
         ...baseRequirements,
-        { id: "vfs_application", name: "VFS Loan Application", required: true, category: "lender_specific", funderSpecific: true },
-        { id: "broker_submission", name: "Broker Submission Form", required: true, category: "lender_specific", funderSpecific: true },
-        { id: "broker_w9", name: "Broker W9", required: true, category: "lender_specific", funderSpecific: true },
-        { id: "plaid_liquidity", name: "Proof of Liquidity (via Plaid)", required: true, category: "lender_specific", funderSpecific: true },
-        { id: "rent_collection_proof", name: "Proof of Rent Collection Deposits", required: false, category: "lender_specific", funderSpecific: true, description: "Required if lease rents > market rents" },
+        { id: "visio_application", name: "Visio Financial Services Loan Application", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "visio_broker_submission", name: "Broker Submission Form", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "visio_broker_w9", name: "Broker W9 Form", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "visio_plaid_liquidity", name: "Proof of Liquidity via Plaid Connection", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "visio_borrower_statement", name: "Borrower Statement of Business Purpose", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "visio_rent_collection", name: "Proof of Rent Collection Deposits", required: false, category: "lender_specific", funderSpecific: true, description: "Required if lease rents exceed market rents" },
+        { id: "visio_asset_verification", name: "Asset Verification Documentation", required: true, category: "lender_specific", funderSpecific: true },
       ];
 
     case 'roc_capital':
       return [
         ...baseRequirements,
-        { id: "roc_background", name: "Completed Roc Capital Background/Credit Link", required: true, category: "lender_specific", funderSpecific: true },
-        { id: "ach_consent", name: "ACH Consent Form", required: true, category: "lender_specific", funderSpecific: true },
-        { id: "property_tax_doc", name: "Property Tax Document", required: true, category: "lender_specific", funderSpecific: true },
-        { id: "rent_collection_3mo", name: "Proof of 3 Months Rent Collection", required: false, category: "lender_specific", funderSpecific: true, description: "For all units" },
-        { id: "security_deposit_proof", name: "Proof of Receipt of Security Deposit", required: false, category: "lender_specific", funderSpecific: true, description: "New Leases < 30 days" },
+        { id: "roc_background", name: "ROC Capital Background/Credit Authorization", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "roc_ach_consent", name: "ROC ACH Consent Form", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "roc_property_tax", name: "Current Property Tax Bill", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "roc_liquidity", name: "Proof of Liquidity and Down Payment", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "roc_business_purpose", name: "ROC Business Purpose Statement", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "roc_rent_collection", name: "3 Months Rent Collection History", required: false, category: "lender_specific", funderSpecific: true, description: "Required for all rental units" },
+        { id: "roc_security_deposits", name: "Security Deposit Documentation", required: false, category: "lender_specific", funderSpecific: true, description: "Required for new leases under 30 days" },
       ];
 
     case 'ahl':
