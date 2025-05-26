@@ -43,29 +43,35 @@ const emailTemplates = [
   {
     id: 1,
     category: "borrower",
-    title: "Initial Loan Application",
-    subject: "Your DSCR Loan Application - Next Steps",
-    body: `Dear {BORROWER_NAME},
+    title: "Kiavi Initial Required Items",
+    subject: "{PROPERTY_ADDRESS} (Loan #{LOAN_NUMBER}) - Required Items",
+    body: `Hi {BORROWER_NAME},
 
-Thank you for choosing us for your DSCR loan needs. I'm {PROCESSOR_NAME}, your dedicated loan processor, and I'll be assisting you throughout the entire process.
+Please sign/date the attached borrowing authorization form and disclosure form, and please return them to me as soon as possible to get the file into processing.
 
-To begin processing your loan application, I'll need the following documents:
+Afterwards, please share or upload the following documents/information to the secure portal below at your earliest convenience.
 
-1. Driver's License (front and back)
-2. Articles of Organization
-3. Operating Agreement
-4. EIN Letter from IRS
-5. Recent bank statements (2 months)
-6. Current lease agreements for the property
+{SECURE_PORTAL_LINK}
 
-You can securely upload these documents by replying to this email or using our secure portal.
+HUD (or Deed to show property ownership)
+2 recent bank statements
+Voided Check
+All Current Leases 
+Insurance Certificate and Proof of Premium Payment
+Insurance Agent Info (Name, Email, Phone)
+Title/Closing Agent Info (Name, Email, Phone)
+Payoff Letter from Existing Lenders (or if owned free and clear please specify here)
+Existing Lender Contact Info (Name, Email, Phone)
+LLC Docs:
+Articles of Organization
+Operating Agreement
+Certificate of Good Standing
+EIN Letter
 
-If you have any questions, please don't hesitate to contact me directly at {PROCESSOR_PHONE}.
+Please let me know if you have any questions or would like to discuss any of the above items.
 
-Best regards,
-{PROCESSOR_NAME}
-Loan Processor
-{COMPANY_NAME}`,
+Thanks,
+{PROCESSOR_NAME}`,
   },
   {
     id: 2,
@@ -123,35 +129,51 @@ Loan Processor
   {
     id: 4,
     category: "insurance",
-    title: "Insurance Requirements",
-    subject: "Insurance Requirements for {PROPERTY_ADDRESS}",
-    body: `Dear {INSURANCE_AGENT_NAME},
+    title: "Kiavi Insurance Requirements",
+    subject: "{PROPERTY_ADDRESS} (Loan #{LOAN_NUMBER}) – Insurance Requirements",
+    body: `Hi {INSURANCE_AGENT_NAME},
 
-I'm reaching out regarding the insurance requirements for a DSCR loan on the following property:
+I'm working on originating a loan for my borrower, {BORROWER_NAME}, who is {LOAN_PURPOSE} the property located at {PROPERTY_ADDRESS}. The policyholder must be listed as "{BORROWER_ENTITY_NAME}".
 
-Property Address: {PROPERTY_ADDRESS}
-Borrower/Insured: {BORROWER_NAME}
-Loan Amount: {LOAN_AMOUNT}
-Property Type: {PROPERTY_TYPE}
+Attached below you will find the Insurance requirements for this transaction.
 
-Our lender requires the following coverage:
-1. Hazard Insurance with minimum coverage of {LOAN_AMOUNT}
-2. Flood Insurance (if in flood zone)
-3. Liability coverage of at least $1,000,000
-4. Loss of Rents coverage
-5. Named Insured must match the vesting exactly as: {BORROWER_ENTITY_NAME}
+Attached is a document outlining the insurance requirements for this transaction.
 
-The lender should be listed as Mortgagee as follows:
-{LENDER_NAME}
-{LENDER_ADDRESS}
-Loan #: {LOAN_NUMBER}
+Below is a summary of the lender's requirements and instructions for approval. Please review carefully and respond accordingly to help avoid delays or follow-up revision requests.
 
-Please provide a quote and insurance binder at your earliest convenience. The closing is scheduled for {CLOSING_DATE}.
+______________________________________________________________________
 
-Thank you,
-{PROCESSOR_NAME}
-Loan Processor
-{COMPANY_NAME}`,
+REQUIRED COVERAGES
+
+Provide a Bound Evidence of Insurance (EOI) or Binder – quotes are not accepted
+
+Dwelling Coverage: Must be listed with a dollar amount
+
+Coverage must be equal to or greater than the loan amount — OR — provide a Replacement Cost Estimate (If you cannot provide this, confirm that the existing amount represents 100% of the replacement cost and also state that you are unable to provide it)
+
+Named Storm/Hurricane (Florida only): Must be explicitly named on policy (Deductible must also be listed and not exceed 10% of coverage)
+
+Loss of Rent: Must be listed with a dollar amount (If not labeled as "Loss of Rent," attach the full document outlining coverages)
+
+List the Annual Premium on the policy — or confirm it in your reply
+
+Confirm on that policy AND via email that Wind and Fire are included in the policy
+
+Confirm via email whether the premium is paid in full or what balance is due
+
+Policy must include the Mortgagee Clause exactly as shown:
+
+Shellpoint Mortgage Servicing ISAOA ATIMA
+P.O. Box 7050, Troy, MI 48007-7050
+
+Include the Loan Number on the policy
+
+List the Borrower Name as the named insured exactly as legally spelled
+
+______________________________________________________________________
+
+Thanks,
+{PROCESSOR_NAME}`,
   },
   {
     id: 5,
