@@ -10,6 +10,8 @@ import session from "express-session";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import MemoryStore from "memorystore";
+import multer from "multer";
+import path from "path";
 
 const SessionStore = MemoryStore(session);
 
