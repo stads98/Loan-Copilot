@@ -35,8 +35,6 @@ const templateCategories = [
   { id: "title", name: "Title Agent" },
   { id: "insurance", name: "Insurance" },
   { id: "lender", name: "Existing Lender" },
-  { id: "closing", name: "Closing" },
-  { id: "status", name: "Status Update" },
 ];
 
 // Pre-defined email templates
@@ -227,67 +225,79 @@ Thanks,
 {PROCESSOR_NAME}`,
   },
   {
-    id: 5,
-    category: "closing",
-    title: "Closing Confirmation",
-    subject: "Closing Confirmation - {PROPERTY_ADDRESS}",
-    body: `Dear {BORROWER_NAME},
+    id: 6,
+    category: "title",
+    title: "Title Follow-up",
+    subject: "FOLLOW-UP: {PROPERTY_ADDRESS} (Loan #{LOAN_NUMBER}) - Title Order",
+    body: `Hi {TITLE_AGENT_NAME},
 
-I'm pleased to inform you that your DSCR loan for {PROPERTY_ADDRESS} has been approved and is cleared to close!
+I wanted to follow up on the title order request I sent for {PROPERTY_ADDRESS} (Loan #{LOAN_NUMBER}).
 
-Closing Details:
-Date: {CLOSING_DATE}
-Time: {CLOSING_TIME}
-Location: {CLOSING_LOCATION}
+We're working toward a target closing date of {TARGET_CLOSING_DATE}, so I wanted to check on the status of the following items:
 
-Please bring the following to closing:
-1. Government-issued photo ID
-2. Cashier's check for closing costs in the amount of: {CLOSING_COSTS}
-   (made payable to: {TITLE_COMPANY})
-3. Evidence of insurance
-4. Any other documents requested by the title company
+- Preliminary title report
+- 24-month chain of title
+- Estimated HUD-1
+- Closing Protection Letter
+- Wire instructions
 
-Let me know if you have any questions before the closing date. I'm here to ensure everything goes smoothly.
+Please let me know if you need any additional information from our end to expedite the process.
 
-Congratulations on your upcoming loan closing!
+Thanks for your assistance!
 
 Best regards,
-{PROCESSOR_NAME}
-Loan Processor
-{COMPANY_NAME}`,
+{PROCESSOR_NAME}`,
   },
   {
-    id: 6,
-    category: "status",
-    title: "Weekly Status Update",
-    subject: "Status Update - {PROPERTY_ADDRESS} Loan",
-    body: `Dear {BORROWER_NAME},
+    id: 7,
+    category: "insurance",
+    title: "Insurance Follow-up",
+    subject: "FOLLOW-UP: {PROPERTY_ADDRESS} (Loan #{LOAN_NUMBER}) - Insurance Requirements",
+    body: `Hi {INSURANCE_AGENT_NAME},
 
-I wanted to provide you with a weekly update on the status of your DSCR loan for {PROPERTY_ADDRESS}.
+I wanted to follow up on the insurance requirements I sent for {PROPERTY_ADDRESS} (Loan #{LOAN_NUMBER}).
 
-Current Status: {LOAN_STATUS}
+We're working toward a target closing date of {TARGET_CLOSING_DATE}, so I wanted to check on the status of the insurance binder.
 
-Completed Items:
-{COMPLETED_ITEMS}
+As a reminder, we still need:
+- Bound Evidence of Insurance (EOI) or Binder
+- Dwelling coverage equal to or greater than loan amount
+- Loss of Rent coverage with dollar amount
+- Mortgagee clause: Shellpoint Mortgage Servicing ISAOA ATIMA
+- Confirmation that Wind and Fire are included
+- Premium payment status
 
-Pending Items:
-{PENDING_ITEMS}
+Please let me know if you have any questions or need additional information.
 
-Next Steps:
-{NEXT_STEPS}
-
-Expected Timeline:
-- Underwriting Review: {UNDERWRITING_DATE}
-- Conditional Approval: {APPROVAL_DATE}
-- Clear to Close: {CLEAR_TO_CLOSE_DATE}
-- Closing: {CLOSING_DATE}
-
-Please let me know if you have any questions or concerns.
+Thanks for your help!
 
 Best regards,
-{PROCESSOR_NAME}
-Loan Processor
-{COMPANY_NAME}`,
+{PROCESSOR_NAME}`,
+  },
+  {
+    id: 8,
+    category: "lender",
+    title: "Payoff Follow-up",
+    subject: "FOLLOW-UP: {PROPERTY_ADDRESS} (Loan #{LOAN_NUMBER}) - Payoff Request",
+    body: `Hi {EXISTING_LENDER_NAME},
+
+I wanted to follow up on the payoff letter request I sent for the existing loan on {PROPERTY_ADDRESS} (Loan #{LOAN_NUMBER}).
+
+We're working toward a target closing date of {TARGET_CLOSING_DATE}, so I wanted to check on the status of the payoff statement.
+
+As a reminder, we need:
+- Current outstanding balance
+- Per diem interest amount
+- Payoff amount good through {REQUESTED_PAYOFF_DATE}
+- Wiring instructions for final payment
+- Any additional fees required for loan payoff
+
+Please let me know if you need any additional information to process this request.
+
+Thanks for your assistance!
+
+Best regards,
+{PROCESSOR_NAME}`,
   },
 ];
 
