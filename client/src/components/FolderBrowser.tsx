@@ -29,7 +29,7 @@ interface FolderBrowserProps {
 }
 
 export default function FolderBrowser({ open, onOpenChange, onSelectFolder, currentLoanAddress }: FolderBrowserProps) {
-  const [currentFolderId, setCurrentFolderId] = useState("1j57ZmNZQaTIAKIFLkNWDPyccUENfuXsS"); // Your main folder
+  const [currentFolderId, setCurrentFolderId] = useState("1hqWhYyq9XzTg_LRfQCuNcNwwb2lX82qY"); // Your actual loan files folder
   const [currentPath, setCurrentPath] = useState(["All Loan Files"]);
   const [items, setItems] = useState<FolderItem[]>([]);
   const [loading, setLoading] = useState(false);
