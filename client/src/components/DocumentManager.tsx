@@ -52,20 +52,45 @@ export default function DocumentManager({ documents, loanId, requiredDocuments }
     }
   });
   
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   const onSubmit = async (data: z.infer<typeof documentSchema>) => {
     try {
-      await apiRequest("POST", `/api/loans/${loanId}/documents`, data);
+      if (!selectedFile) {
+        toast({
+          title: "Error",
+          description: "Please select a file to upload.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('name', data.name);
+      formData.append('category', data.category);
+
+      const response = await fetch(`/api/loans/${loanId}/documents`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
       queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
       setIsAddDocumentOpen(false);
+      setSelectedFile(null);
       form.reset();
       toast({
-        title: "Document added",
-        description: "The document has been added successfully."
+        title: "Document uploaded",
+        description: "Your document has been uploaded and saved successfully."
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to add document. Please try again.",
+        description: "Failed to upload document. Please try again.",
         variant: "destructive"
       });
     }
@@ -426,6 +451,7 @@ export default function DocumentManager({ documents, loanId, requiredDocuments }
                           onChange={(e) => {
                             if (e.target.files && e.target.files[0]) {
                               const file = e.target.files[0];
+                              setSelectedFile(file);
                               form.setValue("name", file.name);
                               form.setValue("fileSize", file.size);
                               form.setValue("fileType", file.type.split('/')[1]);

@@ -417,17 +417,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/loans/:loanId/documents", isAuthenticated, async (req, res) => {
+  // Configure multer for file uploads
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only PDF, DOC, DOCX, and image files are allowed.'));
+      }
+    }
+  });
+
+  app.post("/api/loans/:loanId/documents", isAuthenticated, upload.single('file'), async (req, res) => {
     try {
       const loanId = parseInt(req.params.loanId);
       if (isNaN(loanId)) {
         return res.status(400).json({ message: "Invalid loan ID" });
       }
 
-      const documentData = insertDocumentSchema.parse({
-        ...req.body,
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const { name, category } = req.body;
+      
+      const documentData = {
+        name: name || req.file.originalname,
+        fileId: `upload_${Date.now()}_${req.file.originalname}`,
+        fileType: req.file.mimetype.split('/')[1],
+        fileSize: req.file.size,
+        category: category || 'other',
         loanId
-      });
+      };
 
       const document = await storage.createDocument(documentData);
       res.status(201).json(document);
@@ -435,7 +459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid document data", errors: error.errors });
       }
-      res.status(500).json({ message: "Error creating document" });
+      res.status(500).json({ message: "Error uploading document" });
     }
   });
 
