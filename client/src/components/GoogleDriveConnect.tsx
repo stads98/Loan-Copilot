@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import FolderBrowser from "./FolderBrowser";
 
 interface GoogleDriveConnectProps {
   loanId: number;
@@ -14,31 +15,18 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
-  const handleConnectDrive = async () => {
-    setIsLoading(true);
-    
-    try {
-      // In a real app, this would redirect to Google OAuth
-      window.open('/api/auth/google', '_blank', 'width=600,height=600');
-      onConnect();
-      
-      // After successful authentication, update the loan with the Drive folder info
-      // This is simulated here, in a real app it would happen after OAuth callback
-      setTimeout(() => {
-        toast({
-          title: "Google Drive Connected",
-          description: "Successfully connected to Google Drive."
-        });
-        setIsLoading(false);
-      }, 1000);
-    } catch (error) {
-      toast({
-        title: "Connection Failed",
-        description: "Failed to connect to Google Drive. Please try again.",
-        variant: "destructive"
-      });
-      setIsLoading(false);
-    }
+  const [showFolderBrowser, setShowFolderBrowser] = useState(false);
+
+  const handleConnectDrive = () => {
+    setShowFolderBrowser(true);
+  };
+
+  const handleFolderSelected = (folderId: string, folderName: string) => {
+    onConnect();
+    toast({
+      title: "Google Drive Connected",
+      description: `Successfully connected to: ${folderName}`
+    });
   };
   
   return (
@@ -104,7 +92,7 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
                 </p>
               </div>
               <div className="ml-auto">
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => setShowFolderBrowser(true)}>
                   Change Folder
                 </Button>
               </div>
@@ -112,6 +100,13 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
           </div>
         )}
       </div>
+      
+      <FolderBrowser 
+        open={showFolderBrowser}
+        onOpenChange={setShowFolderBrowser}
+        onSelectFolder={handleFolderSelected}
+        currentLoanAddress="Your loan address here"
+      />
     </div>
   );
 }
