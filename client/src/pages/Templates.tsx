@@ -34,6 +34,7 @@ const templateCategories = [
   { id: "borrower", name: "Borrower" },
   { id: "title", name: "Title Agent" },
   { id: "insurance", name: "Insurance" },
+  { id: "lender", name: "Existing Lender" },
   { id: "closing", name: "Closing" },
   { id: "status", name: "Status Update" },
 ];
@@ -100,34 +101,84 @@ Loan Processor
   {
     id: 3,
     category: "title",
-    title: "Title Request",
-    subject: "Title Order Request - {PROPERTY_ADDRESS}",
-    body: `Dear {TITLE_AGENT_NAME},
+    title: "Kiavi Title Order Request",
+    subject: "{PROPERTY_ADDRESS} (Loan #{LOAN_NUMBER}) - Title Order Request",
+    body: `Hi {TITLE_AGENT_NAME},
 
-I would like to request a title search and preliminary title report for the following property:
+I am working on originating a loan for my borrower, {BORROWER_NAME}, who is {LOAN_PURPOSE} the property located at {PROPERTY_ADDRESS}. The title for this transaction is under the entity "{BORROWER_ENTITY_NAME}". Please process the title order in line with the attached instructions. 
 
-Property Address: {PROPERTY_ADDRESS}
-Borrower Name: {BORROWER_NAME}
-Loan Amount: {LOAN_AMOUNT}
-Expected Closing Date: {CLOSING_DATE}
+Please confirm Receipt of this email.
 
-Please provide the following:
-1. Preliminary title report
-2. Copies of all exceptions
-3. Current property tax information
-4. Any HOA information if applicable
+If you need further clarification or additional details, don't hesitate to reach me directly here or on my cell at (917) 963-0181.
 
-Our lender also requires a closing protection letter and wire instructions for closing.
-
-Please let me know if you need any additional information from our end.
+I appreciate your help and look forward to working with you.
 
 Best regards,
 {PROCESSOR_NAME}
-Loan Processor
-{COMPANY_NAME}`,
+
+ATTACHED: Kiavi Title Requirements Document
+
+------------- KEY REQUIREMENTS SUMMARY -------------
+
+Please provide the following documents:
+
+1. Preliminary title report or title commitment (must include coverage amount)
+2. A 24-month chain of title, including deeds
+3. Property address and APN referenced in report
+4. Vested owner matches seller on the purchase contract
+5. Estimated HUD-1 that includes all fees for this transaction
+6. Closing Protection Letter
+7. Tax Certificate
+8. Contact information for closing documents
+9. Wire instructions
+10. Confirm property type and if there is an HOA associated with the property
+11. Title Endorsements: Environmental endorsement, ALTA 9 (except FL, OH, TX), PUD/condo endorsements if applicable, ALTA 19 & 20 for multiple parcels
+
+LOAN INFORMATION:
+Loan Number: {LOAN_NUMBER}
+Loan Amount: {LOAN_AMOUNT}
+Borrower: {BORROWER_ENTITY_NAME}
+Property Address: {PROPERTY_ADDRESS}
+Target Signing Date: {TARGET_CLOSING_DATE}
+Loan Purpose: {LOAN_PURPOSE}
+
+Loss Payee / Proposed Insured:
+Kiavi Funding, Inc
+Its Successors and/or Assigns
+2 Allegheny Center, Nova Tower 2, Suite 200
+Pittsburgh, PA 15212
+RE: Loan no: {LOAN_NUMBER}
+
+Title policy must insure Kiavi in 1st lien position. ALTA standard form title policy required (2016, 2021, or Short Form acceptable).`,
   },
   {
     id: 4,
+    category: "lender",
+    title: "Existing Lender Payoff Request",
+    subject: "{PROPERTY_ADDRESS} (Loan #{LOAN_NUMBER}) - Payoff Request",
+    body: `Hi {EXISTING_LENDER_NAME},
+
+I am working on originating a loan for my borrower, {BORROWER_NAME}, who is {LOAN_PURPOSE} the property located at {PROPERTY_ADDRESS}. The title for this transaction is under the entity "{BORROWER_ENTITY_NAME}".
+
+To proceed, we need a payoff letter for the existing loan (#{EXISTING_LOAN_NUMBER}). Please provide a written payoff statement that includes the following details:
+
+Current outstanding balance
+Per diem interest amount
+Payoff amount good through {REQUESTED_PAYOFF_DATE}
+Wiring instructions for final payment
+Any additional fees required for loan payoff
+
+If a borrower authorization form is required, please let me know, and I will provide it promptly.
+
+Please confirm receipt of this request, and let me know if you need any additional information to process it efficiently.
+
+Thanks for your help. I look forward to working with you.
+
+Best regards,
+{PROCESSOR_NAME}`,
+  },
+  {
+    id: 5,
     category: "insurance",
     title: "Kiavi Insurance Requirements",
     subject: "{PROPERTY_ADDRESS} (Loan #{LOAN_NUMBER}) – Insurance Requirements",
