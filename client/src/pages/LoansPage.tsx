@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loan } from "@/lib/types";
 import { apiRequest } from "@/lib/queryClient";
 import NewLoanDialog from "@/components/NewLoanDialog";
+import { format } from "date-fns";
 
 interface LoansPageProps {
   user: any;

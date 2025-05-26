@@ -9,6 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { z } from "zod";
 import { Loader2, FileText, Image, File, Download, Trash2, Eye } from "lucide-react";
 
 interface DocumentManagerProps {
