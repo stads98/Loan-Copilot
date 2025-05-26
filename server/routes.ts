@@ -92,26 +92,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Google OAuth routes
   app.get("/api/auth/google", (req, res) => {
-    const { google } = require('googleapis');
-    const OAuth2 = google.auth.OAuth2;
-    
-    const oauth2Client = new OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      'https://loanpilot.stads98.repl.co/api/auth/google/callback'
-    );
+    try {
+      const { google } = require('googleapis');
+      const OAuth2 = google.auth.OAuth2;
+      
+      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+        return res.status(500).json({ error: 'Google credentials not configured' });
+      }
+      
+      const oauth2Client = new OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        'https://loanpilot.stads98.repl.co/api/auth/google/callback'
+      );
 
-    const scopes = [
-      'https://www.googleapis.com/auth/drive.readonly'
-    ];
+      const scopes = [
+        'https://www.googleapis.com/auth/drive.readonly'
+      ];
 
-    const authUrl = oauth2Client.generateAuthUrl({
-      access_type: 'offline',
-      scope: scopes,
-      prompt: 'consent'
-    });
+      const authUrl = oauth2Client.generateAuthUrl({
+        access_type: 'offline',
+        scope: scopes,
+        prompt: 'consent'
+      });
 
-    res.redirect(authUrl);
+      console.log('Redirecting to Google OAuth URL:', authUrl);
+      res.redirect(authUrl);
+    } catch (error) {
+      console.error('Google OAuth setup error:', error);
+      res.status(500).json({ error: 'Failed to setup Google authentication' });
+    }
   });
 
   app.get("/api/auth/google/callback", async (req, res) => {
