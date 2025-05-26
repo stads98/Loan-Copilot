@@ -54,21 +54,20 @@ const baseRequirements: DocumentRequirement[] = [
 // Kiavi-specific requirements
 const kiaviRequirements: DocumentRequirement[] = [
   ...baseRequirements,
-  { id: "kiavi_auth_form", name: "Kiavi Borrowing Authorization Form", required: true, category: "lender_specific", funderSpecific: true },
-  { id: "kiavi_disclosure", name: "Kiavi Disclosure Form", required: true, category: "lender_specific", funderSpecific: true },
+  { id: "kiavi_auth_form", name: "Kiavi Borrowing Authorization Form (from Kiavi Portal)", required: true, category: "lender_specific", funderSpecific: true },
+  { id: "kiavi_disclosure", name: "Kiavi Disclosure Form (from Kiavi Portal)", required: true, category: "lender_specific", funderSpecific: true },
   { id: "kiavi_liquidity", name: "Proof of Liquidity/Down Payment", required: true, category: "lender_specific", funderSpecific: true },
   { id: "kiavi_reserves", name: "Proof of Reserves (6 months PITI)", required: true, category: "lender_specific", funderSpecific: true },
-  { id: "kiavi_background", name: "Kiavi Background Check Authorization", required: true, category: "lender_specific", funderSpecific: true },
+  { id: "kiavi_background", name: "Kiavi Background Check Authorization (from Kiavi Portal)", required: true, category: "lender_specific", funderSpecific: true },
 ];
 
 // Visio-specific requirements
 const visioRequirements: DocumentRequirement[] = [
   ...baseRequirements,
-  { id: "visio_application", name: "Visio Financial Services Loan Application", required: true, category: "lender_specific", funderSpecific: true },
-  { id: "visio_broker_submission", name: "Broker Submission Form", required: true, category: "lender_specific", funderSpecific: true },
-  { id: "visio_broker_w9", name: "Broker W9 Form", required: true, category: "lender_specific", funderSpecific: true },
-  { id: "visio_plaid_liquidity", name: "Proof of Liquidity via Plaid Connection", required: true, category: "lender_specific", funderSpecific: true },
-  { id: "visio_borrower_statement", name: "Borrower Statement of Business Purpose", required: true, category: "lender_specific", funderSpecific: true },
+  { id: "visio_application", name: "Visio Financial Services Loan Application (from Visio Portal)", required: true, category: "lender_specific", funderSpecific: true },
+  { id: "visio_broker_submission", name: "Broker Submission Form (from Visio Portal)", required: true, category: "lender_specific", funderSpecific: true },
+  { id: "visio_broker_w9", name: "Broker W9 Form (from Visio Portal)", required: true, category: "lender_specific", funderSpecific: true },
+  { id: "visio_plaid_liquidity", name: "Proof of Liquidity via Plaid Connection (from loan analysis email)", required: true, category: "lender_specific", funderSpecific: true },
   { id: "visio_rent_collection", name: "Proof of Rent Collection Deposits", required: false, category: "lender_specific", funderSpecific: true, description: "Required if lease rents exceed market rents" },
   { id: "visio_asset_verification", name: "Asset Verification Documentation", required: true, category: "lender_specific", funderSpecific: true },
 ];
