@@ -98,7 +98,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const oauth2Client = new OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      `${req.protocol}://${req.get('host')}/api/auth/google/callback`
+      'https://loanpilot.stads98.repl.co/api/auth/google/callback'
     );
 
     const scopes = [
