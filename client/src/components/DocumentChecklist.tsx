@@ -244,9 +244,31 @@ export default function DocumentChecklist({ loanDetails, onDocumentToggle }: Doc
                           )}
                         </div>
                       </div>
-                      {isCompleted && (
-                        <CheckCircle className="w-5 h-5 text-green-500 mt-0.5" />
-                      )}
+                      <div className="flex items-center gap-2 ml-auto">
+                        {!isCompleted && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleUploadClick(doc)}
+                            className="text-xs px-2 py-1 h-7"
+                          >
+                            <Upload className="w-3 h-3 mr-1" />
+                            Upload
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant={isCompleted ? "secondary" : "default"}
+                          onClick={() => handleSaveProgress(doc.id, !isCompleted)}
+                          className="text-xs px-2 py-1 h-7"
+                        >
+                          <Save className="w-3 h-3 mr-1" />
+                          {isCompleted ? 'Saved' : 'Save'}
+                        </Button>
+                        {isCompleted && (
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                        )}
+                      </div>
                     </div>
                   );
                 })}
