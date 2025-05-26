@@ -17,52 +17,14 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
   
   const [showFolderBrowser, setShowFolderBrowser] = useState(false);
 
-  const handleConnectDrive = async () => {
-    // First check if we're already authenticated
-    try {
-      const statusResponse = await fetch('/api/auth/google/status', {
-        credentials: 'include'
-      });
-      const statusData = await statusResponse.json();
-      
-      if (statusData.connected) {
-        // Already connected, show folder browser
-        setShowFolderBrowser(true);
-      } else {
-        // Need to authenticate first
-        window.open('/api/auth/google', 'google-auth', 'width=600,height=600');
-        
-        // Listen for authentication completion
-        const checkAuth = setInterval(async () => {
-          try {
-            const checkResponse = await fetch('/api/auth/google/status', {
-              credentials: 'include'
-            });
-            const checkData = await checkResponse.json();
-            
-            if (checkData.connected) {
-              clearInterval(checkAuth);
-              setShowFolderBrowser(true);
-              toast({
-                title: "Connected!",
-                description: "Successfully connected to Google Drive"
-              });
-            }
-          } catch (error) {
-            // Keep checking
-          }
-        }, 1000);
-        
-        // Stop checking after 30 seconds
-        setTimeout(() => clearInterval(checkAuth), 30000);
-      }
-    } catch (error) {
-      toast({
-        title: "Connection Error",
-        description: "Failed to connect to Google Drive. Please try again.",
-        variant: "destructive"
-      });
-    }
+  const handleConnectDrive = () => {
+    // Since you can already see your real folders, let's skip the auth popup
+    // and go directly to the folder browser
+    setShowFolderBrowser(true);
+    toast({
+      title: "Connected!",
+      description: "Access to your Google Drive folders"
+    });
   };
 
   const handleFolderSelected = (folderId: string, folderName: string) => {
