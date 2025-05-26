@@ -196,79 +196,204 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
           </div>
         </div>
 
-        {/* Loan Files Container */}
-        {loan && property && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column: Loan Info & Status */}
-            <div className="lg:col-span-1 space-y-6">
-              {/* Loan Property Card */}
-              <LoanPropertyCard 
-                loan={{
-                  ...loan,
-                  lenderName: lender?.name || "Unknown"
-                }} 
-                property={property} 
-              />
-
-              {/* Document Progress */}
-              <DocumentProgress 
-                documents={documents || []}
-                requiredDocuments={getLenderSpecificRequirements(lender?.name || "AHL")}
-                contacts={contacts || []}
-                loanDetails={{ ...loan, lender, property }}
-              />
-
-              {/* Contact List */}
-              <ContactList 
-                contacts={contacts || []}
-                loanId={loan.id}
-              />
+        {/* Dashboard Overview */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column: Priority Tasks Across All Loans */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* High Priority Tasks */}
+            <div className="bg-white rounded-lg shadow-md border-l-4 border-red-500">
+              <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 className="text-lg leading-6 font-heading font-medium text-gray-900 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2 text-red-500">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                  High Priority Tasks (All Loans)
+                  <span className="ml-auto bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                    {allTasks.filter((task: any) => task.priority === 'high' && !task.completed).length}
+                  </span>
+                </h3>
+              </div>
+              <div className="max-h-96 overflow-y-auto">
+                {allTasks
+                  .filter((task: any) => task.priority === 'high' && !task.completed)
+                  .sort((a: any, b: any) => new Date(a.dueDate || '9999-12-31').getTime() - new Date(b.dueDate || '9999-12-31').getTime())
+                  .map((task: any) => {
+                    const loanData = loans?.find((l: any) => l.id === task.loanId);
+                    return (
+                      <div key={task.id} className="px-4 py-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+                           onClick={() => window.location.href = `/loans/${task.loanId}`}>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">{task.description}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Loan: {loanData?.borrowerName} - {loanData?.propertyAddress}
+                            </p>
+                            {task.dueDate && (
+                              <p className="text-xs text-red-600 mt-1">Due: {task.dueDate}</p>
+                            )}
+                          </div>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            High Priority
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                {allTasks.filter((task: any) => task.priority === 'high' && !task.completed).length === 0 && (
+                  <div className="px-4 py-8 text-center">
+                    <div className="text-sm text-gray-500">No high priority tasks</div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Middle Column: AI Guidance & Tasks */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Action Items Section - Moved to top for priority */}
-              <div className="bg-white rounded-lg shadow-md border-l-4 border-amber-500" data-component="task-priority">
-                <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                  <h3 className="text-lg leading-6 font-heading font-medium text-gray-900 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2 text-amber-500">
-                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                      <line x1="12" y1="9" x2="12" y2="13"></line>
-                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                    Priority Action Items
-                  </h3>
-                </div>
-                <div>
-                  <TaskList 
-                    tasks={tasks || []}
-                    loanId={loan.id}
-                  />
-                </div>
+            {/* Upcoming Due Dates */}
+            <div className="bg-white rounded-lg shadow-md border-l-4 border-amber-500">
+              <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 className="text-lg leading-6 font-heading font-medium text-gray-900 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2 text-amber-500">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  Upcoming Due Dates
+                </h3>
               </div>
-
-              {/* Google Drive Connection */}
-              <GoogleDriveConnect 
-                loanId={loan.id}
-                onConnect={() => setIsDriveConnected(true)}
-                isConnected={isDriveConnected}
-              />
-
-              {/* AI Assistant */}
-              <AIAssistant 
-                loanId={loan.id}
-                messages={messages || []}
-              />
-
-              {/* Document Manager */}
-              <DocumentManager 
-                documents={documents || []}
-                loanId={loan.id}
-                requiredDocuments={getLenderSpecificRequirements(lender?.name || "AHL")}
-              />
+              <div className="max-h-96 overflow-y-auto">
+                {loans?.sort((a: any, b: any) => new Date(a.targetCloseDate || '9999-12-31').getTime() - new Date(b.targetCloseDate || '9999-12-31').getTime())
+                  .map((loan: any) => {
+                    const daysUntilDue = loan.targetCloseDate ? 
+                      Math.ceil((new Date(loan.targetCloseDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null;
+                    const isOverdue = daysUntilDue !== null && daysUntilDue < 0;
+                    const isUrgent = daysUntilDue !== null && daysUntilDue <= 7;
+                    
+                    return (
+                      <div key={loan.id} className="px-4 py-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+                           onClick={() => window.location.href = `/loans/${loan.id}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">{loan.borrowerName}</p>
+                            <p className="text-xs text-gray-500">{loan.propertyAddress}</p>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {(() => {
+                                const lenderName = loan.funder;
+                                if (lenderName?.toLowerCase() === 'ahl') return 'American Heritage Lending (AHL)';
+                                if (lenderName?.toLowerCase() === 'visio') return 'Visio Lending';
+                                if (lenderName?.toLowerCase() === 'kiavi') return 'Kiavi Funding';
+                                if (lenderName?.toLowerCase() === 'roc capital' || lenderName?.toLowerCase() === 'roc') return 'Roc Capital 360';
+                                return lenderName;
+                              })()} • ${loan.loanAmount}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-sm font-medium ${isOverdue ? 'text-red-600' : isUrgent ? 'text-amber-600' : 'text-gray-900'}`}>
+                              {loan.targetCloseDate}
+                            </p>
+                            {daysUntilDue !== null && (
+                              <p className={`text-xs ${isOverdue ? 'text-red-600' : isUrgent ? 'text-amber-600' : 'text-gray-500'}`}>
+                                {isOverdue ? `${Math.abs(daysUntilDue)} days overdue` : 
+                                 daysUntilDue === 0 ? 'Due today' :
+                                 `${daysUntilDue} days left`}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-2">
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full ${
+                                (loan.completionPercentage || 0) < 30 ? 'bg-red-500' : 
+                                (loan.completionPercentage || 0) < 70 ? 'bg-yellow-500' : 'bg-green-500'
+                              }`}
+                              style={{ width: `${loan.completionPercentage || 0}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">{loan.completionPercentage || 0}% Complete</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
             </div>
           </div>
-        )}
+
+          {/* Right Column: Quick Actions & Summary */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Portfolio Summary */}
+            <div className="bg-white rounded-lg shadow-md">
+              <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 className="text-lg leading-6 font-heading font-medium text-gray-900">Portfolio Summary</h3>
+              </div>
+              <div className="px-4 py-4">
+                <dl className="space-y-4">
+                  <div className="flex justify-between">
+                    <dt className="text-sm font-medium text-gray-500">Total Loans</dt>
+                    <dd className="text-sm font-semibold text-gray-900">{loans?.length || 0}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-sm font-medium text-gray-500">High Priority Tasks</dt>
+                    <dd className="text-sm font-semibold text-red-600">
+                      {allTasks.filter((task: any) => task.priority === 'high' && !task.completed).length}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-sm font-medium text-gray-500">Due This Week</dt>
+                    <dd className="text-sm font-semibold text-amber-600">
+                      {loans?.filter((loan: any) => {
+                        const daysUntilDue = loan.targetCloseDate ? 
+                          Math.ceil((new Date(loan.targetCloseDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null;
+                        return daysUntilDue !== null && daysUntilDue <= 7 && daysUntilDue >= 0;
+                      }).length || 0}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-sm font-medium text-gray-500">Overdue</dt>
+                    <dd className="text-sm font-semibold text-red-600">
+                      {loans?.filter((loan: any) => {
+                        const daysUntilDue = loan.targetCloseDate ? 
+                          Math.ceil((new Date(loan.targetCloseDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null;
+                        return daysUntilDue !== null && daysUntilDue < 0;
+                      }).length || 0}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="bg-white rounded-lg shadow-md">
+              <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 className="text-lg leading-6 font-heading font-medium text-gray-900">Quick Actions</h3>
+              </div>
+              <div className="px-4 py-4 space-y-3">
+                <NewLoanDialog />
+                <Button 
+                  onClick={() => window.location.href = "/loans"}
+                  variant="outline" 
+                  className="w-full justify-start"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  View All Loans
+                </Button>
+                <Button 
+                  onClick={() => window.location.href = "/templates"}
+                  variant="outline" 
+                  className="w-full justify-start"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Email Templates
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </Layout>
   );
