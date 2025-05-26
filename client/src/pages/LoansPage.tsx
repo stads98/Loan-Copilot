@@ -130,7 +130,12 @@ export default function LoansPage({ user, onLogout }: LoansPageProps) {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Target Close Date:</span>
-                      <span className="font-medium">{loan.targetCloseDate || 'Not specified'}</span>
+                      <span className="font-medium">
+                        {loan.targetCloseDate ? 
+                          format(new Date(loan.targetCloseDate), "MMMM do, yyyy") : 
+                          'Not specified'
+                        }
+                      </span>
                     </div>
                     <div className="mt-4">
                       <div className="flex justify-between items-center mb-1">
