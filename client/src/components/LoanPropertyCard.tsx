@@ -33,7 +33,16 @@ export default function LoanPropertyCard({ loan, property }: LoanPropertyCardPro
         <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
           <div className="col-span-1">
             <dt className="text-xs font-medium text-gray-500">Lender</dt>
-            <dd className="mt-1 text-sm font-medium text-gray-900">{loan.lenderName || loan.funder}</dd>
+            <dd className="mt-1 text-sm font-medium text-gray-900">
+              {(() => {
+                const lenderName = loan.lenderName || loan.funder;
+                if (lenderName?.toLowerCase() === 'ahl') return 'American Heritage Lending (AHL)';
+                if (lenderName?.toLowerCase() === 'visio') return 'Visio Lending';
+                if (lenderName?.toLowerCase() === 'kiavi') return 'Kiavi Funding';
+                if (lenderName?.toLowerCase() === 'roc capital' || lenderName?.toLowerCase() === 'roc') return 'Roc Capital 360';
+                return lenderName;
+              })()}
+            </dd>
           </div>
           <div className="col-span-1">
             <dt className="text-xs font-medium text-gray-500">Loan Amount</dt>
