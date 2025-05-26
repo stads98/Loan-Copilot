@@ -1,83 +1,122 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Upload, FileText, Image, File } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Upload, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { queryClient } from "@/lib/queryClient";
 
 interface SmartDocumentUploadProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   loanId: number;
-  existingDocuments: any[];
-  missingDocuments: string[];
-  onUploadComplete: () => void;
+  onSuccess?: () => void;
 }
 
-export default function SmartDocumentUpload({ 
-  open, 
-  onOpenChange, 
-  loanId, 
-  existingDocuments, 
-  missingDocuments,
-  onUploadComplete 
-}: SmartDocumentUploadProps) {
-  const [step, setStep] = useState(1); // 1: Upload, 2: Categorize
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [linkType, setLinkType] = useState<'missing' | 'existing' | 'new'>('missing');
-  const [selectedMissing, setSelectedMissing] = useState('');
-  const [selectedExisting, setSelectedExisting] = useState('');
-  const [newCategory, setNewCategory] = useState('');
+const documentCategories = [
+  { value: "borrower", label: "Borrower Documents" },
+  { value: "title", label: "Title Documents" },
+  { value: "insurance", label: "Insurance Documents" },
+  { value: "current_lender", label: "Current Lender Documents" },
+  { value: "other", label: "Other Documents" }
+];
+
+const commonDocumentTypes = [
+  "Driver's License",
+  "Articles of Organization",
+  "Operating Agreement",
+  "Bank Statements",
+  "Voided Check",
+  "Property Deed",
+  "Title Report",
+  "Insurance Policy",
+  "Property Tax Bill",
+  "Rent Roll",
+  "Lease Agreement",
+  "Appraisal Report",
+  "Other"
+];
+
+export default function SmartDocumentUpload({ loanId, onSuccess }: SmartDocumentUploadProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [documentTitle, setDocumentTitle] = useState("");
+  const [documentType, setDocumentType] = useState("");
+  const [category, setCategory] = useState("");
+  const [notes, setNotes] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  
   const { toast } = useToast();
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setUploadedFile(file);
-      setStep(2);
+      setSelectedFile(file);
+      // Auto-suggest title based on filename (without extension)
+      const nameWithoutExt = file.name.split('.').slice(0, -1).join('.');
+      setDocumentTitle(nameWithoutExt.replace(/[-_]/g, ' '));
     }
   };
 
-  const handleSubmit = async () => {
-    if (!uploadedFile) return;
+  const handleUpload = async () => {
+    if (!selectedFile || !documentTitle.trim() || !category) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a file, enter a document title, and choose a category.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setIsUploading(true);
     try {
-      // Simulate file upload and categorization
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      let category = '';
-      let action = '';
-      
-      if (linkType === 'missing') {
-        category = selectedMissing;
-        action = `Linked to missing requirement: ${selectedMissing}`;
-      } else if (linkType === 'existing') {
-        category = selectedExisting;
-        action = `Replaced existing document: ${selectedExisting}`;
-      } else {
-        category = newCategory;
-        action = `Added as new document: ${newCategory}`;
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('name', documentTitle.trim());
+      formData.append('category', category);
+      if (documentType && documentType !== 'Other') {
+        formData.append('type', documentType);
+      }
+      if (notes.trim()) {
+        formData.append('notes', notes.trim());
       }
 
-      toast({
-        title: "Document Uploaded Successfully!",
-        description: action,
+      const response = await fetch(`/api/loans/${loanId}/documents`, {
+        method: 'POST',
+        body: formData
       });
 
-      onUploadComplete();
-      onOpenChange(false);
-      resetForm();
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      
+      // Refresh the loan data
+      queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+      
+      toast({
+        title: "Document Uploaded",
+        description: `"${documentTitle}" has been successfully uploaded.`
+      });
+
+      // Reset form
+      setSelectedFile(null);
+      setDocumentTitle("");
+      setDocumentType("");
+      setCategory("");
+      setNotes("");
+      setIsOpen(false);
+      
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
+      console.error('Upload error:', error);
       toast({
         title: "Upload Failed",
-        description: "Please try again.",
+        description: "There was an error uploading your document. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -85,204 +124,153 @@ export default function SmartDocumentUpload({
     }
   };
 
-  const resetForm = () => {
-    setStep(1);
-    setUploadedFile(null);
-    setLinkType('missing');
-    setSelectedMissing('');
-    setSelectedExisting('');
-    setNewCategory('');
+  const getFileIcon = (file: File) => {
+    if (file.type.startsWith('image/')) {
+      return <Image className="w-8 h-8 text-blue-500" />;
+    } else if (file.type === 'application/pdf') {
+      return <FileText className="w-8 h-8 text-red-500" />;
+    } else {
+      return <File className="w-8 h-8 text-gray-500" />;
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(open) => {
-      onOpenChange(open);
-      if (!open) resetForm();
-    }}>
-      <DialogContent className="max-w-2xl">
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="w-full">
+          <Upload className="w-4 h-4 mr-2" />
+          Upload Document
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5" />
-            Smart Document Upload
-          </DialogTitle>
+          <DialogTitle>Upload New Document</DialogTitle>
         </DialogHeader>
-
-        {step === 1 && (
-          <div className="space-y-6">
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-              <FileText className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-              <div className="space-y-2">
-                <Label htmlFor="file-upload" className="text-lg font-medium cursor-pointer">
-                  Choose a document to upload
-                </Label>
-                <p className="text-sm text-gray-500">
-                  PDF, DOC, or image files up to 10MB
-                </p>
-                <Input
-                  id="file-upload"
-                  type="file"
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <Button asChild className="mt-4">
-                  <Label htmlFor="file-upload" className="cursor-pointer">
-                    Select File
-                  </Label>
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {step === 2 && uploadedFile && (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Selected File</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3">
-                  <FileText className="w-8 h-8 text-blue-600" />
-                  <div>
-                    <p className="font-medium">{uploadedFile.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-4">
-              <Label className="text-base font-medium">How should this document be categorized?</Label>
-              
-              <RadioGroup value={linkType} onValueChange={(value: 'missing' | 'existing' | 'new') => setLinkType(value)}>
-                {/* Link to Missing Document */}
-                {missingDocuments.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="missing" id="missing" />
-                      <Label htmlFor="missing" className="flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-orange-500" />
-                        Link to missing requirement
-                      </Label>
-                    </div>
-                    {linkType === 'missing' && (
-                      <Select value={selectedMissing} onValueChange={setSelectedMissing}>
-                        <SelectTrigger className="ml-6">
-                          <SelectValue placeholder="Select missing document" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {missingDocuments.map((doc, index) => (
-                            <SelectItem key={index} value={doc}>
-                              {doc}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                )}
-
-                {/* Replace Existing Document */}
-                {existingDocuments.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="existing" id="existing" />
-                      <Label htmlFor="existing" className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        Replace existing document
-                      </Label>
-                    </div>
-                    {linkType === 'existing' && (
-                      <Select value={selectedExisting} onValueChange={setSelectedExisting}>
-                        <SelectTrigger className="ml-6">
-                          <SelectValue placeholder="Select document to replace" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {existingDocuments.map((doc, index) => (
-                            <SelectItem key={index} value={doc.name}>
-                              {doc.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                )}
-
-                {/* Add as New Document */}
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="new" id="new" />
-                    <Label htmlFor="new" className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-blue-500" />
-                      Add as new document
-                    </Label>
-                  </div>
-                  {linkType === 'new' && (
-                    <div className="ml-6">
-                      <Input
-                        placeholder="Enter document category"
-                        value={newCategory}
-                        onChange={(e) => setNewCategory(e.target.value)}
-                      />
-                    </div>
-                  )}
-                </div>
-              </RadioGroup>
-            </div>
-
-            {/* Summary */}
-            <Card className="bg-blue-50 border-blue-200">
-              <CardContent className="pt-4">
-                <div className="flex items-start gap-3">
-                  <FileText className="w-5 h-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-blue-900">Upload Summary</p>
-                    <p className="text-sm text-blue-700">
-                      {linkType === 'missing' && selectedMissing && `Will fulfill missing requirement: ${selectedMissing}`}
-                      {linkType === 'existing' && selectedExisting && `Will replace: ${selectedExisting}`}
-                      {linkType === 'new' && newCategory && `Will add as: ${newCategory}`}
-                      {!((linkType === 'missing' && selectedMissing) || (linkType === 'existing' && selectedExisting) || (linkType === 'new' && newCategory)) && 
-                        "Please complete the categorization above"}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        <DialogFooter>
-          {step === 1 && (
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-          )}
-          
-          {step === 2 && (
-            <>
-              <Button variant="outline" onClick={() => setStep(1)}>
-                Back
-              </Button>
-              <Button 
-                onClick={handleSubmit}
-                disabled={isUploading || !((linkType === 'missing' && selectedMissing) || (linkType === 'existing' && selectedExisting) || (linkType === 'new' && newCategory))}
+        
+        <div className="space-y-4">
+          {/* File Selection */}
+          <div>
+            <Label htmlFor="file-upload">Select File</Label>
+            <div className="mt-2">
+              <input
+                id="file-upload"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                onClick={() => document.getElementById('file-upload')?.click()}
+                className="w-full h-20 border-dashed border-2 flex flex-col items-center justify-center"
               >
-                {isUploading ? (
+                {selectedFile ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Uploading...
+                    {getFileIcon(selectedFile)}
+                    <span className="text-sm font-medium mt-1">{selectedFile.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {(selectedFile.size / 1024).toFixed(1)} KB
+                    </span>
                   </>
                 ) : (
-                  'Upload Document'
+                  <>
+                    <Upload className="w-8 h-8 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground mt-1">
+                      Click to select a file
+                    </span>
+                  </>
                 )}
               </Button>
-            </>
-          )}
-        </DialogFooter>
+            </div>
+          </div>
+
+          {/* Document Title */}
+          <div>
+            <Label htmlFor="document-title">Document Title *</Label>
+            <Input
+              id="document-title"
+              value={documentTitle}
+              onChange={(e) => setDocumentTitle(e.target.value)}
+              placeholder="e.g., Driver's License - John Smith"
+              className="mt-1"
+            />
+          </div>
+
+          {/* Document Type */}
+          <div>
+            <Label htmlFor="document-type">Document Type</Label>
+            <Select value={documentType} onValueChange={setDocumentType}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select document type (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {commonDocumentTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Category */}
+          <div>
+            <Label htmlFor="category">Category *</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {documentCategories.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <Label htmlFor="notes">Notes (optional)</Label>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any additional notes about this document..."
+              className="mt-1"
+              rows={2}
+            />
+          </div>
+
+          {/* Upload Button */}
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsOpen(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpload}
+              disabled={!selectedFile || !documentTitle.trim() || !category || isUploading}
+              className="flex-1"
+            >
+              {isUploading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-2"></div>
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
