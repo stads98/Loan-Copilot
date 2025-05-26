@@ -92,13 +92,13 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
     
     // Group requirements by category for DocumentManager format
     const grouped = {
-      borrower: [],
-      property: [],
-      title: [],
-      insurance: []
+      borrower: [] as string[],
+      property: [] as string[],
+      title: [] as string[],
+      insurance: [] as string[]
     };
     
-    requirements.forEach(req => {
+    requirements.forEach((req: any) => {
       if (req.category === "borrower_entity" || req.category === "financials") {
         grouped.borrower.push(req.name);
       } else if (req.category === "property" || req.category === "appraisal") {
@@ -207,7 +207,7 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
               {/* Document Progress */}
               <DocumentProgress 
                 documents={documents || []}
-                requiredDocuments={documentRequirements}
+                requiredDocuments={getLenderSpecificRequirements(lender?.name || "AHL")}
               />
 
               {/* Contact List */}
@@ -256,7 +256,7 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
               <DocumentManager 
                 documents={documents || []}
                 loanId={loan.id}
-                requiredDocuments={documentRequirements}
+                requiredDocuments={getLenderSpecificRequirements(lender?.name || "AHL")}
               />
             </div>
           </div>

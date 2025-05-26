@@ -42,7 +42,7 @@ const categoryNames: Record<string, string> = {
 };
 
 // Document requirements by funder
-const getDocumentRequirements = (funder: string): DocumentRequirement[] => {
+export const getDocumentRequirements = (funder: string): DocumentRequirement[] => {
   const baseRequirements: DocumentRequirement[] = [
     // Borrower & Entity Docs
     { id: "drivers_license", name: "Driver's License (front and back)", required: true, category: "borrower_entity" },
