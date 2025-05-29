@@ -43,23 +43,10 @@ export async function getDriveFiles(folderId: string, accessToken?: string): Pro
     // Try to connect to real Google Drive using service account
     const { google } = await import('googleapis');
     
-    // Use service account authentication
-    const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
-    if (!serviceAccountKey) {
-      throw new Error("Google Service Account key not configured");
-    }
+    // Import service account credentials from file
+    const serviceAccount = await import('../keys/service-account.json');
     
-    console.log("Service account key length:", serviceAccountKey.length);
-    console.log("First 50 characters:", serviceAccountKey.substring(0, 50));
-    
-    // Parse the service account key
-    let serviceAccount;
-    try {
-      serviceAccount = JSON.parse(serviceAccountKey);
-    } catch (parseError: any) {
-      console.error("JSON parse error:", parseError.message);
-      throw new Error(`Invalid service account JSON: ${parseError.message}`);
-    }
+    console.log("Using service account:", serviceAccount.client_email);
     
     // Create JWT client for service account
     const jwtClient = new google.auth.JWT(
