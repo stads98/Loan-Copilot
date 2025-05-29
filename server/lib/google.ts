@@ -40,26 +40,30 @@ export async function getDriveFiles(folderId: string, accessToken?: string): Pro
   console.log(`Accessing Google Drive folder: ${cleanFolderId}`);
   
   try {
-    // Try to connect to real Google Drive using googleapis
+    // Try to connect to real Google Drive using service account
     const { google } = require('googleapis');
     
-    // Set up OAuth2 client with your credentials
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      'https://loanpilot.stads98.repl.co/api/auth/google/callback'
-    );
-    
-    // If we have an access token from the session, use it
-    if (accessToken) {
-      oauth2Client.setCredentials({ access_token: accessToken });
-    } else {
-      // For now, we'll need to implement OAuth flow first
-      console.log("No access token available, need to authenticate with Google Drive first");
-      throw new Error("Google Drive authentication required");
+    // Use service account authentication
+    const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+    if (!serviceAccountKey) {
+      throw new Error("Google Service Account key not configured");
     }
     
-    const drive = google.drive({ version: 'v3', auth: oauth2Client });
+    // Parse the service account key
+    const serviceAccount = JSON.parse(serviceAccountKey);
+    
+    // Create JWT client for service account
+    const jwtClient = new google.auth.JWT(
+      serviceAccount.client_email,
+      null,
+      serviceAccount.private_key,
+      ['https://www.googleapis.com/auth/drive.readonly']
+    );
+    
+    // Authorize the service account
+    await jwtClient.authorize();
+    
+    const drive = google.drive({ version: 'v3', auth: jwtClient });
     
     // List files in the specified folder
     const response = await drive.files.list({
@@ -69,7 +73,7 @@ export async function getDriveFiles(folderId: string, accessToken?: string): Pro
     });
     
     const files = response.data.files || [];
-    console.log(`Found ${files.length} real files in Google Drive folder`);
+    console.log(`Successfully accessed Google Drive - found ${files.length} real files in folder`);
     
     return files.map((file: any) => ({
       id: file.id!,
@@ -80,12 +84,8 @@ export async function getDriveFiles(folderId: string, accessToken?: string): Pro
     }));
     
   } catch (error) {
-    console.error("Could not access Google Drive:", error);
-    console.log("Using fallback file simulation");
-    
-    // Fallback to simulated files if Google Drive access fails
-    const folderHash = hashString(cleanFolderId);
-    return generateFilesFromFolderHash(folderHash);
+    console.error("Could not access Google Drive with service account:", error);
+    throw new Error(`Failed to access Google Drive folder: ${error.message}`);
   }
 }
 
