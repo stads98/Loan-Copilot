@@ -41,7 +41,7 @@ export async function getDriveFiles(folderId: string, accessToken?: string): Pro
   
   try {
     // Try to connect to real Google Drive using service account
-    const { google } = require('googleapis');
+    const { google } = await import('googleapis');
     
     // Use service account authentication
     const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
