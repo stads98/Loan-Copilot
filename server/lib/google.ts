@@ -83,9 +83,11 @@ export async function getDriveFiles(folderId: string, accessToken?: string): Pro
       modifiedTime: file.modifiedTime
     }));
     
-  } catch (error) {
+  } catch (error: any) {
     console.error("Could not access Google Drive with service account:", error);
-    console.log("Error details:", error);
+    console.log("Error message:", error.message);
+    console.log("Error code:", error.code);
+    console.log("Full error details:", JSON.stringify(error, null, 2));
     
     // For now, fall back to simulated data while we debug permissions
     console.log("Using fallback file simulation due to Drive access error");
