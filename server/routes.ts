@@ -163,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Check Google Drive connection status
   app.get("/api/auth/google/status", (req, res) => {
-    const isConnected = req.session?.googleAuthenticated || false;
+    const isConnected = (req.session as any)?.googleAuthenticated || false;
     res.json({ connected: isConnected });
   });
 

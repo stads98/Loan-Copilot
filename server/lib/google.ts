@@ -71,7 +71,7 @@ export async function getDriveFiles(folderId: string, accessToken?: string): Pro
     const files = response.data.files || [];
     console.log(`Found ${files.length} real files in Google Drive folder`);
     
-    return files.map(file => ({
+    return files.map((file: any) => ({
       id: file.id!,
       name: file.name!,
       mimeType: file.mimeType!,
@@ -100,7 +100,7 @@ function hashString(str: string): number {
 
 function generateFilesFromFolderHash(hash: number): DriveFile[] {
   // Use the hash to deterministically generate different file sets
-  const fileSet = [];
+  const fileSet: DriveFile[] = [];
   const fileTypes = [
     { type: 'id', variations: ['DriverLicense', 'Passport', 'ID_Card'] },
     { type: 'entity', variations: ['LLC_Certificate', 'Articles_Organization', 'Entity_Formation'] },
