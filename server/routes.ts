@@ -927,8 +927,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Processing Google Drive folder:", driveFolderId);
       
-      // Get files from Google Drive folder
-      const files = await getDriveFiles(driveFolderId);
+      // Get files from Google Drive folder with authentication
+      // Pass the Google access token from session if available
+      const googleTokens = (req.session as any)?.googleTokens;
+      const accessToken = googleTokens?.access_token;
+      
+      const files = await getDriveFiles(driveFolderId, accessToken);
       
       if (!files || files.length === 0) {
         return res.status(400).json({ success: false, message: "No files found in the specified Google Drive folder" });

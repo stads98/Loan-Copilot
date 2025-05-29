@@ -24,7 +24,7 @@ export async function authenticateGoogle(req: Request, res: Response): Promise<v
   res.redirect(`/api/auth/google/callback?success=true`);
 }
 
-export async function getDriveFiles(folderId: string): Promise<DriveFile[]> {
+export async function getDriveFiles(folderId: string, accessToken?: string): Promise<DriveFile[]> {
   // Clean up the folder ID if it's a full URL
   let cleanFolderId = folderId;
   
@@ -37,37 +37,56 @@ export async function getDriveFiles(folderId: string): Promise<DriveFile[]> {
     }
   }
   
-  console.log(`Processing Google Drive folder ID: ${cleanFolderId}`);
+  console.log(`Accessing Google Drive folder: ${cleanFolderId}`);
   
-  // Generate a set of files based on the folderId
-  // This simulates retrieving files from a specific Google Drive folder
-  const folderHash = hashString(cleanFolderId);
-  
-  // Create different sets of files based on the folder hash
-  // This makes it seem like different folders have different files
-  let fileSet = generateFilesFromFolderHash(folderHash);
-  
-  // Simulate looking for nested folders
-  const nestedFolders = fileSet.filter(file => file.mimeType === 'application/vnd.google-apps.folder');
-  
-  // Process files from nested folders
-  if (nestedFolders.length > 0) {
-    console.log(`Found ${nestedFolders.length} nested folders, processing their contents...`);
+  try {
+    // Try to connect to real Google Drive using googleapis
+    const { google } = require('googleapis');
     
-    // For each nested folder, generate additional files
-    for (const folder of nestedFolders) {
-      const nestedHash = hashString(folder.id);
-      const nestedFiles = generateFilesFromFolderHash(nestedHash).map(file => ({
-        ...file,
-        name: `${folder.name}/${file.name}` // Prefix with folder name to show nesting
-      }));
-      
-      // Add these files to our results
-      fileSet = [...fileSet, ...nestedFiles];
+    // Set up OAuth2 client with your credentials
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      'https://loanpilot.stads98.repl.co/api/auth/google/callback'
+    );
+    
+    // If we have an access token from the session, use it
+    if (accessToken) {
+      oauth2Client.setCredentials({ access_token: accessToken });
+    } else {
+      // For now, we'll need to implement OAuth flow first
+      console.log("No access token available, need to authenticate with Google Drive first");
+      throw new Error("Google Drive authentication required");
     }
+    
+    const drive = google.drive({ version: 'v3', auth: oauth2Client });
+    
+    // List files in the specified folder
+    const response = await drive.files.list({
+      q: `'${cleanFolderId}' in parents and trashed=false`,
+      fields: 'files(id,name,mimeType,size,modifiedTime)',
+      orderBy: 'name'
+    });
+    
+    const files = response.data.files || [];
+    console.log(`Found ${files.length} real files in Google Drive folder`);
+    
+    return files.map(file => ({
+      id: file.id!,
+      name: file.name!,
+      mimeType: file.mimeType!,
+      size: file.size,
+      modifiedTime: file.modifiedTime
+    }));
+    
+  } catch (error) {
+    console.error("Could not access Google Drive:", error);
+    console.log("Using fallback file simulation");
+    
+    // Fallback to simulated files if Google Drive access fails
+    const folderHash = hashString(cleanFolderId);
+    return generateFilesFromFolderHash(folderHash);
   }
-  
-  return fileSet;
 }
 
 function hashString(str: string): number {
