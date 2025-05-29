@@ -49,8 +49,17 @@ export async function getDriveFiles(folderId: string, accessToken?: string): Pro
       throw new Error("Google Service Account key not configured");
     }
     
+    console.log("Service account key length:", serviceAccountKey.length);
+    console.log("First 50 characters:", serviceAccountKey.substring(0, 50));
+    
     // Parse the service account key
-    const serviceAccount = JSON.parse(serviceAccountKey);
+    let serviceAccount;
+    try {
+      serviceAccount = JSON.parse(serviceAccountKey);
+    } catch (parseError: any) {
+      console.error("JSON parse error:", parseError.message);
+      throw new Error(`Invalid service account JSON: ${parseError.message}`);
+    }
     
     // Create JWT client for service account
     const jwtClient = new google.auth.JWT(
