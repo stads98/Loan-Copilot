@@ -14,19 +14,26 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, FolderOpen, Link, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface GoogleDriveModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConnect: (folderId: string) => void;
+  onLoanCreated?: (loanId: number) => void;
 }
 
-export default function GoogleDriveModal({ open, onOpenChange, onConnect }: GoogleDriveModalProps) {
-  const [step, setStep] = useState<'connect' | 'folder' | 'connected'>('connect');
+export default function GoogleDriveModal({ open, onOpenChange, onConnect, onLoanCreated }: GoogleDriveModalProps) {
+  const [step, setStep] = useState<'connect' | 'folder' | 'processing' | 'completed'>('connect');
   const [isConnecting, setIsConnecting] = useState(false);
   const [folderLink, setFolderLink] = useState("");
   const [isConnected, setIsConnected] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState("");
+  const [createdLoanId, setCreatedLoanId] = useState<number | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleConnect = async () => {
     setIsConnecting(true);
@@ -62,7 +69,7 @@ export default function GoogleDriveModal({ open, onOpenChange, onConnect }: Goog
     }
   };
 
-  const handleFolderSubmit = () => {
+  const handleFolderSubmit = async () => {
     if (!folderLink) {
       toast({
         title: "Missing folder",
@@ -94,9 +101,53 @@ export default function GoogleDriveModal({ open, onOpenChange, onConnect }: Goog
         throw new Error("Invalid folder ID extracted from the link");
       }
 
-      // Use the comprehensive folder scanning
-      onConnect(folderId);
-      setStep('connected');
+      // Start comprehensive document processing
+      setStep('processing');
+      setIsProcessing(true);
+      setProcessingStatus("Scanning folder structure...");
+
+      try {
+        const response = await apiRequest("POST", "/api/loans/scan-folder", {
+          folderId: folderId,
+          loanData: {
+            borrowerName: "Borrower from Documents",
+            propertyAddress: "Property from Documents", 
+            propertyType: "Residential",
+            loanAmount: "250000",
+            loanType: "DSCR",
+            loanPurpose: "Purchase",
+            lender: "Kiavi"
+          }
+        });
+
+        if (response.success) {
+          setCreatedLoanId(response.loanId);
+          setStep('completed');
+          setProcessingStatus(`Successfully processed ${response.documentsProcessed} documents from ${response.foldersScanned} folders. ${response.missingDocuments} missing documents identified.`);
+          
+          toast({
+            title: "Loan Created Successfully!",
+            description: `Processed ${response.documentsProcessed} documents and created loan file.`,
+          });
+
+          // Refresh the loans list
+          await queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
+          
+          if (onLoanCreated && response.loanId) {
+            onLoanCreated(response.loanId);
+          }
+        } else {
+          throw new Error(response.message || "Failed to process documents");
+        }
+      } catch (processingError: any) {
+        setStep('folder');
+        setIsProcessing(false);
+        toast({
+          title: "Processing Failed",
+          description: processingError.message || "Failed to process documents. Please try again.",
+          variant: "destructive",
+        });
+      }
       
     } catch (error: any) {
       toast({
@@ -222,35 +273,64 @@ export default function GoogleDriveModal({ open, onOpenChange, onConnect }: Goog
           </>
         )}
 
-        {step === 'connected' && (
+        {step === 'processing' && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                Processing Documents
+              </DialogTitle>
+              <DialogDescription>
+                Scanning and analyzing all documents in your Google Drive folder...
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-2">
+                {processingStatus || "Processing documents..."}
+              </p>
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+                <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This may take a few minutes depending on the number of documents.
+              </p>
+            </div>
+          </>
+        )}
+
+        {step === 'completed' && (
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-green-500" />
-                Successfully Connected!
+                Loan Created Successfully!
               </DialogTitle>
               <DialogDescription>
-                Your Google Drive folder is now connected and documents are being analyzed.
+                All documents have been processed and your loan file is ready.
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4">
-              <Card className="bg-green-50 border-green-200">
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                    <div>
-                      <p className="font-medium text-green-900">Documents are being processed</p>
-                      <p className="text-sm text-green-700">The AI co-pilot is analyzing your documents and will provide guidance on missing items and next steps.</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-6">
+                {processingStatus}
+              </p>
+              {createdLoanId && (
+                <Badge variant="secondary" className="mb-4">
+                  Loan ID: {createdLoanId}
+                </Badge>
+              )}
             </div>
 
             <DialogFooter>
-              <Button onClick={handleClose} className="w-full">
-                Continue to Loan Dashboard
+              <Button onClick={handleClose}>
+                View Loan File
               </Button>
             </DialogFooter>
           </>
