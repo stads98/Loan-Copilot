@@ -12,6 +12,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FolderOpen, FileText, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface FolderItem {
   id: string;
@@ -26,15 +28,18 @@ interface FolderBrowserProps {
   onOpenChange: (open: boolean) => void;
   onSelectFolder: (folderId: string, folderName: string) => void;
   currentLoanAddress?: string;
+  onLoanCreated?: (loanId: number) => void;
 }
 
-export default function FolderBrowser({ open, onOpenChange, onSelectFolder, currentLoanAddress }: FolderBrowserProps) {
+export default function FolderBrowser({ open, onOpenChange, onSelectFolder, currentLoanAddress, onLoanCreated }: FolderBrowserProps) {
   const [currentFolderId, setCurrentFolderId] = useState("1hqWhYyq9XzTg_LRfQCuNcNwwb2lX82qY"); // Your actual loan files folder
   const [currentPath, setCurrentPath] = useState(["All Loan Files"]);
   const [items, setItems] = useState<FolderItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<{ id: string; name: string } | null>(null);
+  const [processing, setProcessing] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (open) {
@@ -102,14 +107,57 @@ export default function FolderBrowser({ open, onOpenChange, onSelectFolder, curr
     }
   };
 
-  const handleSelectFolder = () => {
+  const handleSelectFolder = async () => {
     if (selectedFolder) {
-      onSelectFolder(selectedFolder.id, selectedFolder.name);
-      toast({
-        title: "Folder Selected!",
-        description: `Connected to: ${selectedFolder.name}`,
-      });
-      onOpenChange(false);
+      setProcessing(true);
+      
+      try {
+        toast({
+          title: "Processing Documents",
+          description: `Scanning all documents in ${selectedFolder.name}...`,
+        });
+
+        // Trigger comprehensive document scanning
+        const response = await apiRequest("POST", "/api/loans/scan-folder", {
+          folderId: selectedFolder.id,
+          loanData: {
+            borrowerName: "Borrower from Documents",
+            propertyAddress: "Property from Documents", 
+            propertyType: "Residential",
+            loanAmount: "250000",
+            loanType: "DSCR",
+            loanPurpose: "Purchase",
+            lender: "Kiavi"
+          }
+        });
+
+        if (response.success) {
+          toast({
+            title: "Loan Created Successfully!",
+            description: `Processed ${response.documentsProcessed} documents and created loan file.`,
+          });
+
+          // Refresh the loans list
+          await queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
+          
+          if (onLoanCreated && response.loanId) {
+            onLoanCreated(response.loanId);
+          }
+
+          onSelectFolder(selectedFolder.id, selectedFolder.name);
+          onOpenChange(false);
+        } else {
+          throw new Error(response.message || "Failed to process documents");
+        }
+      } catch (error: any) {
+        toast({
+          title: "Processing Failed",
+          description: error.message || "Failed to process documents. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setProcessing(false);
+      }
     }
   };
 
@@ -226,9 +274,16 @@ export default function FolderBrowser({ open, onOpenChange, onSelectFolder, curr
           </Button>
           <Button 
             onClick={handleSelectFolder} 
-            disabled={!selectedFolder}
+            disabled={!selectedFolder || processing}
           >
-            Connect This Folder
+            {processing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Processing Documents...
+              </>
+            ) : (
+              "Process All Documents"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
