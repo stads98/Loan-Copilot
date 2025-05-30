@@ -926,7 +926,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let content = await downloadDriveFile(file.id);
           
           // If content is unreadable, mark for OCR (simplified OCR simulation)
-          if (!content || content.includes('Could not read') || content.length < 10) {
+          if (!content || typeof content !== 'string' || content.includes('Could not read') || content.length < 10) {
             console.log(`File ${file.name} needs OCR processing`);
             content = `OCR Content: Document ${file.name} - scanned image content would be processed here`;
           }
