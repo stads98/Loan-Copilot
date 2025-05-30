@@ -94,6 +94,7 @@ export default function GoogleDriveModal({ open, onOpenChange, onConnect }: Goog
         throw new Error("Invalid folder ID extracted from the link");
       }
 
+      // Use the comprehensive folder scanning
       onConnect(folderId);
       setStep('connected');
       

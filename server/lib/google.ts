@@ -24,6 +24,101 @@ export async function authenticateGoogle(req: Request, res: Response): Promise<v
   res.redirect(`/api/auth/google/callback?success=true`);
 }
 
+// Function to download file content from Google Drive
+export async function downloadDriveFile(fileId: string): Promise<string> {
+  try {
+    const { google } = await import('googleapis');
+    const serviceAccount = await import('../keys/service-account.json');
+    
+    const jwtClient = new google.auth.JWT(
+      serviceAccount.client_email,
+      null,
+      serviceAccount.private_key,
+      ['https://www.googleapis.com/auth/drive.readonly']
+    );
+    
+    await jwtClient.authorize();
+    const drive = google.drive({ version: 'v3', auth: jwtClient });
+    
+    // Try to export as text for Google Docs/Sheets
+    try {
+      const response = await drive.files.export({
+        fileId: fileId,
+        mimeType: 'text/plain'
+      });
+      return response.data as string;
+    } catch (exportError) {
+      // If export fails, try to get file content directly
+      const response = await drive.files.get({
+        fileId: fileId,
+        alt: 'media'
+      });
+      return response.data as string;
+    }
+  } catch (error) {
+    console.error('Error downloading file:', error);
+    return `Could not read file content: ${error}`;
+  }
+}
+
+// Function to scan folder recursively for all documents
+export async function scanFolderRecursively(folderId: string): Promise<{files: DriveFile[], folders: DriveFile[]}> {
+  try {
+    const { google } = await import('googleapis');
+    const serviceAccount = await import('../keys/service-account.json');
+    
+    const jwtClient = new google.auth.JWT(
+      serviceAccount.client_email,
+      null,
+      serviceAccount.private_key,
+      ['https://www.googleapis.com/auth/drive.readonly']
+    );
+    
+    await jwtClient.authorize();
+    const drive = google.drive({ version: 'v3', auth: jwtClient });
+    
+    // Get all items in this folder
+    const response = await drive.files.list({
+      q: `'${folderId}' in parents and trashed=false`,
+      fields: 'files(id,name,mimeType,size,modifiedTime)',
+      orderBy: 'name'
+    });
+    
+    const items = response.data.files || [];
+    const files: DriveFile[] = [];
+    const folders: DriveFile[] = [];
+    
+    // Separate files and folders
+    for (const item of items) {
+      const driveFile: DriveFile = {
+        id: item.id!,
+        name: item.name!,
+        mimeType: item.mimeType!,
+        size: item.size,
+        modifiedTime: item.modifiedTime
+      };
+      
+      if (item.mimeType === 'application/vnd.google-apps.folder') {
+        folders.push(driveFile);
+      } else {
+        files.push(driveFile);
+      }
+    }
+    
+    // Recursively scan subfolders
+    for (const folder of folders) {
+      const subContent = await scanFolderRecursively(folder.id);
+      files.push(...subContent.files);
+      folders.push(...subContent.folders);
+    }
+    
+    return { files, folders };
+  } catch (error) {
+    console.error('Error scanning folder:', error);
+    return { files: [], folders: [] };
+  }
+}
+
 export async function getDriveFiles(folderId: string, accessToken?: string): Promise<DriveFile[]> {
   // Clean up the folder ID if it's a full URL
   let cleanFolderId = folderId;

@@ -131,12 +131,31 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
         driveFolder: data.googleDriveLink || null,
       };
 
-      const response = await apiRequest("POST", "/api/loans", loanData);
+      // If Google Drive folder is provided, use comprehensive scanning
+      let response;
+      if (folderId) {
+        toast({
+          title: "Scanning Documents",
+          description: "Processing all documents in the Google Drive folder...",
+        });
+        
+        response = await apiRequest("POST", "/api/loans/scan-folder", {
+          folderId: folderId,
+          loanData: loanData
+        });
+      } else {
+        // Regular loan creation without document scanning
+        response = await apiRequest("POST", "/api/loans", loanData);
+      }
 
       if (response.success) {
+        const successMessage = folderId 
+          ? `Loan created with ${response.documentsProcessed || 0} documents processed across ${response.foldersScanned || 1} folders. ${response.missingDocuments || 0} missing documents identified.`
+          : "Loan created successfully";
+          
         toast({
           title: "Success!",
-          description: "Loan created successfully",
+          description: successMessage,
         });
         
         await queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
