@@ -351,41 +351,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(documents);
   });
   
-  // Sync documents from Google Drive for a loan
+  // Sync documents from Google Drive for a loan with full OCR and OpenAI analysis
   app.post("/api/loans/:id/sync-documents", isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
+      const { folderId } = req.body;
       const loanId = parseInt(id, 10);
       
-      // Get the loan details to access the Google Drive folder ID
-      const loanDetails = await storage.getLoanWithDetails(loanId);
-      
-      if (!loanDetails || !loanDetails.loan) {
+      // Verify the loan exists
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
         return res.status(404).json({ message: "Loan not found" });
       }
-      
-      // Use the Google Drive folder ID from the loan
-      // In a real implementation, this would be stored when the loan is created
-      const driveFolderId = loanDetails.loan.driveFolder || loanDetails.loan.googleDriveFolderId || "";
-      
-      if (!driveFolderId) {
+
+      if (!folderId) {
         return res.status(400).json({ 
           success: false, 
-          message: "No Google Drive folder is associated with this loan" 
+          message: "No folder ID provided" 
         });
       }
+
+      console.log(`Starting comprehensive scan of folder: ${folderId}`);
       
       // Get files from Google Drive folder
-      const files = await getDriveFiles(driveFolderId);
+      const files = await getDriveFiles(folderId);
       
-      if (!files || files.length === 0) {
-        return res.status(200).json({ 
-          success: true, 
-          message: "No new documents found in the Google Drive folder",
+      console.log(`Found ${files.length} files and ${folders.length} folders`);
+      
+      if (files.length === 0) {
+        return res.json({
+          success: true,
+          message: "No documents found in the selected folder",
+          documentsProcessed: 0,
           documentsAdded: 0
         });
       }
-      
+
       // Get existing documents to avoid duplicates
       const existingDocuments = await storage.getDocumentsByLoanId(loanId);
       const existingFileIds = existingDocuments.map(doc => doc.fileId);
@@ -393,27 +394,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Filter out documents that already exist
       const newFiles = files.filter(file => !existingFileIds.includes(file.id));
       
+      console.log(`Processing ${newFiles.length} new files (${files.length - newFiles.length} already exist)`);
+
       if (newFiles.length === 0) {
-        return res.status(200).json({ 
-          success: true, 
-          message: "All documents from Google Drive are already synced",
+        return res.json({
+          success: true,
+          message: "All documents are already synced to this loan",
+          documentsProcessed: 0,
           documentsAdded: 0
         });
       }
       
-      // Process and add each new document
-      const addedDocuments = [];
+      // Process documents with OCR and text extraction
+      const documentsWithText = [];
       for (const file of newFiles) {
-        // Extract text from the file name and metadata
-        let extractedText = `File: ${file.name}\n`;
+        console.log(`Processing file: ${file.name}`);
+        let extractedText = "";
         
-        if (file.modifiedTime) {
-          extractedText += `Modified: ${file.modifiedTime}\n`;
+        try {
+          if (file.mimeType === 'application/pdf' || 
+              file.mimeType === 'image/png' || 
+              file.mimeType === 'image/jpeg' ||
+              file.name.toLowerCase().endsWith('.pdf') ||
+              file.name.toLowerCase().endsWith('.png') ||
+              file.name.toLowerCase().endsWith('.jpg') ||
+              file.name.toLowerCase().endsWith('.jpeg')) {
+            
+            console.log(`File ${file.name} needs OCR processing`);
+            extractedText = await extractTextFromGoogleDriveFile(file.id, file.mimeType);
+          } else {
+            extractedText = `File: ${file.name} (${file.mimeType || 'unknown type'})`;
+          }
+          
+          documentsWithText.push({
+            id: file.id,
+            name: file.name,
+            mimeType: file.mimeType || 'unknown',
+            size: file.size,
+            modifiedTime: file.modifiedTime,
+            text: extractedText || `File: ${file.name}`
+          });
+        } catch (extractError) {
+          console.warn(`Failed to extract text from ${file.name}:`, extractError);
+          documentsWithText.push({
+            id: file.id,
+            name: file.name,
+            mimeType: file.mimeType || 'unknown',
+            size: file.size,
+            modifiedTime: file.modifiedTime,
+            text: `File: ${file.name} (text extraction failed)`
+          });
         }
-        
-        // Determine document category based on file name
+      }
+
+      console.log(`Analyzing ${documentsWithText.length} documents with OpenAI...`);
+      
+      // Analyze all documents with OpenAI
+      let analysisResult;
+      try {
+        analysisResult = await analyzeDriveDocuments(documentsWithText);
+        console.log("Document analysis completed successfully");
+      } catch (analyzeError) {
+        console.error("OpenAI analysis failed:", analyzeError);
+        analysisResult = {
+          loanInfo: { borrowerName: "Analysis Failed", loanType: "Unknown", loanPurpose: "Unknown" },
+          propertyInfo: { address: "Unknown", city: "Unknown", state: "Unknown", zipCode: "Unknown" },
+          contacts: [],
+          missingDocuments: [],
+          tasks: []
+        };
+      }
+
+      // Store the documents in the database with proper categorization
+      for (const docData of documentsWithText) {
+        const fileName = docData.name.toLowerCase();
         let category = "other";
-        const fileName = file.name.toLowerCase();
         
         if (fileName.includes("license") || fileName.includes("id") || fileName.includes("passport") || 
             fileName.includes("llc") || fileName.includes("entity") || fileName.includes("incorporation")) {
@@ -429,27 +484,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (fileName.includes("bank") || fileName.includes("statement") || fileName.includes("financial")) {
           category = "banking";
         }
-        
-        // Create a document record
-        const document = await storage.createDocument({
+
+        await storage.createDocument({
           loanId,
-          name: file.name,
-          fileId: file.id,
-          fileType: file.mimeType.split('/')[1] || "unknown",
-          fileSize: parseInt(file.size || "0", 10),
+          name: docData.name,
+          fileId: docData.id,
+          fileType: docData.mimeType?.split('/')[1] || "unknown",
+          fileSize: parseInt(docData.size || "0", 10),
           category,
-          status: "synced" // Status field is now in the schema
+          status: "processed"
         });
-        
-        addedDocuments.push(document);
       }
-      
-      // Return success with the number of documents added
-      res.status(200).json({
+
+      // Update the loan with the Google Drive folder
+      await storage.updateLoan(loanId, { driveFolder: folderId });
+
+      // Create tasks for missing documents if any were identified
+      if (analysisResult.tasks && Array.isArray(analysisResult.tasks)) {
+        for (const taskInfo of analysisResult.tasks) {
+          await storage.createTask({
+            loanId,
+            description: taskInfo.description,
+            dueDate: taskInfo.dueDate || null,
+            priority: taskInfo.priority || "medium",
+            completed: taskInfo.completed || false
+          });
+        }
+      }
+
+      res.json({
         success: true,
-        message: `Successfully synced ${addedDocuments.length} new document(s) from Google Drive`,
-        documentsAdded: addedDocuments.length,
-        documents: addedDocuments
+        message: "Documents Synced Successfully!",
+        documentsProcessed: documentsWithText.length,
+        documentsAdded: documentsWithText.length,
+        tasksCreated: analysisResult.tasks?.length || 0,
+        analysisResult
       });
       
     } catch (error) {
