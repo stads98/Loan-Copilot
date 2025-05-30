@@ -1035,16 +1035,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Step 8: Create contacts from analysis
-      if (analysisResult.contacts) {
-        for (const contact of analysisResult.contacts) {
+      const contacts = Array.isArray(analysisResult.contacts) ? analysisResult.contacts : [];
+      for (const contact of contacts) {
+        try {
           await storage.createContact({
-            name: contact.name,
-            email: contact.email,
-            phone: contact.phone,
-            company: contact.company,
-            role: contact.role,
+            name: contact.name || "Unknown Contact",
+            email: contact.email || null,
+            phone: contact.phone || null,
+            company: contact.company || null,
+            role: contact.role || "Other",
             loanId: loan.id
           });
+        } catch (contactError) {
+          console.warn("Error creating contact:", contactError);
         }
       }
       
