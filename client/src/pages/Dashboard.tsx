@@ -7,6 +7,7 @@ import GoogleDriveConnect from "@/components/GoogleDriveConnect";
 import AIAssistant from "@/components/AIAssistant";
 import TaskList from "@/components/TaskList";
 import DocumentManager from "@/components/DocumentManager";
+import DocumentChat from "@/components/DocumentChat";
 import NewLoanDialog from "@/components/NewLoanDialog";
 import EditableLoanDetails from "@/components/EditableLoanDetails";
 import { getDocumentRequirements } from "@/components/DocumentChecklist";

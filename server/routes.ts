@@ -704,6 +704,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Simple chat endpoint for direct AI conversation
+  app.post("/api/loans/:loanId/chat", isAuthenticated, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.loanId);
+      const { message } = req.body;
+
+      if (!message) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      // Get loan details and documents for context
+      const loan = await storage.getLoanWithDetails(loanId);
+      if (!loan) {
+        return res.status(404).json({ error: "Loan not found" });
+      }
+
+      const documents = await storage.getDocumentsByLoanId(loanId);
+      
+      // Prepare context for OpenAI
+      const documentList = documents.map(doc => `${doc.name} (${doc.category || 'Uncategorized'})`).join('\n');
+      
+      const systemPrompt = `You are an expert loan processing assistant helping with DSCR (Debt Service Coverage Ratio) real estate loans. 
+
+Current loan details:
+- Borrower: ${loan.loan.borrowerName}
+- Property: ${loan.property?.address || 'Address not specified'}
+- Loan Amount: ${loan.loan.loanAmount || 'Not specified'}
+- Loan Type: ${loan.loan.loanType}
+- Lender: ${loan.lender?.name || 'Not specified'}
+
+Available documents (${documents.length} total):
+${documentList}
+
+You can help with:
+- Analyzing document completeness
+- Identifying missing documents
+- Explaining loan requirements
+- Guiding through next steps
+- Answering questions about the loan process
+
+Be professional, concise, and helpful. Focus on actionable advice.`;
+
+      const openai = new (await import('openai')).default({
+        apiKey: process.env.OPENAI_API_KEY
+      });
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7
+      });
+
+      const aiResponse = completion.choices[0].message.content || "I apologize, but I couldn't generate a response. Please try again.";
+
+      res.json({ response: aiResponse });
+    } catch (error) {
+      console.error("Error in chat:", error);
+      res.status(500).json({ error: "Failed to process chat message" });
+    }
+  });
+
   // Google Drive integration
   app.get("/api/drive/files", isAuthenticated, async (req, res) => {
     try {
