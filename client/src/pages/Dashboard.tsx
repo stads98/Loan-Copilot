@@ -7,7 +7,6 @@ import GoogleDriveConnect from "@/components/GoogleDriveConnect";
 import AIAssistant from "@/components/AIAssistant";
 import TaskList from "@/components/TaskList";
 import DocumentManager from "@/components/DocumentManager";
-import DocumentChat from "@/components/DocumentChat";
 import NewLoanDialog from "@/components/NewLoanDialog";
 import EditableLoanDetails from "@/components/EditableLoanDetails";
 import { getDocumentRequirements } from "@/components/DocumentChecklist";
@@ -265,9 +264,6 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
                 loanId={loan.id}
                 requiredDocuments={getLenderSpecificRequirements(lender?.name || "AHL")}
               />
-
-              {/* Document Chat Interface */}
-              <DocumentChat loanId={loan.id} />
             </div>
           </div>
         )}
