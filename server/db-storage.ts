@@ -150,6 +150,14 @@ export class DatabaseStorage implements IStorage {
     return updatedLoan;
   }
 
+  async deleteLoan(id: number): Promise<boolean> {
+    const [deletedLoan] = await db
+      .delete(loans)
+      .where(eq(loans.id, id))
+      .returning();
+    return !!deletedLoan;
+  }
+
   async getLoanWithDetails(id: number): Promise<any | undefined> {
     const loan = await this.getLoan(id);
     if (!loan) return undefined;

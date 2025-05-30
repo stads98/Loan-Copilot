@@ -214,6 +214,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(loan);
   });
 
+  app.delete("/api/loans/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid loan ID" });
+      }
+
+      // Check if loan exists
+      const loan = await storage.getLoan(id);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Delete associated documents
+      const documents = await storage.getDocumentsByLoanId(id);
+      for (const document of documents) {
+        await storage.deleteDocument(document.id);
+      }
+
+      // Delete associated tasks
+      const tasks = await storage.getTasksByLoanId(id);
+      for (const task of tasks) {
+        await storage.deleteTask(task.id);
+      }
+
+      // Delete associated contacts
+      const contacts = await storage.getContactsByLoanId(id);
+      for (const contact of contacts) {
+        await storage.deleteContact(contact.id);
+      }
+
+      // Delete the loan itself
+      const deleted = await storage.deleteLoan(id);
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete loan from storage" });
+      }
+      
+      res.json({ success: true, message: "Loan deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting loan:", error);
+      res.status(500).json({ message: "Failed to delete loan" });
+    }
+  });
+
   app.post("/api/loans", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;

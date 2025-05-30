@@ -43,6 +43,7 @@ export interface IStorage {
   getLoansByProcessorId(processorId: number): Promise<Loan[]>;
   createLoan(loan: InsertLoan): Promise<Loan>;
   updateLoan(id: number, loan: Partial<InsertLoan>): Promise<Loan | undefined>;
+  deleteLoan(id: number): Promise<boolean>;
   getLoanWithDetails(id: number): Promise<LoanWithDetails | undefined>;
 
   // Documents
@@ -260,6 +261,10 @@ export class MemStorage implements IStorage {
     };
     this.loans.set(id, updatedLoan);
     return updatedLoan;
+  }
+
+  async deleteLoan(id: number): Promise<boolean> {
+    return this.loans.delete(id);
   }
 
   async getLoanWithDetails(id: number): Promise<LoanWithDetails | undefined> {
