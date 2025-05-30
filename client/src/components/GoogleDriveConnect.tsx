@@ -112,6 +112,7 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
         onOpenChange={setShowFolderBrowser}
         onSelectFolder={handleFolderSelected}
         currentLoanAddress="Your loan address here"
+        existingLoanId={loanId}
       />
     </div>
   );

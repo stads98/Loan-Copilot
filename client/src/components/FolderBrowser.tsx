@@ -29,9 +29,10 @@ interface FolderBrowserProps {
   onSelectFolder: (folderId: string, folderName: string) => void;
   currentLoanAddress?: string;
   onLoanCreated?: (loanId: number) => void;
+  existingLoanId?: number; // If provided, sync to existing loan instead of creating new one
 }
 
-export default function FolderBrowser({ open, onOpenChange, onSelectFolder, currentLoanAddress, onLoanCreated }: FolderBrowserProps) {
+export default function FolderBrowser({ open, onOpenChange, onSelectFolder, currentLoanAddress, onLoanCreated, existingLoanId }: FolderBrowserProps) {
   const [currentFolderId, setCurrentFolderId] = useState("1hqWhYyq9XzTg_LRfQCuNcNwwb2lX82qY"); // Your actual loan files folder
   const [currentPath, setCurrentPath] = useState(["All Loan Files"]);
   const [items, setItems] = useState<FolderItem[]>([]);
@@ -117,31 +118,49 @@ export default function FolderBrowser({ open, onOpenChange, onSelectFolder, curr
           description: `Scanning all documents in ${selectedFolder.name}...`,
         });
 
-        // Trigger comprehensive document scanning
-        const response = await apiRequest("POST", "/api/loans/scan-folder", {
-          folderId: selectedFolder.id,
-          loanData: {
-            borrowerName: "Borrower from Documents",
-            propertyAddress: "Property from Documents", 
-            propertyType: "Residential",
-            loanAmount: "250000",
-            loanType: "DSCR",
-            loanPurpose: "Purchase",
-            lender: "Kiavi"
-          }
-        });
+        let response;
+        if (existingLoanId) {
+          // Sync documents to existing loan
+          response = await apiRequest("POST", `/api/loans/${existingLoanId}/sync-documents`, {
+            folderId: selectedFolder.id
+          });
+        } else {
+          // Create new loan with documents
+          response = await apiRequest("POST", "/api/loans/scan-folder", {
+            folderId: selectedFolder.id,
+            loanData: {
+              borrowerName: "Borrower from Documents",
+              propertyAddress: "Property from Documents", 
+              propertyType: "Residential",
+              loanAmount: "250000",
+              loanType: "DSCR",
+              loanPurpose: "Purchase",
+              lender: "Kiavi"
+            }
+          });
+        }
 
         if (response.success) {
-          toast({
-            title: "Loan Created Successfully!",
-            description: `Processed ${response.documentsProcessed} documents and created loan file.`,
-          });
+          if (existingLoanId) {
+            toast({
+              title: "Documents Synced Successfully!",
+              description: `Added ${response.documentsAdded || response.documentsProcessed} documents to the existing loan.`,
+            });
+            
+            // Refresh the specific loan data
+            await queryClient.invalidateQueries({ queryKey: [`/api/loans/${existingLoanId}`] });
+          } else {
+            toast({
+              title: "Loan Created Successfully!",
+              description: `Processed ${response.documentsProcessed} documents and created loan file.`,
+            });
 
-          // Refresh the loans list
-          await queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
-          
-          if (onLoanCreated && response.loanId) {
-            onLoanCreated(response.loanId);
+            // Refresh the loans list
+            await queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
+            
+            if (onLoanCreated && response.loanId) {
+              onLoanCreated(response.loanId);
+            }
           }
 
           onSelectFolder(selectedFolder.id, selectedFolder.name);
