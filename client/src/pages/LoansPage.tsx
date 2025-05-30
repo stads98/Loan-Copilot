@@ -57,17 +57,18 @@ export default function LoansPage({ user, onLogout }: LoansPageProps) {
     }
 
     try {
-      const response = await apiRequest("DELETE", `/api/loans/${loanId}`, {});
-      if (!response.ok) {
-        throw new Error('Delete failed');
-      }
+      const result = await apiRequest("DELETE", `/api/loans/${loanId}`, {});
       
+      // Force refresh the loans list
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
+      refetch();
+      
       toast({
         title: "Success",
-        description: "Loan deleted successfully."
+        description: result.message || "Loan deleted successfully."
       });
     } catch (error) {
+      console.error("Delete error:", error);
       toast({
         title: "Error",
         description: "Failed to delete loan. Please try again.",
