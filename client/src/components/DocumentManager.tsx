@@ -74,6 +74,43 @@ export default function DocumentManager({ documents, loanId }: DocumentManagerPr
     return <File className="w-4 h-4 text-gray-500" />;
   };
 
+  const viewDocument = async (doc: Document) => {
+    try {
+      // Open the document in a new tab using Google Drive file ID
+      const viewUrl = `https://drive.google.com/file/d/${doc.fileId}/view`;
+      window.open(viewUrl, '_blank');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to open document.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const downloadDocument = async (doc: Document) => {
+    try {
+      const response = await apiRequest("GET", `/api/documents/${doc.id}/download`, {});
+      if (response.downloadUrl) {
+        // Create a temporary link to trigger download
+        const link = document.createElement('a');
+        link.href = response.downloadUrl;
+        link.download = doc.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        throw new Error('Download URL not available');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to download document.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const deleteDocument = async (docId: number) => {
     try {
       const response = await apiRequest("DELETE", `/api/documents/${docId}`, {});
@@ -172,16 +209,27 @@ export default function DocumentManager({ documents, loanId }: DocumentManagerPr
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button size="sm" variant="ghost">
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => viewDocument(doc)}
+                          title="View document"
+                        >
                           <Eye className="w-4 h-4" />
                         </Button>
-                        <Button size="sm" variant="ghost">
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => downloadDocument(doc)}
+                          title="Download document"
+                        >
                           <Download className="w-4 h-4" />
                         </Button>
                         <Button 
                           size="sm" 
                           variant="ghost" 
                           onClick={() => deleteDocument(doc.id)}
+                          title="Delete document"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>

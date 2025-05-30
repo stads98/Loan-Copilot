@@ -350,6 +350,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const documents = await storage.getDocumentsByLoanId(loanId);
     res.json(documents);
   });
+
+  // Download document endpoint
+  app.get("/api/documents/:id/download", isAuthenticated, async (req, res) => {
+    try {
+      const docId = parseInt(req.params.id);
+      if (isNaN(docId)) {
+        return res.status(400).json({ message: "Invalid document ID" });
+      }
+
+      const document = await storage.getDocument(docId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Generate Google Drive download URL
+      const downloadUrl = `https://drive.google.com/uc?export=download&id=${document.fileId}`;
+      
+      res.json({ 
+        downloadUrl,
+        filename: document.name,
+        fileType: document.fileType
+      });
+    } catch (error) {
+      console.error("Error generating download URL:", error);
+      res.status(500).json({ message: "Failed to generate download URL" });
+    }
+  });
   
   // Sync documents from Google Drive for a loan with full OCR and OpenAI analysis
   app.post("/api/loans/:id/sync-documents", isAuthenticated, async (req, res) => {
