@@ -6,9 +6,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loan } from "@/lib/types";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import NewLoanDialog from "@/components/NewLoanDialog";
 import { format } from "date-fns";
+import { Trash2 } from "lucide-react";
 
 interface LoansPageProps {
   user: any;
@@ -42,6 +43,34 @@ export default function LoansPage({ user, onLogout }: LoansPageProps) {
       toast({
         title: "Error",
         description: "Failed to create demo loan. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Delete a loan
+  const deleteLoan = async (loanId: number, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent card click navigation
+    
+    if (!confirm("Are you sure you want to delete this loan? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const response = await apiRequest("DELETE", `/api/loans/${loanId}`, {});
+      if (!response.ok) {
+        throw new Error('Delete failed');
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
+      toast({
+        title: "Success",
+        description: "Loan deleted successfully."
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete loan. Please try again.",
         variant: "destructive"
       });
     }
@@ -104,14 +133,24 @@ export default function LoansPage({ user, onLogout }: LoansPageProps) {
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-lg">{loan.borrowerName}</CardTitle>
-                    <Badge variant={
-                      loan.status === 'completed' ? 'default' :
-                      loan.status === 'on_hold' ? 'secondary' : 'outline'
-                    }>
-                      {loan.status === 'in_progress' ? 'In Progress' :
-                       loan.status === 'completed' ? 'Completed' :
-                       loan.status === 'on_hold' ? 'On Hold' : 'New'}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={
+                        loan.status === 'completed' ? 'default' :
+                        loan.status === 'on_hold' ? 'secondary' : 'outline'
+                      }>
+                        {loan.status === 'in_progress' ? 'In Progress' :
+                         loan.status === 'completed' ? 'Completed' :
+                         loan.status === 'on_hold' ? 'On Hold' : 'New'}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(event) => deleteLoan(loan.id, event)}
+                        className="p-1 h-6 w-6 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
