@@ -265,6 +265,9 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
                 loanId={loan.id}
                 requiredDocuments={getLenderSpecificRequirements(lender?.name || "AHL")}
               />
+
+              {/* Document Chat Interface */}
+              <DocumentChat loanId={loan.id} />
             </div>
           </div>
         )}
