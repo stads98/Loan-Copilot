@@ -376,7 +376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get files from Google Drive folder
       const files = await getDriveFiles(folderId);
       
-      console.log(`Found ${files.length} files and ${folders.length} folders`);
+      console.log(`Found ${files.length} files`);
       
       if (files.length === 0) {
         return res.json({
@@ -405,26 +405,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Process documents with OCR and text extraction
+      // Process documents with text extraction (same as scan-folder)
       const documentsWithText = [];
       for (const file of newFiles) {
         console.log(`Processing file: ${file.name}`);
         let extractedText = "";
         
         try {
-          if (file.mimeType === 'application/pdf' || 
-              file.mimeType === 'image/png' || 
-              file.mimeType === 'image/jpeg' ||
-              file.name.toLowerCase().endsWith('.pdf') ||
-              file.name.toLowerCase().endsWith('.png') ||
-              file.name.toLowerCase().endsWith('.jpg') ||
-              file.name.toLowerCase().endsWith('.jpeg')) {
-            
-            console.log(`File ${file.name} needs OCR processing`);
-            extractedText = await extractTextFromGoogleDriveFile(file.id, file.mimeType);
-          } else {
-            extractedText = `File: ${file.name} (${file.mimeType || 'unknown type'})`;
-          }
+          // Download and extract text from each file
+          extractedText = await downloadDriveFile(file.id);
           
           documentsWithText.push({
             id: file.id,
@@ -449,7 +438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Analyzing ${documentsWithText.length} documents with OpenAI...`);
       
-      // Analyze all documents with OpenAI
+      // Analyze all documents with OpenAI (same as scan-folder)
       let analysisResult;
       try {
         analysisResult = await analyzeDriveDocuments(documentsWithText);
@@ -460,8 +449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           loanInfo: { borrowerName: "Analysis Failed", loanType: "Unknown", loanPurpose: "Unknown" },
           propertyInfo: { address: "Unknown", city: "Unknown", state: "Unknown", zipCode: "Unknown" },
           contacts: [],
-          missingDocuments: [],
-          tasks: []
+          missingDocuments: []
         };
       }
 
@@ -500,14 +488,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateLoan(loanId, { driveFolder: folderId });
 
       // Create tasks for missing documents if any were identified
-      if (analysisResult.tasks && Array.isArray(analysisResult.tasks)) {
-        for (const taskInfo of analysisResult.tasks) {
+      if (analysisResult.missingDocuments && Array.isArray(analysisResult.missingDocuments)) {
+        for (const missingDoc of analysisResult.missingDocuments) {
           await storage.createTask({
             loanId,
-            description: taskInfo.description,
-            dueDate: taskInfo.dueDate || null,
-            priority: taskInfo.priority || "medium",
-            completed: taskInfo.completed || false
+            description: `Missing: ${missingDoc}`,
+            dueDate: null,
+            priority: "medium",
+            completed: false
           });
         }
       }
