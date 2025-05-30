@@ -90,19 +90,26 @@ export default function DocumentManager({ documents, loanId }: DocumentManagerPr
 
   const downloadDocument = async (doc: Document) => {
     try {
-      const response = await apiRequest("GET", `/api/documents/${doc.id}/download`, {});
+      const response = await apiRequest("GET", `/api/documents/${doc.id}/download`);
       if (response.downloadUrl) {
         // Create a temporary link to trigger download
         const link = document.createElement('a');
         link.href = response.downloadUrl;
         link.download = doc.name;
+        link.target = '_blank';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        
+        toast({
+          title: "Success",
+          description: "Download started successfully."
+        });
       } else {
         throw new Error('Download URL not available');
       }
     } catch (error) {
+      console.error("Download error:", error);
       toast({
         title: "Error",
         description: "Failed to download document.",
@@ -113,16 +120,18 @@ export default function DocumentManager({ documents, loanId }: DocumentManagerPr
 
   const deleteDocument = async (docId: number) => {
     try {
-      const response = await apiRequest("DELETE", `/api/documents/${docId}`, {});
-      if (!response.ok) {
+      const response = await apiRequest("DELETE", `/api/documents/${docId}`);
+      if (response.success) {
+        queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+        toast({
+          title: "Success",
+          description: "Document deleted successfully."
+        });
+      } else {
         throw new Error('Delete failed');
       }
-      queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
-      toast({
-        title: "Success",
-        description: "Document deleted successfully."
-      });
     } catch (error) {
+      console.error("Delete error:", error);
       toast({
         title: "Error",
         description: "Failed to delete document.",
