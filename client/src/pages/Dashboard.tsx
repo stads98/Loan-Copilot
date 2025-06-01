@@ -97,6 +97,7 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
   // Get lender-specific document requirements
   const getLenderSpecificRequirements = (lenderName: string) => {
     const requirements = getDocumentRequirements(lenderName);
+    console.log('Document requirements for', lenderName, ':', requirements);
     
     // Group requirements by category for DocumentManager format
     const grouped = {
@@ -107,7 +108,8 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
     };
     
     requirements.forEach((req: any) => {
-      if (req.category === "borrower_entity" || req.category === "financials") {
+      console.log('Processing requirement:', req);
+      if (req.category === "borrower_entity" || req.category === "financials" || req.category === "lender_specific") {
         grouped.borrower.push(req.name);
       } else if (req.category === "property" || req.category === "appraisal") {
         grouped.property.push(req.name);
@@ -115,12 +117,13 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
         grouped.title.push(req.name);
       } else if (req.category === "insurance") {
         grouped.insurance.push(req.name);
-      } else if (req.category === "lender_specific") {
-        // Add lender-specific docs to borrower category for simplicity
-        grouped.borrower.push(req.name);
+      } else if (req.category === "payoff") {
+        // Add payoff documents to property category
+        grouped.property.push(req.name);
       }
     });
     
+    console.log('Grouped requirements:', grouped);
     return grouped;
   };
   
