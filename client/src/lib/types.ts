@@ -37,8 +37,9 @@ export interface Contact {
   email?: string;
   phone?: string;
   company?: string;
-  role: string; // borrower, title, insurance, etc.
+  role: string; // borrower, title, insurance, analyst, etc.
   loanId: number;
+  isAnalyst?: boolean; // Flag to identify analysts
 }
 
 export interface Loan {

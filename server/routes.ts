@@ -847,6 +847,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Gmail authentication
+  app.get("/api/gmail/auth-url", isAuthenticated, async (req, res) => {
+    try {
+      const { getGmailAuthUrl } = await import("./lib/gmail");
+      const redirectUri = `${req.protocol}://${req.get('host')}/api/gmail/callback`;
+      const authUrl = getGmailAuthUrl(process.env.GOOGLE_CLIENT_ID!, redirectUri);
+      res.json({ authUrl });
+    } catch (error) {
+      console.error("Error generating Gmail auth URL:", error);
+      res.status(500).json({ message: "Error generating auth URL" });
+    }
+  });
+
+  app.get("/api/gmail/callback", async (req, res) => {
+    try {
+      const { code } = req.query;
+      if (!code) {
+        return res.status(400).json({ message: "Authorization code required" });
+      }
+
+      const { getGmailTokens } = await import("./lib/gmail");
+      const redirectUri = `${req.protocol}://${req.get('host')}/api/gmail/callback`;
+      const tokens = await getGmailTokens(code as string, process.env.GOOGLE_CLIENT_ID!, redirectUri);
+      
+      // Store tokens in session
+      if (req.session) {
+        req.session.gmailTokens = tokens;
+      }
+
+      res.redirect('/dashboard?gmail=connected');
+    } catch (error) {
+      console.error("Error handling Gmail callback:", error);
+      res.redirect('/dashboard?gmail=error');
+    }
+  });
+
+  // Send to analyst
+  app.post("/api/loans/:id/send-to-analyst", isAuthenticated, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const { documentIds, analystIds, customMessage, emailContent } = req.body;
+
+      if (!req.session?.gmailTokens) {
+        return res.status(401).json({ 
+          message: "Gmail authentication required",
+          requiresAuth: true 
+        });
+      }
+
+      // Get loan details
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Get selected documents
+      const documents = await Promise.all(
+        documentIds.map((id: number) => storage.getDocument(id))
+      );
+
+      // Get selected analysts
+      const analysts = await Promise.all(
+        analystIds.map((id: number) => storage.getContact(id))
+      );
+
+      const analystEmails = analysts
+        .map(analyst => analyst?.email)
+        .filter(Boolean) as string[];
+
+      if (analystEmails.length === 0) {
+        return res.status(400).json({ message: "No valid analyst email addresses found" });
+      }
+
+      // Download document attachments from Google Drive
+      const { downloadDriveFile } = await import("./lib/google");
+      const attachments = [];
+
+      for (const doc of documents) {
+        if (doc) {
+          try {
+            const fileBuffer = await downloadDriveFile(doc.fileId);
+            attachments.push({
+              filename: doc.name,
+              mimeType: doc.fileType || 'application/octet-stream',
+              data: fileBuffer
+            });
+          } catch (error) {
+            console.error(`Error downloading document ${doc.name}:`, error);
+          }
+        }
+      }
+
+      // Send email via Gmail
+      const { createGmailAuth, sendGmailEmail } = await import("./lib/gmail");
+      const gmailAuth = createGmailAuth(
+        req.session.gmailTokens.access_token,
+        req.session.gmailTokens.refresh_token
+      );
+
+      const emailData = {
+        to: analystEmails,
+        subject: `${loan.propertyAddress} (Loan #${loanId}) - Documents Attached`,
+        body: emailContent,
+        attachments
+      };
+
+      const emailSent = await sendGmailEmail(gmailAuth, emailData);
+
+      if (emailSent) {
+        res.json({ 
+          success: true,
+          message: `Email sent successfully to ${analystEmails.length} analyst(s) with ${attachments.length} attachment(s)`
+        });
+      } else {
+        res.status(500).json({ message: "Failed to send email" });
+      }
+    } catch (error) {
+      console.error("Error sending to analyst:", error);
+      res.status(500).json({ message: "Error sending email to analyst" });
+    }
+  });
+
   // Google Drive folder contents route for folder browser
   app.get("/api/drive/folders/:folderId/contents", isAuthenticated, async (req, res) => {
     try {

@@ -40,8 +40,9 @@ export const contacts = pgTable("contacts", {
   email: text("email"),
   phone: text("phone"),
   company: text("company"),
-  role: text("role").notNull(), // borrower, title, insurance, etc.
+  role: text("role").notNull(), // borrower, title, insurance, analyst, etc.
   loanId: integer("loan_id").notNull(),
+  isAnalyst: boolean("is_analyst").default(false), // Flag to identify analysts
 });
 
 export const loans = pgTable("loans", {
