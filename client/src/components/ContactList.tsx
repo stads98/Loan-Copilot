@@ -36,6 +36,7 @@ export default function ContactList({ contacts, loanId, propertyAddress, borrowe
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [emailContent, setEmailContent] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
   const { toast } = useToast();
   
   const form = useForm<z.infer<typeof contactSchema>>({
@@ -115,10 +116,12 @@ export default function ContactList({ contacts, loanId, propertyAddress, borrowe
   };
 
   const generateEmailTemplate = (contact: Contact, propertyAddress: string, borrowerName: string) => {
-    const templates = {
-      title: `Subject: New Loan File - Title Services Required for ${propertyAddress}
-
-Dear ${contact.name},
+    const getSubjectAndBody = () => {
+      switch (contact.role) {
+        case 'title':
+          return {
+            subject: `${propertyAddress} (#${loanId}) - Title Request`,
+            body: `Dear ${contact.name},
 
 I hope this email finds you well. We have a new loan file that will require title services, and I wanted to reach out to coordinate the next steps.
 
@@ -136,11 +139,13 @@ Please let me know your availability to handle this file and if you need any add
 
 Best regards,
 Daniel Adler
-Loan Processing Team`,
-
-      insurance: `Subject: Insurance Requirements for New Loan File - ${propertyAddress}
-
-Dear ${contact.name},
+Loan Processing Team`
+          };
+        
+        case 'insurance':
+          return {
+            subject: `${propertyAddress} (#${loanId}) - Insurance Request`,
+            body: `Dear ${contact.name},
 
 We have a new loan file that requires insurance coverage and wanted to coordinate with you on the requirements.
 
@@ -158,11 +163,38 @@ Please confirm receipt and let us know if you need any additional details to pro
 
 Best regards,
 Daniel Adler
-Loan Processing Team`,
+Loan Processing Team`
+          };
+        
+        case 'lender':
+          return {
+            subject: `${propertyAddress} (#${loanId}) - Payoff Request`,
+            body: `Dear ${contact.name},
 
-      borrower: `Subject: Document Request for Your Loan Application - ${propertyAddress}
+We have a new loan file and need to request payoff information for the existing mortgage on the subject property.
 
-Dear ${contact.name},
+Loan Details:
+• Property Address: ${propertyAddress}
+• Borrower: ${borrowerName}
+• Loan File ID: ${loanId}
+
+Please provide:
+• Current payoff amount
+• Per diem interest rate
+• Payoff good through date
+• Wire instructions for payoff funds
+
+Please let us know if you need any additional borrower authorization to process this request.
+
+Best regards,
+Daniel Adler
+Loan Processing Team`
+          };
+        
+        case 'borrower':
+          return {
+            subject: `${propertyAddress} (#${loanId}) - Document Request`,
+            body: `Dear ${contact.name},
 
 Thank you for working with us on your loan application. We are processing your file and need some additional documentation to move forward.
 
@@ -179,11 +211,13 @@ We appreciate your prompt attention to these requests to keep your loan processi
 
 Best regards,
 Daniel Adler
-Loan Processing Team`,
-
-      default: `Subject: New Loan File Coordination - ${propertyAddress}
-
-Dear ${contact.name},
+Loan Processing Team`
+          };
+        
+        default:
+          return {
+            subject: `${propertyAddress} (#${loanId}) - Loan Coordination`,
+            body: `Dear ${contact.name},
 
 We have a new loan file and wanted to coordinate with you on the next steps.
 
@@ -197,9 +231,11 @@ Please let us know if you need any additional information from our side.
 Best regards,
 Daniel Adler
 Loan Processing Team`
+          };
+      }
     };
 
-    return templates[contact.role as keyof typeof templates] || templates.default;
+    return getSubjectAndBody();
   };
 
   const handleSendInitialEmail = async (contact: Contact) => {
@@ -209,7 +245,8 @@ Loan Processing Team`
       borrowerName || "Borrower Name"
     );
     setSelectedContact(contact);
-    setEmailContent(template);
+    setEmailContent(template.body);
+    setEmailSubject(template.subject);
     setIsEmailDialogOpen(true);
   };
   
@@ -732,12 +769,25 @@ Loan Processing Team`
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                Subject
+              </label>
+              <input
+                type="text"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-md text-sm"
+                placeholder="Email subject..."
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email Content
               </label>
               <textarea
                 value={emailContent}
                 onChange={(e) => setEmailContent(e.target.value)}
-                rows={15}
+                rows={12}
                 className="w-full p-3 border border-gray-300 rounded-md text-sm font-mono"
                 placeholder="Email content will appear here..."
               />
@@ -748,13 +798,35 @@ Loan Processing Team`
             <Button variant="outline" onClick={() => setIsEmailDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => {
-              // Here we would send the email
-              toast({
-                title: "Email sent",
-                description: `Initial email sent to ${selectedContact?.name}`,
-              });
-              setIsEmailDialogOpen(false);
+            <Button onClick={async () => {
+              if (!selectedContact?.email || !emailSubject || !emailContent) {
+                toast({
+                  title: "Missing information",
+                  description: "Please fill in all email fields",
+                  variant: "destructive"
+                });
+                return;
+              }
+
+              try {
+                await apiRequest("POST", "/api/gmail/send", {
+                  to: [selectedContact.email],
+                  subject: emailSubject,
+                  body: emailContent
+                });
+
+                toast({
+                  title: "Email sent",
+                  description: `Initial email sent to ${selectedContact.name}`,
+                });
+                setIsEmailDialogOpen(false);
+              } catch (error) {
+                toast({
+                  title: "Failed to send email",
+                  description: "Please make sure Gmail is connected and try again.",
+                  variant: "destructive"
+                });
+              }
             }}>
               Send Email
             </Button>
