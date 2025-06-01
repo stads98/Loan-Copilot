@@ -39,6 +39,7 @@ export default function ContactList({ contacts, loanId, propertyAddress, borrowe
   const [emailSubject, setEmailSubject] = useState("");
   const [emailTo, setEmailTo] = useState("");
   const [emailCc, setEmailCc] = useState("");
+  const [emailAttachments, setEmailAttachments] = useState<File[]>([]);
   const { toast } = useToast();
   
   const form = useForm<z.infer<typeof contactSchema>>({
@@ -251,6 +252,7 @@ Loan Processing Team`
     setEmailSubject(template.subject);
     setEmailTo(contact.email || "");
     setEmailCc("");
+    setEmailAttachments([]);
     setIsEmailDialogOpen(true);
   };
   
@@ -809,6 +811,49 @@ Loan Processing Team`
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                Attachments (optional)
+              </label>
+              <div className="space-y-2">
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.xls,.xlsx"
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      setEmailAttachments(Array.from(e.target.files));
+                    }
+                  }}
+                  className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                />
+                {emailAttachments.length > 0 && (
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    <p className="text-sm font-medium text-gray-700 mb-2">
+                      Selected files ({emailAttachments.length}):
+                    </p>
+                    <div className="space-y-1">
+                      {emailAttachments.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">
+                            {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                          </span>
+                          <button
+                            onClick={() => {
+                              setEmailAttachments(prev => prev.filter((_, i) => i !== index));
+                            }}
+                            className="text-red-500 hover:text-red-700 text-xs"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email Content
               </label>
               <textarea
@@ -840,12 +885,30 @@ Loan Processing Team`
               const ccEmails = emailCc ? emailCc.split(',').map(email => email.trim()).filter(email => email) : [];
 
               try {
-                await apiRequest("POST", "/api/gmail/send", {
-                  to: toEmails,
-                  cc: ccEmails.length > 0 ? ccEmails : undefined,
-                  subject: emailSubject,
-                  body: emailContent
+                // Create form data for file uploads
+                const formData = new FormData();
+                formData.append('to', JSON.stringify(toEmails));
+                if (ccEmails.length > 0) {
+                  formData.append('cc', JSON.stringify(ccEmails));
+                }
+                formData.append('subject', emailSubject);
+                formData.append('body', emailContent);
+                
+                // Add attachments
+                emailAttachments.forEach((file, index) => {
+                  formData.append(`attachment_${index}`, file);
                 });
+
+                // Send with fetch to handle file uploads
+                const response = await fetch('/api/gmail/send', {
+                  method: 'POST',
+                  body: formData,
+                  credentials: 'include'
+                });
+
+                if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
                 toast({
                   title: "Email sent",
