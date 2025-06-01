@@ -45,6 +45,7 @@ export default function DocumentManager({
   const [customDocuments, setCustomDocuments] = useState<Array<{name: string, category: string}>>([]); // Custom missing documents
   const [newCustomDocumentName, setNewCustomDocumentName] = useState("");
   const [showAddCustomDocument, setShowAddCustomDocument] = useState(false);
+  const [showInlineUpload, setShowInlineUpload] = useState<string | null>(null); // Track which requirement is showing upload
   const { toast } = useToast();
   
   // Use external completed requirements if provided, otherwise use local state
