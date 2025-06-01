@@ -11,7 +11,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
-import { Loader2, FileText, Image, File, Download, Trash2, Eye, Check, Plus } from "lucide-react";
+import { Loader2, FileText, Image, File, Download, Trash2, Eye, Check, Plus, X } from "lucide-react";
 
 interface DocumentManagerProps {
   documents: Document[];
@@ -61,6 +61,13 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
     setAssignedDocuments(prev => ({
       ...prev,
       [requirementName]: [...(prev[requirementName] || []), documentId]
+    }));
+  };
+
+  const removeDocumentFromRequirement = (requirementName: string, documentId: string) => {
+    setAssignedDocuments(prev => ({
+      ...prev,
+      [requirementName]: (prev[requirementName] || []).filter(id => id !== documentId)
     }));
   };
 
@@ -340,14 +347,37 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
                         {assignedDocuments[req.name] && assignedDocuments[req.name].length > 0 && (
                           <div className="mt-2 pt-2 border-t">
                             <p className="text-sm text-gray-600 mb-1">Assigned documents:</p>
-                            {assignedDocuments[req.name].map((docId) => {
-                              const doc = documents.find(d => d.id.toString() === docId);
-                              return doc ? (
-                                <div key={docId} className="text-sm text-green-600">
-                                  • {doc.name}
-                                </div>
-                              ) : null;
-                            })}
+                            <div className="space-y-1">
+                              {assignedDocuments[req.name].map((docId) => {
+                                const doc = documents.find(d => d.id.toString() === docId);
+                                return doc ? (
+                                  <div key={docId} className="flex items-center justify-between p-2 bg-green-50 rounded text-sm">
+                                    <div className="flex items-center gap-2">
+                                      {getFileIcon(doc)}
+                                      <span className="text-green-700">{doc.name}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => window.open(`/api/documents/${doc.id}/download`, '_blank')}
+                                        className="h-6 px-2 text-blue-600 hover:text-blue-700"
+                                      >
+                                        <Eye className="w-3 h-3" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => removeDocumentFromRequirement(req.name, docId)}
+                                        className="h-6 px-2 text-red-600 hover:text-red-700"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : null;
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -393,11 +423,39 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
                               {req.category}
                             </Badge>
                             {assignedDocuments[req.name] && assignedDocuments[req.name].length > 0 && (
-                              <div className="text-sm text-green-600 mt-1">
-                                Assigned: {assignedDocuments[req.name].map((docId) => {
-                                  const doc = documents.find(d => d.id.toString() === docId);
-                                  return doc?.name;
-                                }).filter(Boolean).join(", ")}
+                              <div className="mt-2">
+                                <p className="text-xs text-green-600 mb-1">Assigned documents:</p>
+                                <div className="space-y-1">
+                                  {assignedDocuments[req.name].map((docId) => {
+                                    const doc = documents.find(d => d.id.toString() === docId);
+                                    return doc ? (
+                                      <div key={docId} className="flex items-center justify-between p-2 bg-green-100 rounded text-sm">
+                                        <div className="flex items-center gap-2">
+                                          {getFileIcon(doc)}
+                                          <span className="text-green-800">{doc.name}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => window.open(`/api/documents/${doc.id}/download`, '_blank')}
+                                            className="h-6 px-2 text-blue-600 hover:text-blue-700"
+                                          >
+                                            <Eye className="w-3 h-3" />
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => removeDocumentFromRequirement(req.name, docId)}
+                                            className="h-6 px-2 text-red-600 hover:text-red-700"
+                                          >
+                                            <X className="w-3 h-3" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ) : null;
+                                  })}
+                                </div>
                               </div>
                             )}
                           </div>

@@ -15,9 +15,10 @@ interface DocumentProgressProps {
   };
   contacts?: Contact[];
   loanDetails?: any;
+  completedRequirements?: Set<string>;
 }
 
-export default function DocumentProgress({ documents, requiredDocuments, contacts = [], loanDetails }: DocumentProgressProps) {
+export default function DocumentProgress({ documents, requiredDocuments, contacts = [], loanDetails, completedRequirements = new Set() }: DocumentProgressProps) {
   const [showChecklist, setShowChecklist] = useState(false);
   const [showAssignments, setShowAssignments] = useState(false);
   
@@ -42,31 +43,10 @@ export default function DocumentProgress({ documents, requiredDocuments, contact
   const titleContact = findContactByRole("title");
   const insuranceContact = findContactByRole("insurance");
 
-  // Calculate the number of documents present in each category
-  // For now, since documents may not be properly categorized, let's be more flexible
-  const borrowerDocs = documents.filter(doc => 
-    doc.category === "borrower" || 
-    requiredDocuments.borrower.some(req => 
-      doc.name.toLowerCase().includes(req.toLowerCase().split(' ')[0]) ||
-      doc.name.toLowerCase().includes(req.toLowerCase().substring(0, 5))
-    )
-  ).length;
-  
-  const titleDocs = documents.filter(doc => 
-    doc.category === "title" ||
-    requiredDocuments.title.some(req => 
-      doc.name.toLowerCase().includes(req.toLowerCase().split(' ')[0]) ||
-      doc.name.toLowerCase().includes(req.toLowerCase().substring(0, 5))
-    )
-  ).length;
-  
-  const insuranceDocs = documents.filter(doc => 
-    doc.category === "insurance" ||
-    requiredDocuments.insurance.some(req => 
-      doc.name.toLowerCase().includes(req.toLowerCase().split(' ')[0]) ||
-      doc.name.toLowerCase().includes(req.toLowerCase().substring(0, 5))
-    )
-  ).length;
+  // Calculate completed requirements for each category based on manual assignments
+  const borrowerDocs = requiredDocuments.borrower.filter(req => completedRequirements.has(req)).length;
+  const titleDocs = requiredDocuments.title.filter(req => completedRequirements.has(req)).length;
+  const insuranceDocs = requiredDocuments.insurance.filter(req => completedRequirements.has(req)).length;
   
   // Calculate required counts
   const borrowerRequired = requiredDocuments.borrower.length;
