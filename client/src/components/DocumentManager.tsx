@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SmartDocumentUpload from "@/components/SmartDocumentUpload";
 import SendToAnalyst from "@/components/SendToAnalyst";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
-import { Loader2, FileText, Image, File, Download, Trash2, Eye } from "lucide-react";
+import { Loader2, FileText, Image, File, Download, Trash2, Eye, Check, Plus } from "lucide-react";
 
 interface DocumentManagerProps {
   documents: Document[];
@@ -28,6 +29,8 @@ interface DocumentManagerProps {
 export default function DocumentManager({ documents, loanId, contacts, propertyAddress, requiredDocuments }: DocumentManagerProps) {
   const [activeTab, setActiveTab] = useState("document-list");
   const [isSyncing, setIsSyncing] = useState(false);
+  const [completedRequirements, setCompletedRequirements] = useState<Set<string>>(new Set());
+  const [assignedDocuments, setAssignedDocuments] = useState<Record<string, string[]>>({}); // requirement -> document IDs
   const { toast } = useToast();
 
   const syncGoogleDrive = async () => {
@@ -53,27 +56,40 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
     }
   };
   
-  // Helper function to check if a document is uploaded
-  const isDocumentUploaded = (requiredDocName: string, category: string) => {
-    // No automatic matching - all documents should appear as missing
-    // Users will manually assign uploaded files to requirements using the assignment feature
-    return false;
+  // Helper functions for managing requirements
+  const assignDocumentToRequirement = (requirementName: string, documentId: string) => {
+    setAssignedDocuments(prev => ({
+      ...prev,
+      [requirementName]: [...(prev[requirementName] || []), documentId]
+    }));
   };
 
-  // Calculate missing documents based on requirements
-  const missingDocuments = {
-    borrower: requiredDocuments.borrower.filter(doc => !isDocumentUploaded(doc, "borrower")),
-    property: requiredDocuments.property?.filter(doc => !isDocumentUploaded(doc, "property")) || [],
-    title: requiredDocuments.title.filter(doc => !isDocumentUploaded(doc, "title")),
-    insurance: requiredDocuments.insurance.filter(doc => !isDocumentUploaded(doc, "insurance"))
+  const markRequirementComplete = (requirementName: string) => {
+    setCompletedRequirements(prev => new Set(Array.from(prev).concat(requirementName)));
+    toast({
+      title: "Requirement Completed",
+      description: `"${requirementName}" has been marked as complete.`
+    });
   };
-  
-  const allMissingDocuments = [
-    ...missingDocuments.borrower.map(doc => ({ name: doc, category: "borrower" })),
-    ...missingDocuments.property.map(doc => ({ name: doc, category: "property" })),
-    ...missingDocuments.title.map(doc => ({ name: doc, category: "title" })),
-    ...missingDocuments.insurance.map(doc => ({ name: doc, category: "insurance" }))
+
+  const unmarkRequirementComplete = (requirementName: string) => {
+    setCompletedRequirements(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(requirementName);
+      return newSet;
+    });
+  };
+
+  // Calculate missing and completed documents
+  const allRequirements = [
+    ...requiredDocuments.borrower.map(doc => ({ name: doc, category: "borrower" })),
+    ...requiredDocuments.property.map(doc => ({ name: doc, category: "property" })),
+    ...requiredDocuments.title.map(doc => ({ name: doc, category: "title" })),
+    ...requiredDocuments.insurance.map(doc => ({ name: doc, category: "insurance" }))
   ];
+
+  const missingDocuments = allRequirements.filter(req => !completedRequirements.has(req.name));
+  const completedDocuments = allRequirements.filter(req => completedRequirements.has(req.name));
 
   const getFileIcon = (document: Document) => {
     if (document.fileType?.includes('image')) {
@@ -186,13 +202,13 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
               All Documents ({documents.length})
             </TabsTrigger>
             <TabsTrigger value="missing">
-              Missing ({allMissingDocuments.length})
+              Missing ({missingDocuments.length})
             </TabsTrigger>
             <TabsTrigger value="upload">
               Upload
             </TabsTrigger>
-            <TabsTrigger value="categories">
-              Categories
+            <TabsTrigger value="completed">
+              Completed ({completedDocuments.length})
             </TabsTrigger>
           </TabsList>
 
@@ -271,28 +287,69 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
               <CardHeader>
                 <CardTitle>Missing Documents</CardTitle>
                 <CardDescription>
-                  These documents are required but haven't been uploaded yet.
+                  These documents are required but haven't been completed yet.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {allMissingDocuments.length === 0 ? (
+                {missingDocuments.length === 0 ? (
                   <p className="text-center text-gray-500">
-                    All required documents have been uploaded!
+                    All required documents have been completed!
                   </p>
                 ) : (
-                  <div className="space-y-2">
-                    {allMissingDocuments.map((doc, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 border rounded">
-                        <div className="flex items-center gap-3">
-                          <File className="w-4 h-4 text-gray-400" />
-                          <span>{doc.name}</span>
-                          <Badge variant="outline" className="text-xs">
-                            {doc.category}
-                          </Badge>
+                  <div className="space-y-4">
+                    {missingDocuments.map((req, index) => (
+                      <div key={index} className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <File className="w-4 h-4 text-gray-400" />
+                            <span className="font-medium">{req.name}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {req.category}
+                            </Badge>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => markRequirementComplete(req.name)}
+                            className="text-green-600 hover:text-green-700"
+                          >
+                            <Check className="w-4 h-4 mr-1" />
+                            Mark Complete
+                          </Button>
                         </div>
-                        <Button size="sm" variant="outline">
-                          Upload
-                        </Button>
+                        
+                        <div className="flex items-center gap-2 mt-2">
+                          <Select onValueChange={(value) => assignDocumentToRequirement(req.name, value)}>
+                            <SelectTrigger className="w-[300px]">
+                              <SelectValue placeholder="Assign uploaded document..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {documents.map((doc) => (
+                                <SelectItem key={doc.id} value={doc.id.toString()}>
+                                  {doc.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" variant="ghost">
+                            <Plus className="w-4 h-4 mr-1" />
+                            Upload New
+                          </Button>
+                        </div>
+                        
+                        {assignedDocuments[req.name] && assignedDocuments[req.name].length > 0 && (
+                          <div className="mt-2 pt-2 border-t">
+                            <p className="text-sm text-gray-600 mb-1">Assigned documents:</p>
+                            {assignedDocuments[req.name].map((docId) => {
+                              const doc = documents.find(d => d.id.toString() === docId);
+                              return doc ? (
+                                <div key={docId} className="text-sm text-green-600">
+                                  • {doc.name}
+                                </div>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -311,38 +368,54 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
             />
           </TabsContent>
 
-          <TabsContent value="categories" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                { key: 'borrower', name: 'Borrower Documents', docs: documents.filter(d => d.category === 'borrower') },
-                { key: 'property', name: 'Property Documents', docs: documents.filter(d => d.category === 'property') },
-                { key: 'title', name: 'Title Documents', docs: documents.filter(d => d.category === 'title') },
-                { key: 'insurance', name: 'Insurance Documents', docs: documents.filter(d => d.category === 'insurance') }
-              ].map(category => (
-                <Card key={category.key}>
-                  <CardHeader>
-                    <CardTitle className="text-base">{category.name}</CardTitle>
-                    <CardDescription>
-                      {category.docs.length} documents
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {category.docs.length === 0 ? (
-                      <p className="text-sm text-gray-500">No documents in this category</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {category.docs.map(doc => (
-                          <div key={doc.id} className="flex items-center gap-2 text-sm">
-                            {getFileIcon(doc)}
-                            <span className="truncate">{doc.name}</span>
+          <TabsContent value="completed" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Completed Requirements</CardTitle>
+                <CardDescription>
+                  Document requirements that have been satisfied and marked as complete.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {completedDocuments.length === 0 ? (
+                  <p className="text-center text-gray-500">
+                    No requirements have been completed yet.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {completedDocuments.map((req, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg bg-green-50">
+                        <div className="flex items-center gap-3">
+                          <Check className="w-5 h-5 text-green-600" />
+                          <div>
+                            <span className="font-medium text-green-800">{req.name}</span>
+                            <Badge variant="outline" className="ml-2 text-xs">
+                              {req.category}
+                            </Badge>
+                            {assignedDocuments[req.name] && assignedDocuments[req.name].length > 0 && (
+                              <div className="text-sm text-green-600 mt-1">
+                                Assigned: {assignedDocuments[req.name].map((docId) => {
+                                  const doc = documents.find(d => d.id.toString() === docId);
+                                  return doc?.name;
+                                }).filter(Boolean).join(", ")}
+                              </div>
+                            )}
                           </div>
-                        ))}
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => unmarkRequirementComplete(req.name)}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          Unmark
+                        </Button>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
