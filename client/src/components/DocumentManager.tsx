@@ -546,11 +546,6 @@ export default function DocumentManager({
                                         queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
                                         setShowInlineUpload(null);
                                         
-                                        // Automatically mark requirement as complete when files are uploaded
-                                        if (successCount > 0) {
-                                          markRequirementComplete(req.name);
-                                        }
-                                        
                                         if (failCount === 0) {
                                           toast({
                                             title: "Documents uploaded successfully",
