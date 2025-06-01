@@ -1,6 +1,7 @@
 import { Document, Contact } from "@/lib/types";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +42,9 @@ export default function DocumentManager({
   const [isSyncing, setIsSyncing] = useState(false);
   const [localCompletedRequirements, setLocalCompletedRequirements] = useState<Set<string>>(new Set());
   const [assignedDocuments, setAssignedDocuments] = useState<Record<string, string[]>>({}); // requirement -> document IDs
+  const [customDocuments, setCustomDocuments] = useState<Array<{name: string, category: string}>>([]); // Custom missing documents
+  const [newCustomDocumentName, setNewCustomDocumentName] = useState("");
+  const [showAddCustomDocument, setShowAddCustomDocument] = useState(false);
   const { toast } = useToast();
   
   // Use external completed requirements if provided, otherwise use local state
@@ -107,12 +111,46 @@ export default function DocumentManager({
     }
   };
 
+  // Functions for custom missing documents
+  const addCustomDocument = () => {
+    if (newCustomDocumentName.trim()) {
+      const newCustomDoc = {
+        name: newCustomDocumentName.trim(),
+        category: "custom"
+      };
+      setCustomDocuments(prev => [...prev, newCustomDoc]);
+      setNewCustomDocumentName("");
+      setShowAddCustomDocument(false);
+      toast({
+        title: "Custom Document Added",
+        description: `"${newCustomDoc.name}" has been added to missing documents.`
+      });
+    }
+  };
+
+  const removeCustomDocument = (documentName: string) => {
+    setCustomDocuments(prev => prev.filter(doc => doc.name !== documentName));
+    // Also remove from completed requirements if it was marked complete
+    const newCompleted = new Set(completedRequirements);
+    newCompleted.delete(documentName);
+    if (onCompletedRequirementsChange) {
+      onCompletedRequirementsChange(newCompleted);
+    } else {
+      setLocalCompletedRequirements(newCompleted);
+    }
+    toast({
+      title: "Custom Document Removed",
+      description: `"${documentName}" has been removed from missing documents.`
+    });
+  };
+
   // Calculate missing and completed documents
   const allRequirements = [
     ...requiredDocuments.borrower.map(doc => ({ name: doc, category: "borrower" })),
     ...requiredDocuments.property.map(doc => ({ name: doc, category: "property" })),
     ...requiredDocuments.title.map(doc => ({ name: doc, category: "title" })),
-    ...requiredDocuments.insurance.map(doc => ({ name: doc, category: "insurance" }))
+    ...requiredDocuments.insurance.map(doc => ({ name: doc, category: "insurance" })),
+    ...customDocuments // Include custom documents in the list
   ];
 
   const missingDocuments = allRequirements.filter(req => !completedRequirements.has(req.name));
@@ -319,6 +357,52 @@ export default function DocumentManager({
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {/* Add Custom Document Section */}
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-gray-900">Add Custom Missing Document</h4>
+                    {!showAddCustomDocument && (
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => setShowAddCustomDocument(true)}
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add Custom Document
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {showAddCustomDocument && (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder="e.g., Bank statement for account ending in 5466"
+                        value={newCustomDocumentName}
+                        onChange={(e) => setNewCustomDocumentName(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && addCustomDocument()}
+                        className="flex-1"
+                      />
+                      <Button 
+                        size="sm" 
+                        onClick={addCustomDocument}
+                        disabled={!newCustomDocumentName.trim()}
+                      >
+                        Add
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => {
+                          setShowAddCustomDocument(false);
+                          setNewCustomDocumentName("");
+                        }}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
                 {missingDocuments.length === 0 ? (
                   <p className="text-center text-gray-500">
                     All required documents have been completed!
