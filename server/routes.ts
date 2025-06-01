@@ -412,9 +412,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Document not found" });
       }
 
-      // Redirect to Google Drive view URL
-      const viewUrl = `https://drive.google.com/file/d/${document.fileId}/view`;
-      res.redirect(viewUrl);
+      // Check if this is a Google Drive document or locally uploaded
+      if (document.fileId && document.fileId.length > 10) {
+        // Google Drive document - redirect to Google Drive view URL
+        const viewUrl = `https://drive.google.com/file/d/${document.fileId}/view`;
+        res.redirect(viewUrl);
+      } else {
+        // Locally uploaded document - serve file content directly
+        // For now, return an error message indicating local file viewing is not implemented
+        res.status(501).json({ 
+          message: "Local file viewing not yet implemented. Document was uploaded directly and cannot be viewed through Google Drive.",
+          documentName: document.name,
+          fileType: document.fileType
+        });
+      }
     } catch (error) {
       console.error("Error redirecting to document:", error);
       res.status(500).json({ message: "Failed to open document" });
