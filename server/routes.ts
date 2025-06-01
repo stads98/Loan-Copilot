@@ -364,18 +364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Document not found" });
       }
 
-      // For Google Drive files, we need to use the Google Drive API to get the file
-      const { google } = require('googleapis');
-      
-      // Get OAuth2 client from session
-      const oauth2Client = new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_CLIENT_SECRET,
-        'http://localhost:5000/auth/google/callback'
-      );
-
-      // Check if we have stored credentials for this user
-      // For now, return the viewing URL that works better for images and PDFs
+      // For Google Drive files, return the viewing URL that works better for images and PDFs
       const viewUrl = `https://drive.google.com/file/d/${document.fileId}/view`;
       
       res.json({ 
