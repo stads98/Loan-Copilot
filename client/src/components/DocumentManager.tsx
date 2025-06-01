@@ -204,7 +204,7 @@ export default function DocumentManager({
               contacts={contacts}
               loanId={loanId}
               propertyAddress={propertyAddress}
-              documentAssignments={documentAssignments}
+              documentAssignments={assignedDocuments}
             />
             <Button 
               onClick={syncGoogleDrive}
