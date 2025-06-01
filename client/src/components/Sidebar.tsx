@@ -113,7 +113,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           </h3>
           <div className="space-y-1">
             {loans && loans.length > 0 ? (
-              loans.slice(0, 5).map((loan: any) => {
+              loans.map((loan: any) => {
                 const initials = loan.borrowerName
                   .split(' ')
                   .map((name: string) => name.charAt(0).toUpperCase())
