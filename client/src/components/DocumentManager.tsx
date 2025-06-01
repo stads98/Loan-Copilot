@@ -24,14 +24,27 @@ interface DocumentManagerProps {
     title: string[];
     insurance: string[];
   };
+  completedRequirements?: Set<string>;
+  onCompletedRequirementsChange?: (completed: Set<string>) => void;
 }
 
-export default function DocumentManager({ documents, loanId, contacts, propertyAddress, requiredDocuments }: DocumentManagerProps) {
+export default function DocumentManager({ 
+  documents, 
+  loanId, 
+  contacts, 
+  propertyAddress, 
+  requiredDocuments, 
+  completedRequirements: externalCompletedRequirements,
+  onCompletedRequirementsChange 
+}: DocumentManagerProps) {
   const [activeTab, setActiveTab] = useState("document-list");
   const [isSyncing, setIsSyncing] = useState(false);
-  const [completedRequirements, setCompletedRequirements] = useState<Set<string>>(new Set());
+  const [localCompletedRequirements, setLocalCompletedRequirements] = useState<Set<string>>(new Set());
   const [assignedDocuments, setAssignedDocuments] = useState<Record<string, string[]>>({}); // requirement -> document IDs
   const { toast } = useToast();
+  
+  // Use external completed requirements if provided, otherwise use local state
+  const completedRequirements = externalCompletedRequirements || localCompletedRequirements;
 
   const syncGoogleDrive = async () => {
     setIsSyncing(true);
@@ -72,7 +85,12 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
   };
 
   const markRequirementComplete = (requirementName: string) => {
-    setCompletedRequirements(prev => new Set(Array.from(prev).concat(requirementName)));
+    const newCompleted = new Set(Array.from(completedRequirements).concat(requirementName));
+    if (onCompletedRequirementsChange) {
+      onCompletedRequirementsChange(newCompleted);
+    } else {
+      setLocalCompletedRequirements(newCompleted);
+    }
     toast({
       title: "Requirement Completed",
       description: `"${requirementName}" has been marked as complete.`
@@ -80,11 +98,13 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
   };
 
   const unmarkRequirementComplete = (requirementName: string) => {
-    setCompletedRequirements(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(requirementName);
-      return newSet;
-    });
+    const newCompleted = new Set(completedRequirements);
+    newCompleted.delete(requirementName);
+    if (onCompletedRequirementsChange) {
+      onCompletedRequirementsChange(newCompleted);
+    } else {
+      setLocalCompletedRequirements(newCompleted);
+    }
   };
 
   // Calculate missing and completed documents

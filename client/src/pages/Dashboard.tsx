@@ -28,6 +28,7 @@ interface DashboardProps {
 export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId, currentPath }: DashboardProps) {
   const [activeLoanId, setActiveLoanId] = useState<number | null>(externalLoanId || null);
   const [isDriveConnected, setIsDriveConnected] = useState(false);
+  const [completedRequirements, setCompletedRequirements] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
   
