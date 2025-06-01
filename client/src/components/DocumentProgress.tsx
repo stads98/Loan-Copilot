@@ -43,9 +43,30 @@ export default function DocumentProgress({ documents, requiredDocuments, contact
   const insuranceContact = findContactByRole("insurance");
 
   // Calculate the number of documents present in each category
-  const borrowerDocs = documents.filter(doc => doc.category === "borrower").length;
-  const titleDocs = documents.filter(doc => doc.category === "title").length;
-  const insuranceDocs = documents.filter(doc => doc.category === "insurance").length;
+  // For now, since documents may not be properly categorized, let's be more flexible
+  const borrowerDocs = documents.filter(doc => 
+    doc.category === "borrower" || 
+    requiredDocuments.borrower.some(req => 
+      doc.name.toLowerCase().includes(req.toLowerCase().split(' ')[0]) ||
+      doc.name.toLowerCase().includes(req.toLowerCase().substring(0, 5))
+    )
+  ).length;
+  
+  const titleDocs = documents.filter(doc => 
+    doc.category === "title" ||
+    requiredDocuments.title.some(req => 
+      doc.name.toLowerCase().includes(req.toLowerCase().split(' ')[0]) ||
+      doc.name.toLowerCase().includes(req.toLowerCase().substring(0, 5))
+    )
+  ).length;
+  
+  const insuranceDocs = documents.filter(doc => 
+    doc.category === "insurance" ||
+    requiredDocuments.insurance.some(req => 
+      doc.name.toLowerCase().includes(req.toLowerCase().split(' ')[0]) ||
+      doc.name.toLowerCase().includes(req.toLowerCase().substring(0, 5))
+    )
+  ).length;
   
   // Calculate required counts
   const borrowerRequired = requiredDocuments.borrower.length;
@@ -271,8 +292,9 @@ export default function DocumentProgress({ documents, requiredDocuments, contact
               <div className="grid gap-2">
                 {requiredDocuments.borrower.map((docName, index) => {
                   const isUploaded = documents.some(doc => 
-                    doc.category === "borrower" && 
-                    doc.name.toLowerCase().includes(docName.toLowerCase().split(' ')[0])
+                    doc.category === "borrower" || 
+                    doc.name.toLowerCase().includes(docName.toLowerCase().split(' ')[0]) ||
+                    doc.name.toLowerCase().includes(docName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 5))
                   );
                   return (
                     <div key={index} className={`flex items-center p-2 rounded-md ${
@@ -442,7 +464,7 @@ export default function DocumentProgress({ documents, requiredDocuments, contact
                       <div className="flex-1">
                         <h4 className="text-sm font-medium text-gray-900 mb-1">{doc.name}</h4>
                         <p className="text-xs text-gray-500 mb-3">
-                          Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
+                          Uploaded: {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : 'Date unknown'}
                         </p>
                         
                         <div className="flex items-center gap-2">
