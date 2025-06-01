@@ -25,7 +25,7 @@ interface DocumentManagerProps {
   };
 }
 
-export default function DocumentManager({ documents, loanId, contacts, propertyAddress }: DocumentManagerProps) {
+export default function DocumentManager({ documents, loanId, contacts, propertyAddress, requiredDocuments }: DocumentManagerProps) {
   const [activeTab, setActiveTab] = useState("document-list");
   const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
@@ -53,12 +53,21 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
     }
   };
   
-  // All missing documents based on requirements
+  // Helper function to check if a document is uploaded
+  const isDocumentUploaded = (requiredDocName: string, category: string) => {
+    return documents.some(doc => 
+      doc.category === category || 
+      doc.name.toLowerCase().includes(requiredDocName.toLowerCase().split(' ')[0]) ||
+      doc.name.toLowerCase().includes(requiredDocName.toLowerCase().substring(0, 5))
+    );
+  };
+
+  // Calculate missing documents based on requirements
   const missingDocuments = {
-    borrower: [],
-    property: [],
-    title: [],
-    insurance: []
+    borrower: requiredDocuments.borrower.filter(doc => !isDocumentUploaded(doc, "borrower")),
+    property: requiredDocuments.property?.filter(doc => !isDocumentUploaded(doc, "property")) || [],
+    title: requiredDocuments.title.filter(doc => !isDocumentUploaded(doc, "title")),
+    insurance: requiredDocuments.insurance.filter(doc => !isDocumentUploaded(doc, "insurance"))
   };
   
   const allMissingDocuments = [
