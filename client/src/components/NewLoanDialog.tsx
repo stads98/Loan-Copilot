@@ -34,6 +34,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 
 const loanFormSchema = z.object({
+  loanNumber: z.string().min(1, "Loan number is required"),
   borrowerName: z.string().min(2, "Borrower name is required"),
   borrowerEntityName: z.string().optional(),
   propertyAddress: z.string().min(5, "Property address is required"),
@@ -116,6 +117,7 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
       const finalLTV = data.loanToValue ? parseInt(data.loanToValue) : calculatedLTV;
 
       const loanData = {
+        loanNumber: data.loanNumber,
         borrowerName: data.borrowerName,
         borrowerEntityName: data.borrowerEntityName || data.borrowerName,
         propertyAddress: data.propertyAddress,
@@ -197,6 +199,20 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="loanNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Loan Number</FormLabel>
+                  <FormControl>
+                    <Input placeholder="LN-0001" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}

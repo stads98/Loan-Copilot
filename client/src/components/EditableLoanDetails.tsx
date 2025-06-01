@@ -18,6 +18,7 @@ interface EditableLoanDetailsProps {
 export default function EditableLoanDetails({ loanId, loanDetails }: EditableLoanDetailsProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
+    loanNumber: loanDetails?.loan?.loanNumber || "",
     borrowerName: loanDetails?.loan?.borrowerName || "",
     borrowerEntityName: loanDetails?.loan?.borrowerEntityName || "",
     propertyAddress: loanDetails?.property?.address || "",
@@ -66,6 +67,7 @@ export default function EditableLoanDetails({ loanId, loanDetails }: EditableLoa
 
   const handleCancel = () => {
     setEditData({
+      loanNumber: loanDetails?.loan?.loanNumber || "",
       borrowerName: loanDetails?.loan?.borrowerName || "",
       borrowerEntityName: loanDetails?.loan?.borrowerEntityName || "",
       propertyAddress: loanDetails?.property?.address || "",
@@ -117,10 +119,25 @@ export default function EditableLoanDetails({ loanId, loanDetails }: EditableLoa
       
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Borrower Information */}
+          {/* Loan Information */}
           <div className="space-y-3">
-            <h3 className="font-medium text-sm text-muted-foreground">Borrower Information</h3>
+            <h3 className="font-medium text-sm text-muted-foreground">Loan Information</h3>
             
+            <div>
+              <Label htmlFor="loanNumber">Loan Number</Label>
+              {isEditing ? (
+                <Input
+                  id="loanNumber"
+                  value={editData.loanNumber}
+                  onChange={(e) => setEditData({...editData, loanNumber: e.target.value})}
+                  className="mt-1"
+                  placeholder="LN-0001"
+                />
+              ) : (
+                <p className="mt-1 text-sm font-medium">{loanDetails?.loan?.loanNumber || "Not assigned"}</p>
+              )}
+            </div>
+
             <div>
               <Label htmlFor="borrowerName">Borrower Name</Label>
               {isEditing ? (
