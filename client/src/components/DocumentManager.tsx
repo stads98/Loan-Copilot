@@ -14,141 +14,7 @@ import { queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { Loader2, FileText, Image, File, Download, Trash2, Eye, Check, Plus, X, Upload } from "lucide-react";
 
-// Inline Document Upload Component
-interface InlineDocumentUploadProps {
-  loanId: number;
-  requirementName: string;
-  onSuccess: () => void;
-  onCancel: () => void;
-}
 
-function InlineDocumentUpload({ loanId, requirementName, onSuccess, onCancel }: InlineDocumentUploadProps) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const { toast } = useToast();
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-  };
-
-  const getFileIcon = (file: File) => {
-    if (file.type.startsWith('image/')) {
-      return <Image className="w-4 h-4 text-blue-500" />;
-    } else if (file.type === 'application/pdf') {
-      return <FileText className="w-4 h-4 text-red-500" />;
-    } else {
-      return <File className="w-4 h-4 text-gray-500" />;
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile) return;
-
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('name', `${requirementName} - ${selectedFile.name.split('.').slice(0, -1).join('.')}`);
-      formData.append('category', 'borrower'); // Default category
-
-      const response = await fetch(`/api/loans/${loanId}/documents`, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      onSuccess();
-    } catch (error) {
-      console.error('Upload error:', error);
-      toast({
-        title: "Upload Failed",
-        description: "There was an error uploading your document. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  return (
-    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-      <div className="flex items-center justify-between mb-3">
-        <h5 className="text-sm font-medium text-blue-900">Upload for {requirementName}</h5>
-        <Button size="sm" variant="ghost" onClick={onCancel}>
-          <X className="w-4 h-4" />
-        </Button>
-      </div>
-      
-      <div className="space-y-3">
-        <div>
-          <input
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-            onChange={handleFileSelect}
-            className="hidden"
-            id={`file-upload-${requirementName}`}
-          />
-          <Button
-            variant="outline"
-            onClick={() => document.getElementById(`file-upload-${requirementName}`)?.click()}
-            className="w-full h-12 border-dashed border-2 flex items-center justify-center"
-          >
-            {selectedFile ? (
-              <div className="flex items-center gap-2">
-                {getFileIcon(selectedFile)}
-                <span className="text-sm">{selectedFile.name}</span>
-                <span className="text-xs text-gray-500">
-                  ({(selectedFile.size / 1024).toFixed(1)} KB)
-                </span>
-              </div>
-            ) : (
-              <>
-                <Upload className="w-4 h-4 mr-2" />
-                Select File
-              </>
-            )}
-          </Button>
-        </div>
-        
-        {selectedFile && (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={onCancel}
-              className="flex-1"
-              disabled={isUploading}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpload}
-              disabled={isUploading}
-              className="flex-1"
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload
-                </>
-              )}
-            </Button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 interface DocumentManagerProps {
   documents: Document[];
@@ -642,19 +508,63 @@ export default function DocumentManager({
                         
                         {/* Inline Upload Section */}
                         {showInlineUpload === req.name && (
-                          <InlineDocumentUpload 
-                            loanId={loanId}
-                            requirementName={req.name}
-                            onSuccess={() => {
-                              queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
-                              setShowInlineUpload(null);
-                              toast({
-                                title: "Document uploaded successfully",
-                                description: `Document uploaded for ${req.name}`,
-                              });
-                            }}
-                            onCancel={() => setShowInlineUpload(null)}
-                          />
+                          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="flex items-center justify-between mb-3">
+                              <h5 className="text-sm font-medium text-blue-900">Upload for {req.name}</h5>
+                              <Button size="sm" variant="ghost" onClick={() => setShowInlineUpload(null)}>
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            
+                            <div className="space-y-3">
+                              <div>
+                                <input
+                                  type="file"
+                                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      // Handle file upload here
+                                      const formData = new FormData();
+                                      formData.append('file', file);
+                                      formData.append('name', `${req.name} - ${file.name.split('.').slice(0, -1).join('.')}`);
+                                      formData.append('category', 'borrower');
+                                      
+                                      fetch(`/api/loans/${loanId}/documents`, {
+                                        method: 'POST',
+                                        body: formData
+                                      }).then(response => {
+                                        if (response.ok) {
+                                          queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+                                          setShowInlineUpload(null);
+                                          toast({
+                                            title: "Document uploaded successfully",
+                                            description: `Document uploaded for ${req.name}`,
+                                          });
+                                        } else {
+                                          toast({
+                                            title: "Upload Failed",
+                                            description: "There was an error uploading your document.",
+                                            variant: "destructive"
+                                          });
+                                        }
+                                      });
+                                    }
+                                  }}
+                                  className="hidden"
+                                  id={`file-upload-${req.name}`}
+                                />
+                                <Button
+                                  variant="outline"
+                                  onClick={() => document.getElementById(`file-upload-${req.name}`)?.click()}
+                                  className="w-full h-12 border-dashed border-2 flex items-center justify-center"
+                                >
+                                  <Upload className="w-4 h-4 mr-2" />
+                                  Select File to Upload
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
                         )}
                       </div>
                     ))}
