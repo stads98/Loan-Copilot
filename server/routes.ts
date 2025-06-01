@@ -15,6 +15,23 @@ import path from "path";
 
 const SessionStore = MemoryStore(session);
 
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow common file types
+    const allowedTypes = /\.(pdf|doc|docx|jpg|jpeg|png|gif|xls|xlsx)$/i;
+    if (allowedTypes.test(file.originalname)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PDF, DOC, DOCX, JPG, JPEG, PNG, GIF, XLS, XLSX files are allowed.'));
+    }
+  }
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up session middleware
   app.use(
@@ -931,6 +948,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ connected });
     } catch (error) {
       res.json({ connected: false });
+    }
+  });
+
+  // Send Gmail email with attachments
+  app.post("/api/gmail/send", isAuthenticated, upload.any(), async (req, res) => {
+    try {
+      if (!(req.session as any)?.gmailTokens) {
+        return res.status(401).json({ message: "Gmail authentication required" });
+      }
+
+      const { to, cc, subject, body } = req.body;
+      const files = req.files as Express.Multer.File[];
+
+      // Parse recipients
+      const toEmails = JSON.parse(to);
+      const ccEmails = cc ? JSON.parse(cc) : [];
+
+      // Process attachments
+      const attachments = files ? files.map(file => ({
+        filename: file.originalname,
+        mimeType: file.mimetype,
+        data: file.buffer
+      })) : [];
+
+      const { createGmailAuth, sendGmailEmail } = await import("./lib/gmail");
+      const gmailAuth = createGmailAuth(
+        (req.session as any).gmailTokens.access_token,
+        (req.session as any).gmailTokens.refresh_token
+      );
+
+      const emailData = {
+        to: toEmails,
+        cc: ccEmails.length > 0 ? ccEmails : undefined,
+        subject,
+        body,
+        attachments
+      };
+
+      const success = await sendGmailEmail(gmailAuth, emailData);
+
+      if (success) {
+        res.json({ 
+          success: true, 
+          message: `Email sent to ${toEmails.length} recipient(s)${ccEmails.length > 0 ? ` with ${ccEmails.length} CC` : ''}${attachments.length > 0 ? ` and ${attachments.length} attachment(s)` : ''}` 
+        });
+      } else {
+        res.status(500).json({ message: "Failed to send email" });
+      }
+    } catch (error) {
+      console.error("Error sending Gmail:", error);
+      res.status(500).json({ message: "Error sending email" });
     }
   });
 

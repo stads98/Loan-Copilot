@@ -4,6 +4,7 @@ const gmail = google.gmail('v1');
 
 interface EmailData {
   to: string[];
+  cc?: string[];
   subject: string;
   body: string;
   attachments?: {
@@ -15,12 +16,22 @@ interface EmailData {
 
 export async function sendGmailEmail(auth: any, emailData: EmailData): Promise<boolean> {
   try {
-    const { to, subject, body, attachments = [] } = emailData;
+    const { to, cc, subject, body, attachments = [] } = emailData;
+
+    // Create the email message headers
+    const headers = [
+      `To: ${to.join(', ')}`,
+    ];
+    
+    if (cc && cc.length > 0) {
+      headers.push(`Cc: ${cc.join(', ')}`);
+    }
+    
+    headers.push(`Subject: ${subject}`);
 
     // Create the email message
     let message = [
-      `To: ${to.join(', ')}`,
-      `Subject: ${subject}`,
+      ...headers,
       'Content-Type: text/plain; charset=utf-8',
       '',
       body
