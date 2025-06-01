@@ -48,20 +48,14 @@ export default function ContactList({ contacts, loanId }: ContactListProps) {
     try {
       if (editingContact) {
         // Update existing contact
-        await apiRequest(`/api/loans/${loanId}/contacts/${editingContact.id}`, {
-          method: "PUT",
-          body: JSON.stringify(data)
-        });
+        await apiRequest("PUT", `/api/loans/${loanId}/contacts/${editingContact.id}`, data);
         toast({
           title: "Contact updated",
           description: "Contact has been updated successfully"
         });
       } else {
         // Create new contact
-        await apiRequest(`/api/loans/${loanId}/contacts`, {
-          method: "POST",
-          body: JSON.stringify(data)
-        });
+        await apiRequest("POST", `/api/loans/${loanId}/contacts`, data);
         toast({
           title: "Contact added",
           description: "New contact has been added successfully"
@@ -85,9 +79,7 @@ export default function ContactList({ contacts, loanId }: ContactListProps) {
     if (!contactToDelete) return;
     
     try {
-      await apiRequest(`/api/loans/${loanId}/contacts/${contactToDelete}`, {
-        method: "DELETE"
-      });
+      await apiRequest("DELETE", `/api/loans/${loanId}/contacts/${contactToDelete}`);
       
       toast({
         title: "Contact deleted",
