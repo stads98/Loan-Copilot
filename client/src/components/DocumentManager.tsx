@@ -543,6 +543,20 @@ export default function DocumentManager({
                                         const successCount = responses.filter(r => r.ok).length;
                                         const failCount = responses.length - successCount;
                                         
+                                        // Get the uploaded document IDs and assign them to the requirement
+                                        const uploadedDocumentIds = [];
+                                        for (let i = 0; i < responses.length; i++) {
+                                          if (responses[i].ok) {
+                                            const docData = await responses[i].json();
+                                            uploadedDocumentIds.push(docData.id.toString());
+                                          }
+                                        }
+                                        
+                                        // Assign all successfully uploaded documents to this requirement
+                                        uploadedDocumentIds.forEach(docId => {
+                                          assignDocumentToRequirement(req.name, docId);
+                                        });
+                                        
                                         queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
                                         setShowInlineUpload(null);
                                         
