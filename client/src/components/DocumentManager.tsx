@@ -521,34 +521,50 @@ export default function DocumentManager({
                                 <input
                                   type="file"
                                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      // Handle file upload here
-                                      const formData = new FormData();
-                                      formData.append('file', file);
-                                      formData.append('name', `${req.name} - ${file.name.split('.').slice(0, -1).join('.')}`);
-                                      formData.append('category', 'borrower');
+                                  multiple
+                                  onChange={async (e) => {
+                                    const files = Array.from(e.target.files || []);
+                                    if (files.length > 0) {
+                                      // Handle multiple file uploads
+                                      const uploadPromises = files.map(async (file) => {
+                                        const formData = new FormData();
+                                        formData.append('file', file);
+                                        formData.append('name', `${req.name} - ${file.name.split('.').slice(0, -1).join('.')}`);
+                                        formData.append('category', 'borrower');
+                                        
+                                        return fetch(`/api/loans/${loanId}/documents`, {
+                                          method: 'POST',
+                                          body: formData
+                                        });
+                                      });
                                       
-                                      fetch(`/api/loans/${loanId}/documents`, {
-                                        method: 'POST',
-                                        body: formData
-                                      }).then(response => {
-                                        if (response.ok) {
-                                          queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
-                                          setShowInlineUpload(null);
+                                      try {
+                                        const responses = await Promise.all(uploadPromises);
+                                        const successCount = responses.filter(r => r.ok).length;
+                                        const failCount = responses.length - successCount;
+                                        
+                                        queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+                                        setShowInlineUpload(null);
+                                        
+                                        if (failCount === 0) {
                                           toast({
-                                            title: "Document uploaded successfully",
-                                            description: `Document uploaded for ${req.name}`,
+                                            title: "Documents uploaded successfully",
+                                            description: `${successCount} document${successCount > 1 ? 's' : ''} uploaded for ${req.name}`,
                                           });
                                         } else {
                                           toast({
-                                            title: "Upload Failed",
-                                            description: "There was an error uploading your document.",
+                                            title: "Partial upload success",
+                                            description: `${successCount} uploaded, ${failCount} failed`,
                                             variant: "destructive"
                                           });
                                         }
-                                      });
+                                      } catch (error) {
+                                        toast({
+                                          title: "Upload Failed",
+                                          description: "There was an error uploading your documents.",
+                                          variant: "destructive"
+                                        });
+                                      }
                                     }
                                   }}
                                   className="hidden"
@@ -560,7 +576,7 @@ export default function DocumentManager({
                                   className="w-full h-12 border-dashed border-2 flex items-center justify-center"
                                 >
                                   <Upload className="w-4 h-4 mr-2" />
-                                  Select File to Upload
+                                  Select Files to Upload
                                 </Button>
                               </div>
                             </div>
