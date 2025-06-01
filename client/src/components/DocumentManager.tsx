@@ -55,41 +55,12 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
   
   // Helper function to check if a document is uploaded
   const isDocumentUploaded = (requiredDocName: string, category: string) => {
-    // For now, since we want to show ALL missing documents accurately,
-    // only consider a document uploaded if there's an exact or very close match
-    // This is a more conservative approach to ensure we show all missing docs
-    return documents.some(doc => {
-      // Document must be in the correct category
-      if (doc.category !== category) return false;
-      
-      // For very specific matching, we need substantial overlap
-      const docNameLower = doc.name.toLowerCase();
-      const requiredNameLower = requiredDocName.toLowerCase();
-      
-      // Check for very specific patterns that indicate a match
-      if (requiredNameLower.includes("driver") && docNameLower.includes("driver")) return true;
-      if (requiredNameLower.includes("articles") && docNameLower.includes("articles")) return true;
-      if (requiredNameLower.includes("operating agreement") && docNameLower.includes("operating")) return true;
-      if (requiredNameLower.includes("certificate") && docNameLower.includes("certificate")) return true;
-      if (requiredNameLower.includes("ein") && docNameLower.includes("ein")) return true;
-      if (requiredNameLower.includes("bank statements") && docNameLower.includes("bank")) return true;
-      if (requiredNameLower.includes("voided check") && docNameLower.includes("void")) return true;
-      if (requiredNameLower.includes("hud") && docNameLower.includes("hud")) return true;
-      if (requiredNameLower.includes("lease") && docNameLower.includes("lease")) return true;
-      if (requiredNameLower.includes("appraisal") && docNameLower.includes("appraisal")) return true;
-      if (requiredNameLower.includes("insurance policy") && docNameLower.includes("insurance") && !docNameLower.includes("contact")) return true;
-      if (requiredNameLower.includes("insurance agent") && docNameLower.includes("insurance") && docNameLower.includes("contact")) return true;
-      if (requiredNameLower.includes("title agent") && docNameLower.includes("title") && docNameLower.includes("contact")) return true;
-      if (requiredNameLower.includes("kiavi") && docNameLower.includes("kiavi")) return true;
-      
-      return false;
-    });
+    // No automatic matching - all documents should appear as missing
+    // Users will manually assign uploaded files to requirements using the assignment feature
+    return false;
   };
 
   // Calculate missing documents based on requirements
-  console.log('Required documents received:', requiredDocuments);
-  console.log('Current uploaded documents:', documents);
-  
   const missingDocuments = {
     borrower: requiredDocuments.borrower.filter(doc => !isDocumentUploaded(doc, "borrower")),
     property: requiredDocuments.property?.filter(doc => !isDocumentUploaded(doc, "property")) || [],
@@ -97,16 +68,12 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
     insurance: requiredDocuments.insurance.filter(doc => !isDocumentUploaded(doc, "insurance"))
   };
   
-  console.log('Missing documents by category:', missingDocuments);
-  
   const allMissingDocuments = [
     ...missingDocuments.borrower.map(doc => ({ name: doc, category: "borrower" })),
     ...missingDocuments.property.map(doc => ({ name: doc, category: "property" })),
     ...missingDocuments.title.map(doc => ({ name: doc, category: "title" })),
     ...missingDocuments.insurance.map(doc => ({ name: doc, category: "insurance" }))
   ];
-  
-  console.log('All missing documents:', allMissingDocuments);
 
   const getFileIcon = (document: Document) => {
     if (document.fileType?.includes('image')) {
