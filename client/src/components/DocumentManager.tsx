@@ -74,6 +74,9 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
   };
 
   // Calculate missing documents based on requirements
+  console.log('Required documents received:', requiredDocuments);
+  console.log('Current uploaded documents:', documents);
+  
   const missingDocuments = {
     borrower: requiredDocuments.borrower.filter(doc => !isDocumentUploaded(doc, "borrower")),
     property: requiredDocuments.property?.filter(doc => !isDocumentUploaded(doc, "property")) || [],
@@ -81,12 +84,16 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
     insurance: requiredDocuments.insurance.filter(doc => !isDocumentUploaded(doc, "insurance"))
   };
   
+  console.log('Missing documents by category:', missingDocuments);
+  
   const allMissingDocuments = [
     ...missingDocuments.borrower.map(doc => ({ name: doc, category: "borrower" })),
     ...missingDocuments.property.map(doc => ({ name: doc, category: "property" })),
     ...missingDocuments.title.map(doc => ({ name: doc, category: "title" })),
     ...missingDocuments.insurance.map(doc => ({ name: doc, category: "insurance" }))
   ];
+  
+  console.log('All missing documents:', allMissingDocuments);
 
   const getFileIcon = (document: Document) => {
     if (document.fileType?.includes('image')) {
