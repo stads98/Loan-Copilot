@@ -17,7 +17,7 @@ interface SendToAnalystProps {
   contacts: Contact[];
   loanId: number;
   propertyAddress: string;
-  documentAssignments?: Record<string, number[]>; // requirement name -> document IDs
+  documentAssignments?: Record<string, string[]>; // requirement name -> document IDs
 }
 
 export default function SendToAnalyst({ 
@@ -68,7 +68,7 @@ export default function SendToAnalyst({
     const selectedAnalystContacts = contacts.filter(contact => selectedAnalysts.includes(contact.id));
     
     // Create a mapping of document ID to requirement name
-    const docToRequirement: Record<number, string> = {};
+    const docToRequirement: Record<string, string> = {};
     Object.entries(documentAssignments).forEach(([requirementName, docIds]) => {
       docIds.forEach(docId => {
         docToRequirement[docId] = requirementName;
@@ -76,15 +76,20 @@ export default function SendToAnalyst({
     });
     
     const documentList = selectedDocs.map(doc => {
-      const requirementName = docToRequirement[doc.id];
+      const requirementName = docToRequirement[doc.id.toString()];
       const category = requirementName || (doc.category ? doc.category.toUpperCase() : 'DOCUMENT');
       return `• ${doc.name} (${category})`;
     }).join('\n');
 
+    // Create greeting with analyst names
+    const greeting = selectedAnalystContacts.length > 1 
+      ? `Dear ${selectedAnalystContacts.map(contact => contact.name.split(' ')[0]).join(' and ')},`
+      : `Dear ${selectedAnalystContacts[0]?.name.split(' ')[0] || 'Analyst'},`;
+
     const emailContent = `
 Subject: ${propertyAddress} (Loan #${loanId}) - Documents Attached
 
-Dear Analyst${selectedAnalystContacts.length > 1 ? 's' : ''},
+${greeting}
 
 Please review the attached documents for the loan file:
 
