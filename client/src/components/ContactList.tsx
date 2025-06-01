@@ -16,6 +16,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 interface ContactListProps {
   contacts: Contact[];
   loanId: number;
+  propertyAddress?: string;
+  borrowerName?: string;
 }
 
 const contactSchema = z.object({
@@ -26,11 +28,14 @@ const contactSchema = z.object({
   role: z.string().min(1, "Role is required")
 });
 
-export default function ContactList({ contacts, loanId }: ContactListProps) {
+export default function ContactList({ contacts, loanId, propertyAddress, borrowerName }: ContactListProps) {
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<number | null>(null);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [emailContent, setEmailContent] = useState("");
   const { toast } = useToast();
   
   const form = useForm<z.infer<typeof contactSchema>>({
@@ -107,6 +112,106 @@ export default function ContactList({ contacts, loanId }: ContactListProps) {
         duration: 2000
       });
     });
+  };
+
+  const generateEmailTemplate = (contact: Contact, propertyAddress: string, borrowerName: string) => {
+    const templates = {
+      title: `Subject: New Loan File - Title Services Required for ${propertyAddress}
+
+Dear ${contact.name},
+
+I hope this email finds you well. We have a new loan file that will require title services, and I wanted to reach out to coordinate the next steps.
+
+Loan Details:
+• Property Address: ${propertyAddress}
+• Borrower: ${borrowerName}
+• Loan File ID: ${loanId}
+
+We will need the following:
+• Title commitment
+• Property survey (if available)
+• Title insurance policy
+
+Please let me know your availability to handle this file and if you need any additional information from our side.
+
+Best regards,
+Daniel Adler
+Loan Processing Team`,
+
+      insurance: `Subject: Insurance Requirements for New Loan File - ${propertyAddress}
+
+Dear ${contact.name},
+
+We have a new loan file that requires insurance coverage and wanted to coordinate with you on the requirements.
+
+Loan Details:
+• Property Address: ${propertyAddress}
+• Borrower: ${borrowerName}
+• Loan File ID: ${loanId}
+
+Required Insurance Documentation:
+• Property insurance binder showing lender as additional insured
+• Certificate of insurance
+• Proof of payment for insurance premium
+
+Please confirm receipt and let us know if you need any additional details to process the insurance requirements.
+
+Best regards,
+Daniel Adler
+Loan Processing Team`,
+
+      borrower: `Subject: Document Request for Your Loan Application - ${propertyAddress}
+
+Dear ${contact.name},
+
+Thank you for working with us on your loan application. We are processing your file and need some additional documentation to move forward.
+
+Loan Details:
+• Property Address: ${propertyAddress}
+• Loan File ID: ${loanId}
+
+We will follow up with a detailed list of any missing documents. Please have the following ready:
+• Recent bank statements
+• Proof of income documentation
+• Property-related documents
+
+We appreciate your prompt attention to these requests to keep your loan processing on schedule.
+
+Best regards,
+Daniel Adler
+Loan Processing Team`,
+
+      default: `Subject: New Loan File Coordination - ${propertyAddress}
+
+Dear ${contact.name},
+
+We have a new loan file and wanted to coordinate with you on the next steps.
+
+Loan Details:
+• Property Address: ${propertyAddress}
+• Borrower: ${borrowerName}
+• Loan File ID: ${loanId}
+
+Please let us know if you need any additional information from our side.
+
+Best regards,
+Daniel Adler
+Loan Processing Team`
+    };
+
+    return templates[contact.role as keyof typeof templates] || templates.default;
+  };
+
+  const handleSendInitialEmail = async (contact: Contact) => {
+    // We'll need property address and borrower name from the loan details
+    // For now, we'll use placeholder data - in real implementation, this would come from props
+    const propertyAddress = "Property Address"; // This should come from loan details
+    const borrowerName = "Borrower Name"; // This should come from loan details
+    
+    const template = generateEmailTemplate(contact, propertyAddress, borrowerName);
+    setSelectedContact(contact);
+    setEmailContent(template);
+    setIsEmailDialogOpen(true);
   };
   
   return (
@@ -371,13 +476,26 @@ export default function ContactList({ contacts, loanId }: ContactListProps) {
                               <span className="ml-2 font-medium text-gray-900">{contact.name}</span>
                             </div>
                             <div className="flex space-x-1">
+                              {/* Send Initial Email Button - only show for non-analysts with email */}
+                              {contact.role !== 'analyst' && contact.email && (
+                                <button 
+                                  className="bg-blue-600 text-white p-1 rounded-md border border-blue-600 hover:bg-blue-700 text-xs px-2"
+                                  onClick={() => handleSendInitialEmail(contact)}
+                                  title="Send Initial Email"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.44a2 2 0 001.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                  </svg>
+                                  Email
+                                </button>
+                              )}
                               <button 
                                 className={`${textColor} bg-white p-1 rounded-md border border-gray-200 hover:bg-gray-50`}
                                 onClick={() => copyToClipboard(contact.name)}
                                 title="Copy Name"
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                 </svg>
                               </button>
                               <button 
@@ -595,6 +713,55 @@ export default function ContactList({ contacts, loanId }: ContactListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Email Dialog */}
+      <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Send Initial Email to {selectedContact?.name}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-sm text-blue-700">
+                <strong>To:</strong> {selectedContact?.email}
+              </p>
+              <p className="text-sm text-blue-700">
+                <strong>Role:</strong> {selectedContact?.role}
+              </p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email Content
+              </label>
+              <textarea
+                value={emailContent}
+                onChange={(e) => setEmailContent(e.target.value)}
+                rows={15}
+                className="w-full p-3 border border-gray-300 rounded-md text-sm font-mono"
+                placeholder="Email content will appear here..."
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEmailDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => {
+              // Here we would send the email
+              toast({
+                title: "Email sent",
+                description: `Initial email sent to ${selectedContact?.name}`,
+              });
+              setIsEmailDialogOpen(false);
+            }}>
+              Send Email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
