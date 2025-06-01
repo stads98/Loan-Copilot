@@ -203,12 +203,11 @@ Loan Processing Team`
   };
 
   const handleSendInitialEmail = async (contact: Contact) => {
-    // We'll need property address and borrower name from the loan details
-    // For now, we'll use placeholder data - in real implementation, this would come from props
-    const propertyAddress = "Property Address"; // This should come from loan details
-    const borrowerName = "Borrower Name"; // This should come from loan details
-    
-    const template = generateEmailTemplate(contact, propertyAddress, borrowerName);
+    const template = generateEmailTemplate(
+      contact, 
+      propertyAddress || "Property Address", 
+      borrowerName || "Borrower Name"
+    );
     setSelectedContact(contact);
     setEmailContent(template);
     setIsEmailDialogOpen(true);
