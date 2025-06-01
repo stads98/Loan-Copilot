@@ -63,6 +63,13 @@ export default function TaskList({ tasks, loanId }: TaskListProps) {
     try {
       await apiRequest("PATCH", `/api/tasks/${taskId}`, { completed });
       queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+      
+      // Auto-open the "Add task" dialog when a task is completed
+      if (completed) {
+        setTimeout(() => {
+          setIsAddTaskOpen(true);
+        }, 500); // Small delay to let the UI update first
+      }
     } catch (error) {
       toast({
         title: "Error",
