@@ -47,6 +47,7 @@ export const contacts = pgTable("contacts", {
 
 export const loans = pgTable("loans", {
   id: serial("id").primaryKey(),
+  loanNumber: text("loan_number").notNull().unique(), // Unique loan identifier
   borrowerName: text("borrower_name").notNull(),
   borrowerEntityName: text("borrower_entity_name"), // LLC or individual name
   propertyAddress: text("property_address").notNull(),
