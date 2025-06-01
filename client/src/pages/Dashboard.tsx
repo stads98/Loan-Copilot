@@ -350,24 +350,24 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
                 </div>
               </div>
 
-              {/* High Priority Tasks Across All Loans */}
-              <div className="bg-white rounded-lg shadow-md border-l-4 border-red-500">
+              {/* Priority Action Items Across All Loans */}
+              <div className="bg-white rounded-lg shadow-md border-l-4 border-blue-500">
                 <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
                   <h3 className="text-lg leading-6 font-heading font-medium text-gray-900 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2 text-red-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2 text-blue-500">
                       <circle cx="12" cy="12" r="10"></circle>
                       <line x1="12" y1="8" x2="12" y2="12"></line>
                       <line x1="12" y1="16" x2="12.01" y2="16"></line>
                     </svg>
-                    High Priority Tasks (All Loans)
-                    <span className="ml-auto bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                      {Array.isArray(allTasks) ? allTasks.filter((task: any) => task.priority === 'high' && !task.completed).length : 0}
+                    Priority Action Items (All Loans)
+                    <span className="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                      {Array.isArray(allTasks) ? allTasks.filter((task: any) => !task.completed).length : 0}
                     </span>
                   </h3>
                 </div>
                 <div className="max-h-64 overflow-y-auto">
                   {Array.isArray(allTasks) && allTasks
-                    .filter((task: any) => task.priority === 'high' && !task.completed)
+                    .filter((task: any) => !task.completed)
                     .sort((a: any, b: any) => new Date(a.dueDate || '9999-12-31').getTime() - new Date(b.dueDate || '9999-12-31').getTime())
                     .map((task: any) => {
                       const loanData = loans?.find((l: any) => l.id === task.loanId);
@@ -384,8 +384,14 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
                                 <p className="text-xs text-red-600 mt-1">Due: {task.dueDate}</p>
                               )}
                             </div>
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              High Priority
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              task.priority === 'high' 
+                                ? 'bg-red-100 text-red-800' 
+                                : task.priority === 'medium'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {task.priority?.charAt(0).toUpperCase() + task.priority?.slice(1) || 'Low'}
                             </span>
                           </div>
                         </div>
