@@ -104,7 +104,7 @@ ${customMessage ? `Additional Notes:\n${customMessage}\n` : ''}
 Please review and let us know if you need any additional documentation.
 
 Best regards,
-Loan Processing Team
+Daniel Adler
     `.trim();
 
     return {
