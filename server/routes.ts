@@ -873,13 +873,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Store tokens in session
       if (req.session) {
-        req.session.gmailTokens = tokens;
+        (req.session as any).gmailTokens = tokens;
       }
 
       res.redirect('/dashboard?gmail=connected');
     } catch (error) {
       console.error("Error handling Gmail callback:", error);
       res.redirect('/dashboard?gmail=error');
+    }
+  });
+
+  // Check Gmail connection status
+  app.get("/api/gmail/status", isAuthenticated, async (req, res) => {
+    try {
+      const connected = !!(req.session as any)?.gmailTokens;
+      res.json({ connected });
+    } catch (error) {
+      res.json({ connected: false });
+    }
+  });
+
+  // Get Gmail messages
+  app.get("/api/gmail/messages", isAuthenticated, async (req, res) => {
+    try {
+      if (!(req.session as any)?.gmailTokens) {
+        return res.status(401).json({ message: "Gmail authentication required" });
+      }
+
+      const { google } = await import('googleapis');
+      const { createGmailAuth } = await import("./lib/gmail");
+      const gmail = google.gmail('v1');
+      
+      const gmailAuth = createGmailAuth(
+        (req.session as any).gmailTokens.access_token,
+        (req.session as any).gmailTokens.refresh_token
+      );
+
+      const maxResults = parseInt(req.query.maxResults as string) || 20;
+
+      // Get message list
+      const listResponse = await gmail.users.messages.list({
+        auth: gmailAuth,
+        userId: 'me',
+        maxResults,
+        q: 'in:inbox'
+      });
+
+      const messages = [];
+      
+      if (listResponse.data.messages) {
+        // Get details for each message
+        for (const message of listResponse.data.messages.slice(0, maxResults)) {
+          try {
+            const msgResponse = await gmail.users.messages.get({
+              auth: gmailAuth,
+              userId: 'me',
+              id: message.id!,
+              format: 'metadata',
+              metadataHeaders: ['From', 'Subject', 'Date']
+            });
+
+            const msg = msgResponse.data;
+            const headers = msg.payload?.headers || [];
+            const fromHeader = headers.find(h => h.name === 'From');
+            const subjectHeader = headers.find(h => h.name === 'Subject');
+            const dateHeader = headers.find(h => h.name === 'Date');
+
+            messages.push({
+              id: msg.id,
+              threadId: msg.threadId,
+              snippet: msg.snippet,
+              subject: subjectHeader?.value || '',
+              from: fromHeader?.value || '',
+              date: dateHeader?.value || '',
+              unread: msg.labelIds?.includes('UNREAD') || false,
+              hasAttachments: msg.payload?.parts?.some(part => 
+                part.filename && part.filename.length > 0
+              ) || false
+            });
+          } catch (msgError) {
+            console.error('Error fetching message details:', msgError);
+          }
+        }
+      }
+
+      res.json({ messages });
+    } catch (error) {
+      console.error("Error fetching Gmail messages:", error);
+      res.status(500).json({ message: "Error fetching messages" });
     }
   });
 

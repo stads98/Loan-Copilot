@@ -1,10 +1,11 @@
-import { Document } from "@/lib/types";
+import { Document, Contact } from "@/lib/types";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import SmartDocumentUpload from "@/components/SmartDocumentUpload";
+import SendToAnalyst from "@/components/SendToAnalyst";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
@@ -14,6 +15,8 @@ import { Loader2, FileText, Image, File, Download, Trash2, Eye } from "lucide-re
 interface DocumentManagerProps {
   documents: Document[];
   loanId: number;
+  contacts: Contact[];
+  propertyAddress: string;
   requiredDocuments: {
     borrower: string[];
     property: string[];
@@ -22,7 +25,7 @@ interface DocumentManagerProps {
   };
 }
 
-export default function DocumentManager({ documents, loanId }: DocumentManagerProps) {
+export default function DocumentManager({ documents, loanId, contacts, propertyAddress }: DocumentManagerProps) {
   const [activeTab, setActiveTab] = useState("document-list");
   const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
@@ -146,6 +149,12 @@ export default function DocumentManager({ documents, loanId }: DocumentManagerPr
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">Document Management</h3>
           <div className="flex gap-2">
+            <SendToAnalyst 
+              documents={documents}
+              contacts={contacts}
+              loanId={loanId}
+              propertyAddress={propertyAddress}
+            />
             <Button 
               onClick={syncGoogleDrive}
               disabled={isSyncing}

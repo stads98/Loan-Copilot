@@ -9,6 +9,7 @@ import TaskList from "@/components/TaskList";
 import DocumentManager from "@/components/DocumentManager";
 import NewLoanDialog from "@/components/NewLoanDialog";
 import EditableLoanDetails from "@/components/EditableLoanDetails";
+import GmailInbox from "@/components/GmailInbox";
 import { getDocumentRequirements } from "@/components/DocumentChecklist";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -221,6 +222,9 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
                 contacts={contacts || []}
                 loanId={loan.id}
               />
+
+              {/* Gmail Inbox */}
+              <GmailInbox />
             </div>
 
             {/* Middle Column: AI Guidance & Tasks */}
@@ -262,6 +266,8 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
               <DocumentManager 
                 documents={documents || []}
                 loanId={loan.id}
+                contacts={contacts || []}
+                propertyAddress={property?.address || ""}
                 requiredDocuments={getLenderSpecificRequirements(lender?.name || "AHL")}
               />
             </div>
