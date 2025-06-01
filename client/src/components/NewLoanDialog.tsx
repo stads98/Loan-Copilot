@@ -64,6 +64,7 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
   const form = useForm<LoanFormData>({
     resolver: zodResolver(loanFormSchema),
     defaultValues: {
+      loanNumber: "",
       borrowerName: "",
       borrowerEntityName: "",
       propertyAddress: "",
@@ -81,6 +82,8 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
 
   const onSubmit = async (data: LoanFormData) => {
     setLoading(true);
+    
+    console.log('Form data being submitted:', data);
 
     try {
       // Extract Google Drive folder ID if provided

@@ -277,6 +277,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/loans", isAuthenticated, async (req, res) => {
     try {
+      console.log('Backend received loan data:', req.body);
+      console.log('Loan number from body:', req.body.loanNumber);
       const user = req.user as any;
       
       // Create a basic property record first
@@ -313,6 +315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const loan = await storage.createLoan({
+        loanNumber: req.body.loanNumber,
         borrowerName: req.body.borrowerName,
         borrowerEntityName: req.body.borrowerEntityName,
         propertyAddress: req.body.propertyAddress,
