@@ -16,9 +16,10 @@ interface DocumentProgressProps {
   contacts?: Contact[];
   loanDetails?: any;
   completedRequirements?: Set<string>;
+  onCompletedRequirementsChange?: (completed: Set<string>) => void;
 }
 
-export default function DocumentProgress({ documents, requiredDocuments, contacts = [], loanDetails, completedRequirements = new Set() }: DocumentProgressProps) {
+export default function DocumentProgress({ documents, requiredDocuments, contacts = [], loanDetails, completedRequirements = new Set(), onCompletedRequirementsChange }: DocumentProgressProps) {
   const [showChecklist, setShowChecklist] = useState(false);
   const [showAssignments, setShowAssignments] = useState(false);
   

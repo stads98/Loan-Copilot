@@ -216,6 +216,8 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
                 requiredDocuments={getLenderSpecificRequirements(lender?.name || "AHL")}
                 contacts={contacts || []}
                 loanDetails={{ ...loan, lender, property }}
+                completedRequirements={completedRequirements}
+                onCompletedRequirementsChange={setCompletedRequirements}
               />
 
               {/* Contact List */}
@@ -272,6 +274,8 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
                 contacts={contacts || []}
                 propertyAddress={property?.address || ""}
                 requiredDocuments={getLenderSpecificRequirements(lender?.name || "AHL")}
+                completedRequirements={completedRequirements}
+                onCompletedRequirementsChange={setCompletedRequirements}
               />
             </div>
           </div>
