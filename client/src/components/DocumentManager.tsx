@@ -55,21 +55,34 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
   
   // Helper function to check if a document is uploaded
   const isDocumentUploaded = (requiredDocName: string, category: string) => {
-    // Check if there's a document that matches both the category AND has a meaningful name match
+    // For now, since we want to show ALL missing documents accurately,
+    // only consider a document uploaded if there's an exact or very close match
+    // This is a more conservative approach to ensure we show all missing docs
     return documents.some(doc => {
       // Document must be in the correct category
       if (doc.category !== category) return false;
       
-      // Check for meaningful name overlap (at least 3 characters of key words)
+      // For very specific matching, we need substantial overlap
       const docNameLower = doc.name.toLowerCase();
       const requiredNameLower = requiredDocName.toLowerCase();
       
-      // Extract key words from required document name (ignore common words)
-      const keyWords = requiredNameLower.split(' ')
-        .filter(word => word.length > 2 && !['the', 'and', 'for', 'from', 'with'].includes(word));
+      // Check for very specific patterns that indicate a match
+      if (requiredNameLower.includes("driver") && docNameLower.includes("driver")) return true;
+      if (requiredNameLower.includes("articles") && docNameLower.includes("articles")) return true;
+      if (requiredNameLower.includes("operating agreement") && docNameLower.includes("operating")) return true;
+      if (requiredNameLower.includes("certificate") && docNameLower.includes("certificate")) return true;
+      if (requiredNameLower.includes("ein") && docNameLower.includes("ein")) return true;
+      if (requiredNameLower.includes("bank statements") && docNameLower.includes("bank")) return true;
+      if (requiredNameLower.includes("voided check") && docNameLower.includes("void")) return true;
+      if (requiredNameLower.includes("hud") && docNameLower.includes("hud")) return true;
+      if (requiredNameLower.includes("lease") && docNameLower.includes("lease")) return true;
+      if (requiredNameLower.includes("appraisal") && docNameLower.includes("appraisal")) return true;
+      if (requiredNameLower.includes("insurance policy") && docNameLower.includes("insurance") && !docNameLower.includes("contact")) return true;
+      if (requiredNameLower.includes("insurance agent") && docNameLower.includes("insurance") && docNameLower.includes("contact")) return true;
+      if (requiredNameLower.includes("title agent") && docNameLower.includes("title") && docNameLower.includes("contact")) return true;
+      if (requiredNameLower.includes("kiavi") && docNameLower.includes("kiavi")) return true;
       
-      // Check if any key word appears in the document name
-      return keyWords.some(keyword => docNameLower.includes(keyword));
+      return false;
     });
   };
 
