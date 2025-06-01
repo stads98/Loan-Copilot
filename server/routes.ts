@@ -378,6 +378,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to generate download URL" });
     }
   });
+
+  // Public document view endpoint for direct file access
+  app.get("/api/documents/:id/view", async (req, res) => {
+    try {
+      const docId = parseInt(req.params.id);
+      if (isNaN(docId)) {
+        return res.status(400).json({ message: "Invalid document ID" });
+      }
+
+      const document = await storage.getDocument(docId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Redirect to Google Drive view URL
+      const viewUrl = `https://drive.google.com/file/d/${document.fileId}/view`;
+      res.redirect(viewUrl);
+    } catch (error) {
+      console.error("Error redirecting to document:", error);
+      res.status(500).json({ message: "Failed to open document" });
+    }
+  });
   
   // Sync documents from Google Drive for a loan with full OCR and OpenAI analysis
   app.post("/api/loans/:id/sync-documents", isAuthenticated, async (req, res) => {

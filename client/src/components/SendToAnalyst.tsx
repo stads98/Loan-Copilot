@@ -17,13 +17,15 @@ interface SendToAnalystProps {
   contacts: Contact[];
   loanId: number;
   propertyAddress: string;
+  documentAssignments?: Record<string, number[]>; // requirement name -> document IDs
 }
 
 export default function SendToAnalyst({ 
   documents, 
   contacts, 
   loanId, 
-  propertyAddress 
+  propertyAddress,
+  documentAssignments = {}
 }: SendToAnalystProps) {
   const [open, setOpen] = useState(false);
   const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
@@ -65,9 +67,19 @@ export default function SendToAnalyst({
     const selectedDocs = documents.filter(doc => selectedDocuments.includes(doc.id));
     const selectedAnalystContacts = contacts.filter(contact => selectedAnalysts.includes(contact.id));
     
-    const documentList = selectedDocs.map(doc => 
-      `• ${doc.name} (${doc.category ? doc.category.toUpperCase() : 'DOCUMENT'})`
-    ).join('\n');
+    // Create a mapping of document ID to requirement name
+    const docToRequirement: Record<number, string> = {};
+    Object.entries(documentAssignments).forEach(([requirementName, docIds]) => {
+      docIds.forEach(docId => {
+        docToRequirement[docId] = requirementName;
+      });
+    });
+    
+    const documentList = selectedDocs.map(doc => {
+      const requirementName = docToRequirement[doc.id];
+      const category = requirementName || (doc.category ? doc.category.toUpperCase() : 'DOCUMENT');
+      return `• ${doc.name} (${category})`;
+    }).join('\n');
 
     const emailContent = `
 Subject: ${propertyAddress} (Loan #${loanId}) - Documents Attached
