@@ -635,6 +635,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Tasks
+  app.get("/api/tasks/all", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const loans = await storage.getLoansByProcessorId(user.id);
+      const allTasks = [];
+      
+      for (const loan of loans) {
+        const tasks = await storage.getTasksByLoanId(loan.id);
+        allTasks.push(...tasks);
+      }
+      
+      res.json(allTasks);
+    } catch (error) {
+      console.error("Error fetching all tasks:", error);
+      res.status(500).json({ message: "Error fetching tasks" });
+    }
+  });
+
   app.get("/api/loans/:loanId/tasks", isAuthenticated, async (req, res) => {
     const loanId = parseInt(req.params.loanId);
     if (isNaN(loanId)) {
