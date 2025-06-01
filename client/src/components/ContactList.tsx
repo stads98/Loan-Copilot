@@ -37,6 +37,8 @@ export default function ContactList({ contacts, loanId, propertyAddress, borrowe
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [emailContent, setEmailContent] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
+  const [emailTo, setEmailTo] = useState("");
+  const [emailCc, setEmailCc] = useState("");
   const { toast } = useToast();
   
   const form = useForm<z.infer<typeof contactSchema>>({
@@ -247,6 +249,8 @@ Loan Processing Team`
     setSelectedContact(contact);
     setEmailContent(template.body);
     setEmailSubject(template.subject);
+    setEmailTo(contact.email || "");
+    setEmailCc("");
     setIsEmailDialogOpen(true);
   };
   
@@ -760,11 +764,34 @@ Loan Processing Team`
           <div className="space-y-4">
             <div className="bg-blue-50 p-3 rounded-lg">
               <p className="text-sm text-blue-700">
-                <strong>To:</strong> {selectedContact?.email}
+                <strong>Sending to:</strong> {selectedContact?.name} ({selectedContact?.role})
               </p>
-              <p className="text-sm text-blue-700">
-                <strong>Role:</strong> {selectedContact?.role}
-              </p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                To (separate multiple emails with commas)
+              </label>
+              <input
+                type="text"
+                value={emailTo}
+                onChange={(e) => setEmailTo(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-md text-sm"
+                placeholder="recipient@example.com, another@example.com"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                CC (optional)
+              </label>
+              <input
+                type="text"
+                value={emailCc}
+                onChange={(e) => setEmailCc(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-md text-sm"
+                placeholder="cc@example.com, manager@example.com"
+              />
             </div>
             
             <div>
@@ -799,25 +826,30 @@ Loan Processing Team`
               Cancel
             </Button>
             <Button onClick={async () => {
-              if (!selectedContact?.email || !emailSubject || !emailContent) {
+              if (!emailTo || !emailSubject || !emailContent) {
                 toast({
                   title: "Missing information",
-                  description: "Please fill in all email fields",
+                  description: "Please fill in To, Subject and Email Content fields",
                   variant: "destructive"
                 });
                 return;
               }
 
+              // Parse email addresses from comma-separated strings
+              const toEmails = emailTo.split(',').map(email => email.trim()).filter(email => email);
+              const ccEmails = emailCc ? emailCc.split(',').map(email => email.trim()).filter(email => email) : [];
+
               try {
                 await apiRequest("POST", "/api/gmail/send", {
-                  to: [selectedContact.email],
+                  to: toEmails,
+                  cc: ccEmails.length > 0 ? ccEmails : undefined,
                   subject: emailSubject,
                   body: emailContent
                 });
 
                 toast({
                   title: "Email sent",
-                  description: `Initial email sent to ${selectedContact.name}`,
+                  description: `Email sent to ${toEmails.length} recipient(s)${ccEmails.length > 0 ? ` with ${ccEmails.length} CC` : ''}`,
                 });
                 setIsEmailDialogOpen(false);
               } catch (error) {
