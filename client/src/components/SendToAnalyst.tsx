@@ -150,6 +150,19 @@ Daniel Adler
         description: `Email drafted and ready to send to ${selectedAnalysts.length} analyst(s) with ${selectedDocuments.length} document(s).`
       });
 
+      // Show follow-up call reminder for analyst communications
+      setTimeout(() => {
+        const analystNames = selectedAnalysts.map(id => 
+          analysts.find(a => a.id === id)?.name
+        ).filter(Boolean).join(", ");
+        
+        toast({
+          title: "📞 Follow-up Reminder",
+          description: `After sending to analysts (${analystNames}), call them to confirm receipt and discuss timeline.`,
+          duration: 8000,
+        });
+      }, 1500);
+
       setOpen(false);
       setSelectedDocuments([]);
       setSelectedAnalysts([]);

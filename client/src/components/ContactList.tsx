@@ -852,6 +852,15 @@ Loan Processing Team`
                   description: `Email sent to ${toEmails.length} recipient(s)${ccEmails.length > 0 ? ` with ${ccEmails.length} CC` : ''}`,
                 });
                 setIsEmailDialogOpen(false);
+                
+                // Show follow-up call reminder
+                setTimeout(() => {
+                  toast({
+                    title: "📞 Follow-up Reminder",
+                    description: `Please call ${selectedContact?.name} to confirm they received your email and discuss next steps.`,
+                    duration: 8000,
+                  });
+                }, 1500);
               } catch (error) {
                 toast({
                   title: "Failed to send email",
