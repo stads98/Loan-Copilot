@@ -380,7 +380,20 @@ export default function DocumentManager({
                                       <Button
                                         size="sm"
                                         variant="ghost"
-                                        onClick={() => window.open(`/api/documents/${doc.id}/download`, '_blank')}
+                                        onClick={async () => {
+                                          try {
+                                            const response = await fetch(`/api/documents/${doc.id}/download`);
+                                            const data = await response.json();
+                                            window.open(data.viewUrl || data.downloadUrl, '_blank');
+                                          } catch (error) {
+                                            console.error('Error opening document:', error);
+                                            toast({
+                                              title: "Error",
+                                              description: "Unable to open document",
+                                              variant: "destructive"
+                                            });
+                                          }
+                                        }}
                                         className="h-6 px-2 text-blue-600 hover:text-blue-700"
                                       >
                                         <Eye className="w-3 h-3" />
@@ -458,7 +471,20 @@ export default function DocumentManager({
                                           <Button
                                             size="sm"
                                             variant="ghost"
-                                            onClick={() => window.open(`/api/documents/${doc.id}/download`, '_blank')}
+                                            onClick={async () => {
+                                              try {
+                                                const response = await fetch(`/api/documents/${doc.id}/download`);
+                                                const data = await response.json();
+                                                window.open(data.viewUrl || data.downloadUrl, '_blank');
+                                              } catch (error) {
+                                                console.error('Error opening document:', error);
+                                                toast({
+                                                  title: "Error",
+                                                  description: "Unable to open document",
+                                                  variant: "destructive"
+                                                });
+                                              }
+                                            }}
                                             className="h-6 px-2 text-blue-600 hover:text-blue-700"
                                           >
                                             <Eye className="w-3 h-3" />
