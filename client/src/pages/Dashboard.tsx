@@ -97,7 +97,6 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
   // Get lender-specific document requirements
   const getLenderSpecificRequirements = (lenderName: string) => {
     const requirements = getDocumentRequirements(lenderName);
-    console.log('Document requirements for', lenderName, ':', requirements);
     
     // Group requirements by category for DocumentManager format
     const grouped = {
@@ -108,7 +107,6 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
     };
     
     requirements.forEach((req: any) => {
-      console.log('Processing requirement:', req);
       if (req.category === "borrower_entity" || req.category === "financials" || req.category === "lender_specific") {
         grouped.borrower.push(req.name);
       } else if (req.category === "property" || req.category === "appraisal") {
@@ -123,7 +121,6 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
       }
     });
     
-    console.log('Grouped requirements:', grouped);
     return grouped;
   };
   

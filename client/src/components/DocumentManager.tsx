@@ -55,11 +55,22 @@ export default function DocumentManager({ documents, loanId, contacts, propertyA
   
   // Helper function to check if a document is uploaded
   const isDocumentUploaded = (requiredDocName: string, category: string) => {
-    return documents.some(doc => 
-      doc.category === category || 
-      doc.name.toLowerCase().includes(requiredDocName.toLowerCase().split(' ')[0]) ||
-      doc.name.toLowerCase().includes(requiredDocName.toLowerCase().substring(0, 5))
-    );
+    // Check if there's a document that matches both the category AND has a meaningful name match
+    return documents.some(doc => {
+      // Document must be in the correct category
+      if (doc.category !== category) return false;
+      
+      // Check for meaningful name overlap (at least 3 characters of key words)
+      const docNameLower = doc.name.toLowerCase();
+      const requiredNameLower = requiredDocName.toLowerCase();
+      
+      // Extract key words from required document name (ignore common words)
+      const keyWords = requiredNameLower.split(' ')
+        .filter(word => word.length > 2 && !['the', 'and', 'for', 'from', 'with'].includes(word));
+      
+      // Check if any key word appears in the document name
+      return keyWords.some(keyword => docNameLower.includes(keyword));
+    });
   };
 
   // Calculate missing documents based on requirements
