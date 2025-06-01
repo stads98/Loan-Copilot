@@ -419,15 +419,28 @@ export default function DocumentManager({
                               {req.category}
                             </Badge>
                           </div>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => markRequirementComplete(req.name)}
-                            className="text-green-600 hover:text-green-700"
-                          >
-                            <Check className="w-4 h-4 mr-1" />
-                            Mark Complete
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => markRequirementComplete(req.name)}
+                              className="text-green-600 hover:text-green-700"
+                            >
+                              <Check className="w-4 h-4 mr-1" />
+                              Mark Complete
+                            </Button>
+                            {req.category === "custom" && (
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={() => removeCustomDocument(req.name)}
+                                className="text-red-600 hover:text-red-700"
+                                title="Remove custom document"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
                         
                         <div className="flex items-center gap-2 mt-2">
@@ -443,7 +456,11 @@ export default function DocumentManager({
                               ))}
                             </SelectContent>
                           </Select>
-                          <Button size="sm" variant="ghost">
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            onClick={() => setActiveTab("upload")}
+                          >
                             <Plus className="w-4 h-4 mr-1" />
                             Upload New
                           </Button>
