@@ -304,7 +304,7 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
       
       // Save all files (PDFs and images) to loan documents and Google Drive
       try {
-        await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
+        const saveResponse = await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
           attachmentData: response.data, // Use the base64 data directly
           filename: attachment.filename,
           mimeType: attachment.mimeType,
@@ -313,6 +313,7 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
           emailFrom: selectedMessage?.from
         });
         
+        // If we reach here, the save was successful
         // Invalidate documents cache to refresh the list
         queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
         queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId] });

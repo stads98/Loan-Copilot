@@ -1744,7 +1744,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If Drive upload failed, save locally
       if (!driveFileId) {
         const { promises: fs } = await import('fs');
-        const fileId = `email-attachment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.pdf`;
+        // Get file extension from original filename or mime type
+        const extension = filename.includes('.') ? filename.split('.').pop() : 
+                         (mimeType.includes('pdf') ? 'pdf' : 
+                          mimeType.includes('image') ? 'png' : 'file');
+        const fileId = `email-attachment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${extension}`;
         const filePath = path.join(uploadsDir, fileId);
         await fs.writeFile(filePath, fileBuffer);
         driveFileId = fileId;
