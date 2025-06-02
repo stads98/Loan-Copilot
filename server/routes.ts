@@ -1122,12 +1122,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return true;
             }
             
-            // Check contact emails in from/to/cc
+            // Check borrower name in email content
+            if (loan.loan?.borrowerName) {
+              const borrowerName = loan.loan.borrowerName.toLowerCase();
+              if (subject.includes(borrowerName) || from.includes(borrowerName) || to.includes(borrowerName)) {
+                return true;
+              }
+            }
+            
+            // Check contact emails in from/to/cc (including borrower's email)
             if (loan.contacts && loan.contacts.length > 0) {
               const contactEmails = loan.contacts
-                .map(c => c.email)
+                .map((c: any) => c.email)
                 .filter(Boolean)
-                .map(email => email.toLowerCase());
+                .map((email: any) => email.toLowerCase());
               
               for (const email of contactEmails) {
                 if (from.includes(email) || to.includes(email) || cc.includes(email)) {
