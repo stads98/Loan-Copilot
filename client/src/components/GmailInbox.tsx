@@ -255,7 +255,7 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
       setMessageAttachments(attachments);
       
       // Auto-download PDFs when message opens
-      autoDownloadPDFs(attachments, message.id);
+      autoDownloadPDFs(attachments, message.id, message.from, message.subject);
     } catch (error) {
       setMessageContent(message.snippet);
       setMessageAttachments([]);
@@ -276,7 +276,7 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
   };
 
   // Auto-download PDFs function
-  const autoDownloadPDFs = async (attachments: any[], messageId: string) => {
+  const autoDownloadPDFs = async (attachments: any[], messageId: string, messageFrom?: string, messageSubject?: string) => {
     const pdfAttachments = attachments.filter(att => att.mimeType?.includes('pdf'));
     
     for (const attachment of pdfAttachments) {
@@ -295,8 +295,8 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
           filename: attachment.filename,
           mimeType: attachment.mimeType,
           size: attachment.size,
-          emailSubject: selectedMessage?.subject,
-          emailFrom: selectedMessage?.from
+          emailSubject: messageSubject || selectedMessage?.subject,
+          emailFrom: messageFrom || selectedMessage?.from
         });
         
         console.log('Auto-downloaded PDF:', attachment.filename);

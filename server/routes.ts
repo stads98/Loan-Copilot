@@ -2156,8 +2156,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create document record
+      const fromText = emailFrom && emailFrom !== 'undefined' ? ` (from ${emailFrom.replace(/[<>]/g, '').split('<')[0].trim()})` : '';
       const document = await storage.createDocument({
-        name: `${filename} (from ${emailFrom})`,
+        name: `${filename}${fromText}`,
         fileId: driveFileId,
         loanId: loanId,
         fileType: mimeType,
