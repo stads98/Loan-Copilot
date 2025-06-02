@@ -18,6 +18,7 @@ interface SendToAnalystProps {
   loanId: number;
   propertyAddress: string;
   documentAssignments?: Record<string, string[]>; // requirement name -> document IDs
+  completedRequirements?: string[]; // list of completed requirement names
 }
 
 export default function SendToAnalyst({ 
@@ -25,7 +26,8 @@ export default function SendToAnalyst({
   contacts, 
   loanId, 
   propertyAddress,
-  documentAssignments = {}
+  documentAssignments = {},
+  completedRequirements = []
 }: SendToAnalystProps) {
   const [open, setOpen] = useState(false);
   const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
