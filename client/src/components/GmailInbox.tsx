@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Mail, RefreshCw, ExternalLink, User, Calendar, Paperclip } from "lucide-react";
+import { Mail, RefreshCw, ExternalLink, User, Calendar, Paperclip, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 
 interface GmailMessage {
@@ -27,6 +28,9 @@ export default function GmailInbox({ className }: GmailInboxProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<GmailMessage | null>(null);
+  const [messageContent, setMessageContent] = useState<string>("");
+  const [isLoadingMessage, setIsLoadingMessage] = useState(false);
   const { toast } = useToast();
 
   const checkGmailConnection = async () => {
@@ -117,8 +121,28 @@ export default function GmailInbox({ className }: GmailInboxProps) {
     window.open('https://mail.google.com', '_blank');
   };
 
-  const openMessage = (messageId: string) => {
-    window.open(`https://mail.google.com/mail/u/0/#inbox/${messageId}`, '_blank');
+  const openMessage = async (message: GmailMessage) => {
+    setSelectedMessage(message);
+    setIsLoadingMessage(true);
+    
+    try {
+      const response = await apiRequest("GET", `/api/gmail/messages/${message.id}`);
+      setMessageContent(response.content || message.snippet);
+    } catch (error) {
+      setMessageContent(message.snippet);
+      toast({
+        title: "Could not load full email",
+        description: "Showing preview instead",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingMessage(false);
+    }
+  };
+
+  const closeMessage = () => {
+    setSelectedMessage(null);
+    setMessageContent("");
   };
 
   useEffect(() => {
@@ -222,7 +246,7 @@ export default function GmailInbox({ className }: GmailInboxProps) {
                 className={`p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors ${
                   message.unread ? 'bg-blue-50 border-blue-200' : 'bg-white'
                 }`}
-                onClick={() => openMessage(message.id)}
+                onClick={() => openMessage(message)}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -257,6 +281,81 @@ export default function GmailInbox({ className }: GmailInboxProps) {
           </div>
         )}
       </CardContent>
+
+      {/* Email Content Dialog */}
+      <Dialog open={!!selectedMessage} onOpenChange={() => closeMessage()}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={closeMessage}
+                  className="h-8 w-8 p-0"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                {selectedMessage?.subject || "No Subject"}
+              </div>
+              <div className="flex items-center gap-2">
+                {selectedMessage?.hasAttachments && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Paperclip className="w-3 h-3 mr-1" />
+                    Attachments
+                  </Badge>
+                )}
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedMessage && (
+            <div className="space-y-4">
+              {/* Email Header */}
+              <div className="border-b pb-4">
+                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                  <User className="w-4 h-4" />
+                  <span className="font-medium">{selectedMessage.from}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Calendar className="w-4 h-4" />
+                  <span>{format(new Date(selectedMessage.date), "PPp")}</span>
+                </div>
+              </div>
+
+              {/* Email Content */}
+              <div className="max-h-96 overflow-y-auto">
+                {isLoadingMessage ? (
+                  <div className="flex items-center justify-center py-8">
+                    <RefreshCw className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="prose max-w-none">
+                    <div 
+                      className="whitespace-pre-wrap text-sm leading-relaxed"
+                      dangerouslySetInnerHTML={{ 
+                        __html: messageContent.replace(/\n/g, '<br>') 
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Actions */}
+              <div className="flex gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(`https://mail.google.com/mail/u/0/#inbox/${selectedMessage.id}`, '_blank')}
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Open in Gmail
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
