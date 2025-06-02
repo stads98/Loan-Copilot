@@ -1673,37 +1673,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const loanId = parseInt(req.params.loanId);
       const { attachmentData, filename, mimeType, size, emailSubject, emailFrom } = req.body;
 
-      // Generate a unique file ID for the document
-      const fileId = `email-attachment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      // Decode base64 attachment data
+      let fileBuffer;
+      try {
+        // Gmail uses URL-safe base64, convert to standard base64
+        let base64Data = attachmentData;
+        base64Data = base64Data.replace(/-/g, '+').replace(/_/g, '/');
+        while (base64Data.length % 4) {
+          base64Data += '=';
+        }
+        fileBuffer = Buffer.from(base64Data, 'base64');
+      } catch (decodeError) {
+        console.error('Failed to decode attachment data:', decodeError);
+        return res.status(400).json({ message: "Invalid attachment data" });
+      }
+
+      // Get the loan details to find the Drive folder
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      let driveFileId = null;
+
+      // Check if user has Google Drive authentication
+      if ((req.session as any)?.googleAuthenticated || (req.session as any)?.googleTokens) {
+        try {
+          // Try to restore Google Drive tokens if not in session
+          if (!(req.session as any)?.googleAuthenticated && req.user?.id) {
+            const driveToken = await storage.getUserToken(req.user.id, 'drive');
+            if (driveToken && driveToken.accessToken) {
+              (req.session as any).googleTokens = {
+                access_token: driveToken.accessToken,
+                refresh_token: driveToken.refreshToken,
+                expiry_date: driveToken.expiryDate?.getTime()
+              };
+              (req.session as any).googleAuthenticated = true;
+            }
+          }
+
+          if ((req.session as any)?.googleAuthenticated) {
+            const { google } = await import('googleapis');
+            const { createDriveAuth } = await import("./lib/google-drive");
+            
+            const auth = createDriveAuth((req.session as any).googleTokens);
+            const drive = google.drive({ version: 'v3', auth });
+
+            // Upload to Google Drive
+            const driveResponse = await drive.files.create({
+              requestBody: {
+                name: `${filename} (from Email)`,
+                parents: loan.driveFolder ? [loan.driveFolder] : undefined,
+              },
+              media: {
+                mimeType: mimeType,
+                body: require('stream').Readable.from(fileBuffer)
+              }
+            });
+
+            driveFileId = driveResponse.data.id;
+            console.log('Successfully uploaded email attachment to Google Drive:', driveFileId);
+          }
+        } catch (driveError) {
+          console.error('Failed to upload to Google Drive:', driveError);
+          // Continue without Drive upload - we'll still save locally
+        }
+      }
+
+      // If Drive upload failed, save locally
+      if (!driveFileId) {
+        const fileId = `email-attachment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.pdf`;
+        const filePath = path.join(uploadsDir, fileId);
+        await require('fs').promises.writeFile(filePath, fileBuffer);
+        driveFileId = fileId;
+      }
       
       // Determine document category based on filename
-      let category = 'Email Attachment';
+      let category = 'other';
       const lowerFilename = filename.toLowerCase();
       if (lowerFilename.includes('insurance') || lowerFilename.includes('policy')) {
-        category = 'Insurance';
+        category = 'insurance';
       } else if (lowerFilename.includes('appraisal')) {
-        category = 'Appraisal';
+        category = 'property';
       } else if (lowerFilename.includes('income') || lowerFilename.includes('bank') || lowerFilename.includes('statement')) {
-        category = 'Financial';
+        category = 'borrower';
       } else if (lowerFilename.includes('title')) {
-        category = 'Title';
+        category = 'title';
       }
 
       // Create document record
       const document = await storage.createDocument({
         name: `${filename} (from ${emailFrom})`,
-        fileId: fileId,
+        fileId: driveFileId,
         loanId: loanId,
         fileType: mimeType,
         fileSize: size,
         category: category,
-        status: 'Received via Email'
+        status: 'processed'
       });
 
       res.json({ 
         success: true,
         document: document,
-        message: `PDF attachment saved to loan documents`
+        message: `PDF attachment saved to loan documents${driveFileId.length > 20 ? ' and uploaded to Google Drive' : ''}`
       });
     } catch (error) {
       console.error('Error saving email attachment to documents:', error);
