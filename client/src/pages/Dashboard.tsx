@@ -229,7 +229,7 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
               />
 
               {/* Gmail Inbox */}
-              <GmailInbox />
+              <GmailInbox loanId={loan.id} />
             </div>
 
             {/* Middle Column: AI Guidance & Tasks */}

@@ -1040,13 +1040,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       const maxResults = parseInt(req.query.maxResults as string) || 20;
+      const loanId = req.query.loanId ? parseInt(req.query.loanId as string) : null;
+
+      let searchQuery = 'in:inbox';
+
+      // If loanId is provided, build a filtered search query
+      if (loanId) {
+        const loan = await storage.getLoanWithDetails(loanId);
+        if (loan) {
+          const searchTerms = [];
+          
+          // Add property address terms
+          if (loan.property?.address) {
+            const address = loan.property.address;
+            searchTerms.push(`"${address}"`);
+            
+            // Extract street address without city/state for partial matches
+            const streetOnly = address.split(',')[0].trim();
+            if (streetOnly !== address) {
+              searchTerms.push(`"${streetOnly}"`);
+            }
+          }
+          
+          // Add loan number/ID terms
+          if (loan.loan?.loanNumber) {
+            searchTerms.push(`"${loan.loan.loanNumber}"`);
+          }
+          searchTerms.push(`"${loanId}"`);
+          
+          // Add contact email terms (from/to/cc any contact email)
+          if (loan.contacts && loan.contacts.length > 0) {
+            const contactEmails = loan.contacts
+              .map(c => c.email)
+              .filter(Boolean)
+              .map(email => `from:${email} OR to:${email} OR cc:${email}`)
+              .join(' OR ');
+            
+            if (contactEmails) {
+              searchTerms.push(`(${contactEmails})`);
+            }
+          }
+          
+          // Combine all search terms with OR
+          if (searchTerms.length > 0) {
+            searchQuery = `in:inbox AND (${searchTerms.join(' OR ')})`;
+          }
+        }
+      }
 
       // Get message list
       const listResponse = await gmail.users.messages.list({
         auth: gmailAuth,
         userId: 'me',
         maxResults,
-        q: 'in:inbox'
+        q: searchQuery
       });
 
       const messages = [];

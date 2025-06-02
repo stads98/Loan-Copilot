@@ -21,9 +21,10 @@ interface GmailMessage {
 
 interface GmailInboxProps {
   className?: string;
+  loanId?: number;
 }
 
-export default function GmailInbox({ className }: GmailInboxProps) {
+export default function GmailInbox({ className, loanId }: GmailInboxProps) {
   const [messages, setMessages] = useState<GmailMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -104,7 +105,10 @@ export default function GmailInbox({ className }: GmailInboxProps) {
     
     setIsLoading(true);
     try {
-      const response = await apiRequest("GET", "/api/gmail/messages?maxResults=20");
+      const url = loanId 
+        ? `/api/gmail/messages?maxResults=20&loanId=${loanId}`
+        : "/api/gmail/messages?maxResults=20";
+      const response = await apiRequest("GET", url);
       setMessages(response.messages || []);
       setLastSync(new Date());
     } catch (error) {
@@ -160,7 +164,7 @@ export default function GmailInbox({ className }: GmailInboxProps) {
     }, 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [isConnected]);
+  }, [isConnected, loanId]);
 
   const unreadCount = messages.filter(msg => msg.unread).length;
 
