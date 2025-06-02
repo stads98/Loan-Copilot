@@ -124,98 +124,144 @@ export default function ContactList({ contacts, loanId, loanNumber, propertyAddr
       switch (contact.role) {
         case 'title':
           return {
-            subject: `${propertyAddress} (#${loanNumber || loanId}) - Title Request`,
-            body: `Dear ${contact.name},
+            subject: `${propertyAddress} (Loan #${loanNumber || loanId}) - Title Order Request`,
+            body: `Hi ${contact.name},
 
-I hope this email finds you well. We have a new loan file that will require title services, and I wanted to reach out to coordinate the next steps.
+I am working on originating a loan for my borrower, ${borrowerName}, who is [purchasing/refinancing] the property located at ${propertyAddress}. The title for this transaction is under the entity "[LLC Name]". Please process the title order in line with the attached instructions. 
 
-Loan Details:
-• Property Address: ${propertyAddress}
-• Borrower: ${borrowerName}
-• Loan Number: ${loanNumber || loanId}
+Please confirm Receipt of this email.
 
-We will need the following:
-• Title commitment
-• Property survey (if available)
-• Title insurance policy
+If you need further clarification or additional details, don't hesitate to reach me directly here or on my cell at (917) 963-0181.
 
-Please let me know your availability to handle this file and if you need any additional information from our side.
+I appreciate your help and look forward to working with you.
 
 Best regards,
+
+Dan
+
 Daniel Adler
-Loan Processing Team`
+Private Lending Advisor
+Adler Capital
+dan@adlercapital.us
+(917) 963-0181`
           };
         
         case 'insurance':
           return {
-            subject: `${propertyAddress} (#${loanNumber || loanId}) - Insurance Request`,
-            body: `Dear ${contact.name},
+            subject: `${propertyAddress} (Loan #${loanNumber || loanId}) – Insurance Requirements`,
+            body: `Hi ${contact.name},
 
-We have a new loan file that requires insurance coverage and wanted to coordinate with you on the requirements.
+I'm working on originating a loan for my borrower, ${borrowerName}, who is [purchasing/refinancing] the property located at ${propertyAddress}. The policyholder must be listed as "[LLC Name]".
 
-Loan Details:
-• Property Address: ${propertyAddress}
-• Borrower: ${borrowerName}
-• Loan Number: ${loanNumber || loanId}
+Attached below you will find the Insurance requirements for this transaction.
 
-Required Insurance Documentation:
-• Property insurance binder showing lender as additional insured
-• Certificate of insurance
-• Proof of payment for insurance premium
+Below is a summary of the lender's requirements and instructions for approval. Please review carefully and respond accordingly to help avoid delays or follow-up revision requests.
 
-Please confirm receipt and let us know if you need any additional details to process the insurance requirements.
+______________________________________________________________________
 
-Best regards,
+REQUIRED COVERAGES
+
+Provide a Bound Evidence of Insurance (EOI) or Binder – quotes are not accepted
+
+Dwelling Coverage: Must be listed with a dollar amount
+
+Coverage must be equal to or greater than the loan amount — OR — provide a Replacement Cost Estimate (If you cannot provide this, confirm that the existing amount represents 100% of the replacement cost and also state that you are unable to provide it)
+Named Storm/Hurricane (Florida only): Must be explicitly named on policy (Deductible must also be listed and not exceed 10% of coverage)
+
+Loss of Rent: Must be listed with a dollar amount (If not labeled as "Loss of Rent," attach the full document outlining coverages)
+
+List the Annual Premium on the policy — or confirm it in your reply
+
+Confirm on that policy AND via email that Wind and Fire are included in the policy
+
+Confirm via email whether the premium is paid in full or what balance is due
+
+Policy must include the Mortgagee Clause exactly as shown:
+
+Shellpoint Mortgage Servicing ISAOA ATIMA
+P.O. Box 7050, Troy, MI 48007-7050
+
+Include the Loan Number on the policy
+
+List the Borrower Name as the named insured exactly as legally spelled
+
+______________________________________________________________________
+
+Thanks,
+
 Daniel Adler
-Loan Processing Team`
+Private Lending Advisor
+Adler Capital
+dan@adlercapital.us
+(917) 963-0181`
           };
         
         case 'lender':
           return {
-            subject: `${propertyAddress} (#${loanNumber || loanId}) - Payoff Request`,
-            body: `Dear ${contact.name},
+            subject: `${propertyAddress} (Loan #${loanNumber || loanId}) - Payoff Request`,
+            body: `Hi ${contact.name},
 
-We have a new loan file and need to request payoff information for the existing mortgage on the subject property.
+I am working on originating a loan for my borrower, ${borrowerName}, who is [purchasing/refinancing] the property located at ${propertyAddress}. The title for this transaction is under the entity "[LLC Name]".
 
-Loan Details:
-• Property Address: ${propertyAddress}
-• Borrower: ${borrowerName}
-• Loan Number: ${loanNumber || loanId}
+To proceed, we need a payoff letter for the existing loan (#[Loan Number]). Please provide a written payoff statement that includes the following details:
 
-Please provide:
-• Current payoff amount
-• Per diem interest rate
-• Payoff good through date
-• Wire instructions for payoff funds
+Current outstanding balance
+Per diem interest amount
+Payoff amount good through [Requested Date]
+Wiring instructions for final payment
+Any additional fees required for loan payoff
 
-Please let us know if you need any additional borrower authorization to process this request.
+If a borrower authorization form is required, please let me know, and I will provide it promptly.
+
+Please confirm receipt of this request, and let me know if you need any additional information to process it efficiently.
+
+Thanks for your help. I look forward to working with you.
 
 Best regards,
+
+Dan
+
 Daniel Adler
-Loan Processing Team`
+Private Lending Advisor
+Adler Capital
+dan@adlercapital.us
+(917) 963-0181`
           };
         
         case 'borrower':
           return {
-            subject: `${propertyAddress} (#${loanNumber || loanId}) - Document Request`,
-            body: `Dear ${contact.name},
+            subject: `${propertyAddress} (Loan #${loanNumber || loanId}) - Required Items`,
+            body: `Hi ${borrowerName},
 
-Thank you for working with us on your loan application. We are processing your file and need some additional documentation to move forward.
+Please share the following documents/information to the secure portal below at your earliest convenience.
 
-Loan Details:
-• Property Address: ${propertyAddress}
-• Loan Number: ${loanNumber || loanId}
+Signed/Completed borrowing authorization form
+Signed/Completed disclosure form
+HUD (or Deed to show property ownership)
+2 recent bank statements
+Voided Check
+All Current Leases 
+Insurance Certificate and Proof of Premium Payment
+Insurance Agent Info (Name, Email, Phone)
+Title/Closing Agent Info (Name, Email, Phone)
+Payoff Letter from Existing Lenders (or if owned free and clear please specify here)
+Existing Lender Contact Info (Name, Email, Phone)
+LLC Docs:
+Articles of Organization
+Operating Agreement
+Certificate of Good Standing
+EIN Letter
 
-We will follow up with a detailed list of any missing documents. Please have the following ready:
-• Recent bank statements
-• Proof of income documentation
-• Property-related documents
+Please let me know if you have any questions or would like to discuss any of the above items.
 
-We appreciate your prompt attention to these requests to keep your loan processing on schedule.
+Thanks,
+Dan
 
-Best regards,
 Daniel Adler
-Loan Processing Team`
+Private Lending Advisor
+https://adlercapital.us/
+dan@adlercapital.us
+(917) 963-0181`
           };
         
         default:
