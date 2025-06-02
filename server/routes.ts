@@ -938,12 +938,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Gmail authentication
+  // Gmail authentication - direct approach
   app.get("/api/gmail/auth-url", isAuthenticated, async (req, res) => {
     try {
-      const { getGmailAuthUrl } = await import("./lib/gmail");
+      const { google } = require('googleapis');
+      const OAuth2 = google.auth.OAuth2;
+      
       const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
-      const authUrl = getGmailAuthUrl(process.env.GOOGLE_CLIENT_ID!, redirectUri);
+      console.log('Gmail auth using redirect URI:', redirectUri);
+      
+      const oauth2Client = new OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        redirectUri
+      );
+
+      const scopes = [
+        'https://www.googleapis.com/auth/gmail.send'
+      ];
+
+      const authUrl = oauth2Client.generateAuthUrl({
+        access_type: 'offline',
+        scope: scopes,
+        prompt: 'consent'
+      });
+
+      console.log('Generated Gmail auth URL');
       res.json({ authUrl });
     } catch (error) {
       console.error("Error generating Gmail auth URL:", error);
