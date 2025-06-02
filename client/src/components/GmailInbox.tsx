@@ -237,6 +237,9 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
       setMessageContent(cached.content);
       setMessageAttachments(cached.attachments);
       setIsLoadingMessage(false);
+      
+      // Auto-download PDFs if not already processed
+      autoDownloadPDFs(cached.attachments, message.id);
       return;
     }
     
@@ -250,6 +253,9 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
       
       setMessageContent(content);
       setMessageAttachments(attachments);
+      
+      // Auto-download PDFs when message opens
+      autoDownloadPDFs(attachments, message.id);
     } catch (error) {
       setMessageContent(message.snippet);
       setMessageAttachments([]);
@@ -269,6 +275,43 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
     setMessageAttachments([]);
   };
 
+  // Auto-download PDFs function
+  const autoDownloadPDFs = async (attachments: any[], messageId: string) => {
+    const pdfAttachments = attachments.filter(att => att.mimeType?.includes('pdf'));
+    
+    for (const attachment of pdfAttachments) {
+      try {
+        console.log('Auto-downloading PDF:', attachment.filename);
+        const response = await apiRequest("GET", `/api/gmail/messages/${messageId}/attachments/${attachment.attachmentId}`);
+        
+        if (!response || !response.data) {
+          console.log('No attachment data for:', attachment.filename);
+          continue;
+        }
+        
+        // Save PDF to loan documents and Google Drive
+        await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
+          attachmentData: response.data,
+          filename: attachment.filename,
+          mimeType: attachment.mimeType,
+          size: attachment.size,
+          emailSubject: selectedMessage?.subject,
+          emailFrom: selectedMessage?.from
+        });
+        
+        console.log('Auto-downloaded PDF:', attachment.filename);
+      } catch (error) {
+        console.error('Auto-download failed for:', attachment.filename, error);
+      }
+    }
+    
+    if (pdfAttachments.length > 0) {
+      // Refresh documents list after auto-downloads
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId] });
+    }
+  };
+
   const downloadAttachment = async (attachment: any) => {
     try {
       console.log('Downloading attachment:', attachment);
@@ -280,29 +323,7 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
         throw new Error('No attachment data received');
       }
       
-      // Decode base64 data safely (Gmail uses URL-safe base64)
-      let binaryData;
-      try {
-        // Gmail API returns URL-safe base64, convert to standard base64
-        let base64Data = response.data;
-        
-        // Replace URL-safe characters
-        base64Data = base64Data.replace(/-/g, '+').replace(/_/g, '/');
-        
-        // Add padding if needed
-        while (base64Data.length % 4) {
-          base64Data += '=';
-        }
-        
-        binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-      } catch (decodeError) {
-        console.error('Base64 decode error:', decodeError);
-        console.error('Response data length:', response.data ? response.data.length : 'undefined');
-        console.error('Response data sample:', response.data ? response.data.substring(0, 50) : 'undefined');
-        throw new Error('Failed to decode attachment data');
-      }
-      
-      // Save all files (PDFs and images) to loan documents and Google Drive
+      // Save files (images only via manual save) to loan documents and Google Drive
       const saveResponse = await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
         attachmentData: response.data, // Use the base64 data directly
         filename: attachment.filename,
@@ -734,8 +755,8 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                           </div>
                           <div className="flex items-center gap-2">
                             {isPDF && (
-                              <Badge variant="destructive" className="text-xs">
-                                PDF DOCUMENT
+                              <Badge variant="secondary" className="text-xs">
+                                Auto-downloaded
                               </Badge>
                             )}
                             <div className="flex gap-1">
@@ -748,15 +769,17 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                                 <Eye className="w-3 h-3 mr-1" />
                                 Preview
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => downloadAttachment(attachment)}
-                                className="text-xs"
-                              >
-                                <Save className="w-3 h-3 mr-1" />
-                                Save
-                              </Button>
+                              {isImage && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => downloadAttachment(attachment)}
+                                  className="text-xs"
+                                >
+                                  <Save className="w-3 h-3 mr-1" />
+                                  Save
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>
