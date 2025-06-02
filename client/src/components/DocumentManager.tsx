@@ -198,15 +198,27 @@ export default function DocumentManager({
   // Handle document preview
   const handleDocumentPreview = async (document: Document) => {
     try {
+      console.log('Previewing document:', document);
       const response = await fetch(`/api/documents/${document.id}/view`);
       const data = await response.json();
+      console.log('Preview response:', data);
       
-      if (data.type === 'drive') {
+      if (data.type === 'drive' && data.viewUrl) {
+        console.log('Opening Google Drive URL:', data.viewUrl);
         window.open(data.viewUrl, '_blank');
-      } else if (data.type === 'upload') {
+      } else if (data.type === 'upload' && data.fileUrl) {
+        console.log('Opening upload URL:', data.fileUrl);
         window.open(data.fileUrl, '_blank');
+      } else {
+        console.error('Invalid preview data:', data);
+        toast({
+          title: "Error",
+          description: "Invalid document preview data",
+          variant: "destructive"
+        });
       }
     } catch (error) {
+      console.error('Preview error:', error);
       toast({
         title: "Error",
         description: "Failed to preview document",
