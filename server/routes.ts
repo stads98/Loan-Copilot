@@ -173,12 +173,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { tokens } = await oauth2Client.getToken(code as string);
       console.log('Successfully received tokens');
       
-      // Store tokens in session for both Drive and Gmail
+      // Store tokens in session for compatibility
       (req.session as any).googleAuthenticated = true;
       (req.session as any).googleTokens = tokens;
       (req.session as any).gmailTokens = tokens;
       
-      console.log('Tokens stored in session');
+      // Save tokens to database for persistence
+      if (req.user) {
+        try {
+          // Save Gmail tokens
+          await storage.createUserToken({
+            userId: (req.user as any).id,
+            service: 'gmail',
+            accessToken: tokens.access_token || '',
+            refreshToken: tokens.refresh_token || '',
+            expiryDate: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+            scope: 'gmail.send,userinfo.email'
+          });
+          
+          // Save Google Drive tokens (same tokens work for both services)
+          await storage.createUserToken({
+            userId: (req.user as any).id,
+            service: 'drive',
+            accessToken: tokens.access_token || '',
+            refreshToken: tokens.refresh_token || '',
+            expiryDate: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+            scope: 'drive.readonly'
+          });
+          
+          console.log('Tokens saved to database for user:', req.user.id);
+        } catch (dbError) {
+          console.error('Error saving tokens to database:', dbError);
+          // Continue anyway - session tokens still work
+        }
+      }
+      
+      console.log('Tokens stored in session and database');
       
       // Close the popup window and refresh parent
       res.send(`
@@ -1035,7 +1065,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Check Gmail connection status
   app.get("/api/gmail/status", isAuthenticated, async (req, res) => {
     try {
-      const connected = !!(req.session as any)?.gmailTokens;
+      // First check session tokens
+      let connected = !!(req.session as any)?.gmailTokens;
+      
+      // If no session tokens, check database
+      if (!connected && req.user) {
+        const gmailToken = await storage.getUserToken(req.user.id, 'gmail');
+        if (gmailToken) {
+          connected = true;
+          // Restore tokens to session for compatibility
+          (req.session as any).gmailTokens = {
+            access_token: gmailToken.accessToken,
+            refresh_token: gmailToken.refreshToken,
+            expiry_date: gmailToken.expiryDate?.getTime()
+          };
+        }
+      }
+      
       res.json({ connected });
     } catch (error) {
       res.json({ connected: false });

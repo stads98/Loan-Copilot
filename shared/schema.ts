@@ -108,6 +108,7 @@ export const userTokens = pgTable("user_tokens", {
   accessToken: text("access_token").notNull(),
   refreshToken: text("refresh_token"),
   expiryDate: timestamp("expiry_date"),
+  scope: text("scope"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

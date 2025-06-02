@@ -1,11 +1,11 @@
 import { db } from "./db";
 import { 
   users, lenders, loanTypes, properties, contacts,
-  loans, documents, tasks, messages,
+  loans, documents, tasks, messages, userTokens,
   type User, type Lender, type LoanType, type Property, 
-  type Contact, type Loan, type Document, type Task, type Message,
+  type Contact, type Loan, type Document, type Task, type Message, type UserToken,
   type InsertUser, type InsertLender, type InsertLoanType, type InsertProperty,
-  type InsertContact, type InsertLoan, type InsertDocument, type InsertTask, type InsertMessage
+  type InsertContact, type InsertLoan, type InsertDocument, type InsertTask, type InsertMessage, type InsertUserToken
 } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { IStorage } from "./storage";
