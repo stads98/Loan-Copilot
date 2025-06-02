@@ -314,6 +314,40 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
     }
   };
 
+  const sendReply = async () => {
+    if (!selectedMessage || !replyContent.trim()) return;
+    
+    setIsSendingReply(true);
+    try {
+      await apiRequest("POST", '/api/gmail/send', {
+        to: selectedMessage.from,
+        subject: selectedMessage.subject.startsWith('Re:') ? selectedMessage.subject : `Re: ${selectedMessage.subject}`,
+        content: replyContent,
+        threadId: selectedMessage.threadId
+      });
+
+      toast({
+        title: "Reply Sent",
+        description: "Your reply has been sent successfully.",
+      });
+      
+      setReplyContent("");
+      setShowReply(false);
+      
+      // Refresh messages to show the new reply
+      fetchMessages();
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      toast({
+        title: "Send Failed",
+        description: "Could not send your reply. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingReply(false);
+    }
+  };
+
   useEffect(() => {
     checkGmailConnection();
   }, []);
@@ -666,12 +700,77 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => setShowReply(!showReply)}
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Reply
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => window.open(`https://mail.google.com/mail/u/0/#inbox/${selectedMessage.id}`, '_blank')}
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
                   Open in Gmail
                 </Button>
               </div>
+
+              {/* Reply Composer */}
+              {showReply && (
+                <div className="mt-4 pt-4 border-t space-y-4">
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="text-sm text-blue-800 mb-2">
+                      Replying to: <strong>{selectedMessage.from}</strong>
+                    </p>
+                    <p className="text-sm text-blue-600">
+                      Subject: {selectedMessage.subject.startsWith('Re:') ? selectedMessage.subject : `Re: ${selectedMessage.subject}`}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Your Reply:
+                    </label>
+                    <textarea
+                      value={replyContent}
+                      onChange={(e) => setReplyContent(e.target.value)}
+                      placeholder="Type your reply here..."
+                      rows={6}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowReply(false);
+                        setReplyContent("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={sendReply}
+                      disabled={!replyContent.trim() || isSendingReply}
+                    >
+                      {isSendingReply ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-4 h-4 mr-2" />
+                          Send Reply
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
