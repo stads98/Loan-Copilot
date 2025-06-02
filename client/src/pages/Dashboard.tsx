@@ -263,6 +263,7 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
               <ContactList 
                 contacts={contacts || []}
                 loanId={loan.id}
+                loanNumber={loan.loanNumber}
                 propertyAddress={`${property.address}, ${property.city}, ${property.state} ${property.zipCode}`}
                 borrowerName={loan.borrowerName}
               />
