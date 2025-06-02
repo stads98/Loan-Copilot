@@ -1762,7 +1762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const emailData = {
         to: analystEmails,
-        subject: `${loan.propertyAddress} (Loan #${loanId}) - Documents Attached`,
+        subject: `${loan.propertyAddress} (Loan #${loan.loanNumber}) - Documents Attached`,
         body: emailContent,
         attachments
       };

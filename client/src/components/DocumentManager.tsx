@@ -19,6 +19,7 @@ import { Loader2, FileText, Image, File, Download, Trash2, Eye, Check, Plus, X, 
 interface DocumentManagerProps {
   documents: Document[];
   loanId: number;
+  loanNumber: string;
   contacts: Contact[];
   propertyAddress: string;
   requiredDocuments: {
@@ -34,6 +35,7 @@ interface DocumentManagerProps {
 export default function DocumentManager({ 
   documents, 
   loanId, 
+  loanNumber,
   contacts, 
   propertyAddress, 
   requiredDocuments, 
@@ -326,6 +328,7 @@ export default function DocumentManager({
               documents={documents}
               contacts={contacts}
               loanId={loanId}
+              loanNumber={loanNumber}
               propertyAddress={propertyAddress}
               documentAssignments={assignedDocuments}
               completedRequirements={Array.from(completedRequirements)}

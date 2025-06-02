@@ -16,6 +16,7 @@ interface SendToAnalystProps {
   documents: Document[];
   contacts: Contact[];
   loanId: number;
+  loanNumber: string;
   propertyAddress: string;
   documentAssignments?: Record<string, string[]>; // requirement name -> document IDs
   completedRequirements?: string[]; // list of completed requirement names
@@ -25,6 +26,7 @@ export default function SendToAnalyst({
   documents, 
   contacts, 
   loanId, 
+  loanNumber,
   propertyAddress,
   documentAssignments = {},
   completedRequirements = []
@@ -88,15 +90,12 @@ export default function SendToAnalyst({
       ? `Dear ${selectedAnalystContacts.map(contact => contact.name.split(' ')[0]).join(' and ')},`
       : `Dear ${selectedAnalystContacts[0]?.name.split(' ')[0] || 'Analyst'},`;
 
-    const emailContent = `
-Subject: ${propertyAddress} (Loan #${loanId}) - Documents Attached
-
-${greeting}
+    const emailContent = `${greeting}
 
 Please review the attached documents for the loan file:
 
 Property: ${propertyAddress}
-Loan ID: ${loanId}
+Loan Number: ${loanNumber}
 Date: ${format(new Date(), 'MMMM dd, yyyy')}
 
 Documents attached (${selectedDocs.length}):
