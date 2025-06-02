@@ -459,6 +459,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update document assignments for a loan
+  app.patch("/api/loans/:id/document-assignments", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid loan ID" });
+      }
+
+      const loan = await storage.getLoan(id);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      const { documentAssignments } = req.body;
+      const updatedLoan = await storage.updateLoan(id, { 
+        documentAssignments: documentAssignments || {}
+      });
+      
+      res.json({ success: true, documentAssignments: updatedLoan?.documentAssignments || {} });
+    } catch (error) {
+      res.status(500).json({ message: "Error updating document assignments" });
+    }
+  });
+
   // Documents
   app.get("/api/loans/:loanId/documents", isAuthenticated, async (req, res) => {
     const loanId = parseInt(req.params.loanId);

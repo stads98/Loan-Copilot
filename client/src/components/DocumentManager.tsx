@@ -1,5 +1,5 @@
 import { Document, Contact } from "@/lib/types";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -53,6 +53,22 @@ export default function DocumentManager({
   // Use external completed requirements if provided, otherwise use local state
   const completedRequirements = externalCompletedRequirements || localCompletedRequirements;
 
+  // Load document assignments from database when component mounts
+  useEffect(() => {
+    const loadLoanData = async () => {
+      try {
+        const response = await apiRequest("GET", `/api/loans/${loanId}`);
+        if (response.loan?.documentAssignments) {
+          setAssignedDocuments(response.loan.documentAssignments);
+        }
+      } catch (error) {
+        console.error("Failed to load document assignments:", error);
+      }
+    };
+    
+    loadLoanData();
+  }, [loanId]);
+
   const syncGoogleDrive = async () => {
     setIsSyncing(true);
     try {
@@ -77,18 +93,38 @@ export default function DocumentManager({
   };
   
   // Helper functions for managing requirements
-  const assignDocumentToRequirement = (requirementName: string, documentId: string) => {
-    setAssignedDocuments(prev => ({
-      ...prev,
-      [requirementName]: [...(prev[requirementName] || []), documentId]
-    }));
+  const assignDocumentToRequirement = async (requirementName: string, documentId: string) => {
+    const newAssignments = {
+      ...assignedDocuments,
+      [requirementName]: [...(assignedDocuments[requirementName] || []), documentId]
+    };
+    setAssignedDocuments(newAssignments);
+    
+    // Persist to database
+    try {
+      await apiRequest("PATCH", `/api/loans/${loanId}/document-assignments`, {
+        documentAssignments: newAssignments
+      });
+    } catch (error) {
+      console.error("Failed to save document assignments:", error);
+    }
   };
 
-  const removeDocumentFromRequirement = (requirementName: string, documentId: string) => {
-    setAssignedDocuments(prev => ({
-      ...prev,
-      [requirementName]: (prev[requirementName] || []).filter(id => id !== documentId)
-    }));
+  const removeDocumentFromRequirement = async (requirementName: string, documentId: string) => {
+    const newAssignments = {
+      ...assignedDocuments,
+      [requirementName]: (assignedDocuments[requirementName] || []).filter(id => id !== documentId)
+    };
+    setAssignedDocuments(newAssignments);
+    
+    // Persist to database
+    try {
+      await apiRequest("PATCH", `/api/loans/${loanId}/document-assignments`, {
+        documentAssignments: newAssignments
+      });
+    } catch (error) {
+      console.error("Failed to save document assignments:", error);
+    }
   };
 
   const markRequirementComplete = (requirementName: string) => {
@@ -246,6 +282,7 @@ export default function DocumentManager({
               loanId={loanId}
               propertyAddress={propertyAddress}
               documentAssignments={assignedDocuments}
+              completedRequirements={Array.from(completedRequirements)}
             />
             <Button 
               onClick={syncGoogleDrive}
