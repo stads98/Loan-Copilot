@@ -57,9 +57,15 @@ export default function DocumentManager({
   useEffect(() => {
     const loadLoanData = async () => {
       try {
-        const response = await apiRequest("GET", `/api/loans/${loanId}`);
-        if (response.loan?.documentAssignments) {
-          setAssignedDocuments(response.loan.documentAssignments);
+        const response = await fetch(`/api/loans/${loanId}`);
+        const data = await response.json();
+        console.log('Loaded loan data:', data);
+        
+        if (data.loan?.documentAssignments) {
+          console.log('Setting document assignments:', data.loan.documentAssignments);
+          setAssignedDocuments(data.loan.documentAssignments);
+        } else {
+          console.log('No document assignments found in loan data');
         }
       } catch (error) {
         console.error("Failed to load document assignments:", error);

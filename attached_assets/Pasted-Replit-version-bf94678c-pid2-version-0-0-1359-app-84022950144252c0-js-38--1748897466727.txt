@@ -1,0 +1,129 @@
+Replit version bf94678c, pid2 version 0.0.1359
+_app-84022950144252c0.js:38 
+      /////////////////////
+   ///////////////////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////        Curious and driven?
+  ///////////////@@@@@@@///////        Work with us!
+  ///////////////@@@@@@@///////
+  ///////////////@@@@@@@///////        https://join.replit.com/hack.with.us
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@#//////////////
+   ///////////////////////////
+      /////////////////////
+      
+_app-84022950144252c0.js:38 [LaunchDarkly] LaunchDarkly client initialized
+chrome-extension://fofjcndophjadilglgimelemjkjblgpf/index.html:61 Refused to execute inline event handler because it violates the following Content Security Policy directive: "script-src 'self'". Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present.
+Understand this error
+chrome-extension://fofjcndophjadilglgimelemjkjblgpf/index.html:61 Refused to execute inline event handler because it violates the following Content Security Policy directive: "script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules'". Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present.
+Understand this error
+ Amplitude Logger [Warn]: Storage provider r is not enabled. Falling back to MemoryStorage.
+t.warn @ chrome-extension://f…pf/main.bundle.js:1Understand this warning
+ Amplitude Logger [Warn]: `options.defaultTracking` is set to undefined. This implicitly configures your Amplitude instance to track Page Views, Sessions, File Downloads, and Form Interactions. You can suppress this warning by explicitly setting a value to `options.defaultTracking`. The value must either be a boolean, to enable and disable all default events, or an object, for advanced configuration. For example:
+
+amplitude.init(<YOUR_API_KEY>, {
+  defaultTracking: true,
+});
+
+Visit https://www.docs.developers.amplitude.com/data/sdks/browser-2/#tracking-default-events for more details.
+t.warn @ chrome-extension://f…pf/main.bundle.js:1Understand this warning
+ Before - https://login.zoominfo.com/chrome-extension-login
+ Posted a message to RO :: loadingFinished
+ Resetting Amplitude user...
+ Datadog Browser SDK: service value doesn't meet tag requirements and will be sanitized. More details: https://docs.datadoghq.com/getting_started/tagging/#defining-tags
+ze @ login.zoominfo.com/1…ed880867a951a3.js:1Understand this warning
+index.bundle.js:1 Page params from reachout package: 👇
+index.bundle.js:1 Object
+LoanPilot:1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+28Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.Understand this error
+framework-1e892158374318e5.js:1 Unrecognized feature: 'ambient-light-sensor'.
+_ @ framework-1e892158374318e5.js:1Understand this warning
+framework-1e892158374318e5.js:1 Unrecognized feature: 'battery'.
+_ @ framework-1e892158374318e5.js:1Understand this warning
+framework-1e892158374318e5.js:1 Unrecognized feature: 'execution-while-not-rendered'.
+_ @ framework-1e892158374318e5.js:1Understand this warning
+framework-1e892158374318e5.js:1 Unrecognized feature: 'execution-while-out-of-viewport'.
+_ @ framework-1e892158374318e5.js:1Understand this warning
+framework-1e892158374318e5.js:1 Unrecognized feature: 'layout-animations'.
+_ @ framework-1e892158374318e5.js:1Understand this warning
+framework-1e892158374318e5.js:1 Unrecognized feature: 'legacy-image-formats'.
+_ @ framework-1e892158374318e5.js:1Understand this warning
+framework-1e892158374318e5.js:1 Unrecognized feature: 'navigation-override'.
+_ @ framework-1e892158374318e5.js:1Understand this warning
+framework-1e892158374318e5.js:1 Unrecognized feature: 'oversized-images'.
+_ @ framework-1e892158374318e5.js:1Understand this warning
+framework-1e892158374318e5.js:1 Unrecognized feature: 'publickey-credentials'.
+_ @ framework-1e892158374318e5.js:1Understand this warning
+framework-1e892158374318e5.js:1 Unrecognized feature: 'speaker-selection'.
+_ @ framework-1e892158374318e5.js:1Understand this warning
+framework-1e892158374318e5.js:1 Unrecognized feature: 'unoptimized-images'.
+_ @ framework-1e892158374318e5.js:1Understand this warning
+framework-1e892158374318e5.js:1 Unrecognized feature: 'unsized-media'.
+_ @ framework-1e892158374318e5.js:1Understand this warning
+framework-1e892158374318e5.js:1 Unrecognized feature: 'pointer-lock'.
+_ @ framework-1e892158374318e5.js:1Understand this warning
+framework-1e892158374318e5.js:1 Allow attribute will take precedence over 'allowfullscreen'.
+_ @ framework-1e892158374318e5.js:1Understand this warning
+framework-1e892158374318e5.js:1 Allow attribute will take precedence over 'allowpaymentrequest'.
+_ @ framework-1e892158374318e5.js:1Understand this warning
+stallwart.build.js:1 stallwart: failed ping 1
+stallwart.build.js:1 stallwart: failed ping 2
+stallwart.build.js:1 stallwart: failed ping 3
+stallwart.build.js:1 stallwart: failed ping 4
+stallwart.build.js:1 stallwart: failed ping 5
+stallwart.build.js:1 stallwart: session stalled
+_app-84022950144252c0.js:1 Uncaught (in promise) ApolloError: Notification alert not found
+    at new t (_app-84022950144252c0.js:1:234257)
+    at _app-84022950144252c0.js:6:175538
+    at n (_app-84022950144252c0.js:6:159551)
+    at _app-84022950144252c0.js:6:159477
+    at new Promise (<anonymous>)
+    at Object.then (_app-84022950144252c0.js:6:159444)
+    at Object.next (_app-84022950144252c0.js:6:159561)
+    at b (_app-84022950144252c0.js:9:38021)
+    at y (_app-84022950144252c0.js:9:38543)
+    at t.next (_app-84022950144252c0.js:9:39044)
+    at _app-84022950144252c0.js:9:486516
+    at Array.forEach (<anonymous>)
+    at r (_app-84022950144252c0.js:9:486485)
+    at Object.next (_app-84022950144252c0.js:6:160670)
+    at b (_app-84022950144252c0.js:9:38021)
+    at y (_app-84022950144252c0.js:9:38543)
+    at t.next (_app-84022950144252c0.js:9:39044)
+    at Object.onNext [as next] (_app-84022950144252c0.js:9:323347)
+    at b (_app-84022950144252c0.js:9:38021)
+    at y (_app-84022950144252c0.js:9:38543)
+    at t.next (_app-84022950144252c0.js:9:39044)
+    at Object.next (_app-84022950144252c0.js:9:322469)
+    at b (_app-84022950144252c0.js:9:38021)
+    at y (_app-84022950144252c0.js:9:38543)
+    at t.next (_app-84022950144252c0.js:9:39044)
+    at _app-84022950144252c0.js:9:319311
+    at Array.forEach (<anonymous>)
+    at _app-84022950144252c0.js:9:319284
+    at Array.forEach (<anonymous>)
+    at Object.next (_app-84022950144252c0.js:9:319251)
+    at b (_app-84022950144252c0.js:9:38021)
+    at y (_app-84022950144252c0.js:9:38543)
+    at t.next (_app-84022950144252c0.js:9:39044)
+    at _app-84022950144252c0.js:9:321911Understand this error
+workspace_iframe.html:32 Unrecognized feature: 'ambient-light-sensor'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'battery'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-not-rendered'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-out-of-viewport'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'layout-animations'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'legacy-image-formats'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'navigation-override'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'oversized-images'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'publickey-credentials'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'speaker-selection'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'unoptimized-images'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'unsized-media'.Understand this warning
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowfullscreen'.Understand this warning
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowpaymentrequest'.Understand this warning
+0007b75f-d504-4d28-927e-2b1824d99bb5-00-2pydj6ryedxd2.picard.replit.dev/api/auth/user:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthoriz
