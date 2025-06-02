@@ -8,6 +8,7 @@ import {
   documents, type Document, type InsertDocument,
   tasks, type Task, type InsertTask,
   messages, type Message, type InsertMessage,
+  userTokens, type UserToken, type InsertUserToken,
   type LoanWithDetails
 } from "@shared/schema";
 
@@ -64,6 +65,12 @@ export interface IStorage {
   getMessage(id: number): Promise<Message | undefined>;
   getMessagesByLoanId(loanId: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
+
+  // User Tokens
+  getUserToken(userId: number, service: string): Promise<UserToken | undefined>;
+  createUserToken(token: InsertUserToken): Promise<UserToken>;
+  updateUserToken(userId: number, service: string, token: Partial<InsertUserToken>): Promise<UserToken | undefined>;
+  deleteUserToken(userId: number, service: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -379,6 +386,23 @@ export class MemStorage implements IStorage {
     const message: Message = { ...insertMessage, id, createdAt: new Date() };
     this.messages.set(id, message);
     return message;
+  }
+
+  // User Tokens - Not implemented in MemStorage, use DatabaseStorage for persistence
+  async getUserToken(userId: number, service: string): Promise<UserToken | undefined> {
+    return undefined;
+  }
+
+  async createUserToken(insertToken: InsertUserToken): Promise<UserToken> {
+    throw new Error("User tokens not supported in MemStorage");
+  }
+
+  async updateUserToken(userId: number, service: string, token: Partial<InsertUserToken>): Promise<UserToken | undefined> {
+    return undefined;
+  }
+
+  async deleteUserToken(userId: number, service: string): Promise<boolean> {
+    return false;
   }
 }
 

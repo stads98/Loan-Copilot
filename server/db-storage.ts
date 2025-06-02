@@ -274,4 +274,41 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return message;
   }
+
+  // User Tokens
+  async getUserToken(userId: number, service: string): Promise<UserToken | undefined> {
+    const [token] = await db
+      .select()
+      .from(userTokens)
+      .where(and(eq(userTokens.userId, userId), eq(userTokens.service, service)));
+    return token || undefined;
+  }
+
+  async createUserToken(insertToken: InsertUserToken): Promise<UserToken> {
+    const [token] = await db
+      .insert(userTokens)
+      .values({
+        ...insertToken,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return token;
+  }
+
+  async updateUserToken(userId: number, service: string, token: Partial<InsertUserToken>): Promise<UserToken | undefined> {
+    const [updatedToken] = await db
+      .update(userTokens)
+      .set({ ...token, updatedAt: new Date() })
+      .where(and(eq(userTokens.userId, userId), eq(userTokens.service, service)))
+      .returning();
+    return updatedToken || undefined;
+  }
+
+  async deleteUserToken(userId: number, service: string): Promise<boolean> {
+    const result = await db
+      .delete(userTokens)
+      .where(and(eq(userTokens.userId, userId), eq(userTokens.service, service)));
+    return result.rowCount > 0;
+  }
 }
