@@ -388,6 +388,11 @@ export default function DocumentManager({
                         <div>
                           <p className="font-medium">{doc.name}</p>
                           <div className="flex items-center gap-2 text-sm text-gray-500">
+                            {doc.source === "gmail" && (
+                              <Badge className="bg-blue-100 text-blue-800 border-blue-300 text-xs">
+                                Auto-downloaded
+                              </Badge>
+                            )}
                             {doc.category && (
                               <Badge variant="outline" className="text-xs">
                                 {doc.category}
