@@ -101,6 +101,17 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const userTokens = pgTable("user_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  service: text("service").notNull(), // gmail, drive, etc
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  expiryDate: timestamp("expiry_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertLenderSchema = createInsertSchema(lenders).omit({ id: true });
@@ -111,6 +122,7 @@ export const insertLoanSchema = createInsertSchema(loans).omit({ id: true, creat
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });
 export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, createdAt: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
+export const insertUserTokenSchema = createInsertSchema(userTokens).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -122,6 +134,7 @@ export type InsertLoan = z.infer<typeof insertLoanSchema>;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type InsertUserToken = z.infer<typeof insertUserTokenSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Lender = typeof lenders.$inferSelect;
@@ -132,6 +145,7 @@ export type Loan = typeof loans.$inferSelect;
 export type Document = typeof documents.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type Message = typeof messages.$inferSelect;
+export type UserToken = typeof userTokens.$inferSelect;
 
 // Extended schema types
 export const loanWithDetailsSchema = z.object({

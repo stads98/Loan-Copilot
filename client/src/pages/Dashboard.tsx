@@ -94,6 +94,36 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
       setActiveLoanId(loans[0].id);
     }
   }, [loans, activeLoanId]);
+
+  // Load completed requirements from loan data
+  useEffect(() => {
+    if (loanDetails?.loan?.completedRequirements) {
+      setCompletedRequirements(new Set(loanDetails.loan.completedRequirements));
+    }
+  }, [loanDetails?.loan?.completedRequirements]);
+
+  // Save completed requirements to database
+  const saveCompletedRequirements = async (requirements: Set<string>) => {
+    if (!activeLoanId) return;
+    
+    try {
+      await apiRequest("PATCH", `/api/loans/${activeLoanId}/completed-requirements`, {
+        completedRequirements: Array.from(requirements)
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save completed requirements",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Update completed requirements with database persistence
+  const handleCompletedRequirementsChange = (requirements: Set<string>) => {
+    setCompletedRequirements(requirements);
+    saveCompletedRequirements(requirements);
+  };
   
   // Get lender-specific document requirements
   const getLenderSpecificRequirements = (lenderName: string) => {
@@ -217,7 +247,7 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
                 contacts={contacts || []}
                 loanDetails={{ ...loan, lender, property }}
                 completedRequirements={completedRequirements}
-                onCompletedRequirementsChange={setCompletedRequirements}
+                onCompletedRequirementsChange={handleCompletedRequirementsChange}
               />
 
               {/* Contact List */}
@@ -275,7 +305,7 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
                 propertyAddress={property?.address || ""}
                 requiredDocuments={getLenderSpecificRequirements(lender?.name || "AHL")}
                 completedRequirements={completedRequirements}
-                onCompletedRequirementsChange={setCompletedRequirements}
+                onCompletedRequirementsChange={handleCompletedRequirementsChange}
               />
             </div>
           </div>
