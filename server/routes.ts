@@ -228,9 +228,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Check Google Drive connection status
-  app.get("/api/auth/google/status", (req, res) => {
-    const isConnected = (req.session as any)?.googleAuthenticated || false;
-    res.json({ connected: isConnected });
+  app.get("/api/auth/google/status", async (req, res) => {
+    try {
+      // Check session first
+      if ((req.session as any)?.googleAuthenticated) {
+        return res.json({ connected: true });
+      }
+      
+      // Check database for stored tokens
+      if (req.user?.id) {
+        const driveToken = await storage.getUserToken(req.user.id, 'drive');
+        if (driveToken && driveToken.accessToken) {
+          // Restore tokens to session
+          (req.session as any).googleTokens = {
+            access_token: driveToken.accessToken,
+            refresh_token: driveToken.refreshToken,
+            expiry_date: driveToken.expiryDate?.getTime()
+          };
+          (req.session as any).googleAuthenticated = true;
+          
+          console.log('Restored Google Drive tokens from database for user:', req.user.id);
+          return res.json({ connected: true });
+        }
+      }
+      
+      res.json({ connected: false });
+    } catch (error) {
+      console.error('Error checking Google Drive status:', error);
+      res.json({ connected: false });
+    }
   });
 
   // Lenders
