@@ -1910,8 +1910,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 .filter(Boolean)
                 .map((email: any) => email.toLowerCase());
               
+              console.log(`Checking email ${message.id} - Contact emails:`, contactEmails);
+              console.log(`Email details - from: "${from}", to: "${to}", cc: "${cc}"`);
+              
               for (const email of contactEmails) {
                 if (from.includes(email) || to.includes(email) || cc.includes(email)) {
+                  console.log(`Match found for contact email: ${email}`);
                   return true;
                 }
               }
