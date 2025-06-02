@@ -233,35 +233,58 @@ Daniel Adler
                   No documents available
                 </p>
               ) : (
-                documents.map((doc) => (
-                  <div key={doc.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded">
-                    <Checkbox
-                      id={`doc-${doc.id}`}
-                      checked={selectedDocuments.includes(doc.id)}
-                      onCheckedChange={() => toggleDocument(doc.id)}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <label 
-                        htmlFor={`doc-${doc.id}`}
-                        className="text-sm font-medium cursor-pointer truncate block"
-                      >
-                        {doc.name}
-                      </label>
-                      <div className="flex items-center gap-2 mt-1">
-                        {doc.category && (
-                          <Badge variant="outline" className="text-xs">
-                            {doc.category}
-                          </Badge>
-                        )}
-                        {doc.fileSize && (
-                          <span className="text-xs text-gray-500">
-                            {(doc.fileSize / 1024 / 1024).toFixed(1)} MB
-                          </span>
-                        )}
+                documents.map((doc) => {
+                  // Check if this document is associated with any completed requirements
+                  const isCompleted = documentAssignments && Object.entries(documentAssignments).some(([requirement, docIds]) => 
+                    docIds.includes(doc.id.toString()) && completedRequirements?.includes(requirement)
+                  );
+                  
+                  return (
+                    <div 
+                      key={doc.id} 
+                      className={`flex items-center space-x-3 p-2 rounded border-l-4 ${
+                        isCompleted 
+                          ? 'bg-green-50 border-l-green-500 hover:bg-green-100' 
+                          : 'border-l-transparent hover:bg-gray-50'
+                      }`}
+                    >
+                      <Checkbox
+                        id={`doc-${doc.id}`}
+                        checked={selectedDocuments.includes(doc.id)}
+                        onCheckedChange={() => toggleDocument(doc.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <label 
+                            htmlFor={`doc-${doc.id}`}
+                            className={`text-sm font-medium cursor-pointer truncate block ${
+                              isCompleted ? 'text-green-800' : ''
+                            }`}
+                          >
+                            {doc.name}
+                          </label>
+                          {isCompleted && (
+                            <Badge className="bg-green-100 text-green-800 border-green-300 text-xs px-2 py-0.5">
+                              ✓ Complete
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          {doc.category && (
+                            <Badge variant="outline" className="text-xs">
+                              {doc.category}
+                            </Badge>
+                          )}
+                          {doc.fileSize && (
+                            <span className="text-xs text-gray-500">
+                              {(doc.fileSize / 1024 / 1024).toFixed(1)} MB
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
