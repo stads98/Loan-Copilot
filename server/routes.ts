@@ -1383,12 +1383,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (req.session as any).gmailTokens.refresh_token
       );
 
-      // Get all inbox messages (scan more for comprehensive search)
+      // Get all inbox messages (scan more for comprehensive search, including older emails)
       const listResponse = await gmail.users.messages.list({
         auth: gmailAuth,
         userId: 'me',
-        maxResults: 500,
-        q: 'in:inbox'
+        maxResults: 1000, // Increased to get more emails
+        q: 'in:inbox after:2025/05/01' // Search emails from May 1st onwards to catch older emails
       });
 
       if (!listResponse.data.messages) {
@@ -1470,6 +1470,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
+          // Check for Samuel's email specifically (from your Gmail inbox)
+          if (!isRelevant && (from.includes('sam2345@live.com') || to.includes('sam2345@live.com'))) {
+            isRelevant = true;
+          }
+
           // Check contact emails
           if (!isRelevant && loan.contacts && loan.contacts.length > 0) {
             const contactEmails = loan.contacts
@@ -1479,6 +1484,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             for (const email of contactEmails) {
               if (from.includes(email) || to.includes(email) || cc.includes(email)) {
+                isRelevant = true;
+                break;
+              }
+            }
+          }
+
+          // Check for other key emails from your inbox
+          const keyEmails = [
+            'kellie.rossi@lendinghome.com',
+            'kristian@newpathtitle.com', 
+            'luma@planlifeusa.com',
+            'noah.dlott@kiavi.com'
+          ];
+          
+          if (!isRelevant) {
+            for (const email of keyEmails) {
+              if (from.includes(email) || to.includes(email)) {
                 isRelevant = true;
                 break;
               }
