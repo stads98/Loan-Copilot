@@ -1070,7 +1070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If no session tokens, check database
       if (!connected && req.user) {
-        const gmailToken = await storage.getUserToken(req.user.id, 'gmail');
+        const gmailToken = await storage.getUserToken((req.user as any).id, 'gmail');
         if (gmailToken) {
           connected = true;
           // Restore tokens to session for compatibility
@@ -1079,6 +1079,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             refresh_token: gmailToken.refreshToken,
             expiry_date: gmailToken.expiryDate?.getTime()
           };
+          console.log('Restored Gmail tokens from database for user:', (req.user as any).id);
         }
       }
       
@@ -1091,7 +1092,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Disconnect Gmail
   app.post("/api/gmail/disconnect", isAuthenticated, async (req, res) => {
     try {
+      // Remove from session
       delete (req.session as any).gmailTokens;
+      
+      // Remove from database
+      if (req.user) {
+        await storage.deleteUserToken((req.user as any).id, 'gmail');
+        await storage.deleteUserToken((req.user as any).id, 'drive');
+      }
+      
       res.json({ success: true, message: "Gmail disconnected successfully" });
     } catch (error) {
       console.error("Error disconnecting Gmail:", error);
