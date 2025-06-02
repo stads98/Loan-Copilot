@@ -176,23 +176,13 @@ export async function getDriveFiles(folderId: string, accessToken?: string): Pro
     
     const drive = google.drive({ version: 'v3', auth: jwtClient });
     
-    // List files in the specified folder
-    const response = await drive.files.list({
-      q: `'${cleanFolderId}' in parents and trashed=false`,
-      fields: 'files(id,name,mimeType,size,modifiedTime)',
-      orderBy: 'name'
-    });
+    // Use recursive scanning to get all files from folder and subfolders
+    const scanResult = await scanFolderRecursively(cleanFolderId);
+    const allFiles = scanResult.files;
     
-    const files = response.data.files || [];
-    console.log(`Successfully accessed Google Drive - found ${files.length} real files in folder`);
+    console.log(`Successfully accessed Google Drive - found ${allFiles.length} real files in folder and subfolders`);
     
-    return files.map((file: any) => ({
-      id: file.id!,
-      name: file.name!,
-      mimeType: file.mimeType!,
-      size: file.size,
-      modifiedTime: file.modifiedTime
-    }));
+    return allFiles;
     
   } catch (error: any) {
     console.error("Could not access Google Drive with service account:", error);
