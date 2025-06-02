@@ -1773,8 +1773,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
       const dateQuery = sixWeeksAgo.toISOString().split('T')[0].replace(/-/g, '/');
       
-      // Comprehensive search for all loan-related content going back 6 weeks
-      const searchQuery = `(has:attachment OR loan OR refinance OR mortgage OR property OR title OR insurance OR appraisal OR inspection OR closing OR deed OR escrow OR underwriting OR EIN OR "EIN letter" OR "employer identification" OR tax OR bank OR statement OR W2 OR paystub OR income OR employment OR license OR LLC OR corp OR "articles of incorporation" OR "operating agreement" OR "certificate of formation" OR "business license" OR kiavi OR "samuel anicette" OR "sam anicette" OR "colony preserve") after:${dateQuery}`;
+      // Search for all emails with attachments going back 6 weeks - cast a wide net
+      const searchQuery = `has:attachment after:${dateQuery}`;
       
       const listResponse = await gmail.users.messages.list({
         auth: gmailAuth,
