@@ -1714,10 +1714,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           if ((req.session as any)?.googleAuthenticated) {
             const { google } = await import('googleapis');
-            const { createDriveAuth } = await import("./lib/google-drive");
             
-            const auth = createDriveAuth((req.session as any).googleTokens);
-            const drive = google.drive({ version: 'v3', auth });
+            // Create auth from session tokens
+            const oauth2Client = new google.auth.OAuth2();
+            oauth2Client.setCredentials((req.session as any).googleTokens);
+            const drive = google.drive({ version: 'v3', auth: oauth2Client });
             const { Readable } = await import('stream');
 
             // Upload to Google Drive
