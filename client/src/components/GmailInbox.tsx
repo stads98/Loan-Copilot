@@ -312,38 +312,55 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <User className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                      <span className={`text-sm truncate ${message.unread ? 'font-semibold' : 'font-medium'}`}>
-                        {message.from}
-                      </span>
+                      {message.subject?.startsWith('Re:') ? (
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          <span className="inline-flex items-center px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded-full font-medium">
+                            REPLY
+                          </span>
+                        </div>
+                      ) : message.subject?.startsWith('Fwd:') ? (
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="inline-flex items-center px-2 py-0.5 text-xs bg-green-50 text-green-700 rounded-full font-medium">
+                            FORWARD
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                          <span className="inline-flex items-center px-2 py-0.5 text-xs bg-gray-50 text-gray-700 rounded-full font-medium">
+                            ORIGINAL
+                          </span>
+                        </div>
+                      )}
                       {message.hasAttachments && (
-                        <Paperclip className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                        <span className="inline-flex items-center px-2 py-0.5 text-xs bg-orange-50 text-orange-700 rounded-full font-medium">
+                          <Paperclip className="w-3 h-3 mr-1" />
+                          ATTACHMENTS
+                        </span>
                       )}
                     </div>
-                    <h4 className={`text-sm mb-1 truncate ${message.unread ? 'font-semibold' : 'font-normal'}`}>
-                      {message.subject?.startsWith('Re:') && (
-                        <span className="inline-flex items-center mr-1 px-1 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
-                          Reply
-                        </span>
-                      )}
-                      {message.subject?.startsWith('Fwd:') && (
-                        <span className="inline-flex items-center mr-1 px-1 py-0.5 text-xs bg-green-100 text-green-700 rounded">
-                          Forward
-                        </span>
-                      )}
-                      {message.subject || '(No Subject)'}
+                    <div className="flex items-center gap-2 mb-1">
+                      <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                      <span className={`text-sm font-medium ${message.unread ? 'text-black' : 'text-gray-700'}`}>
+                        {message.from}
+                      </span>
+                    </div>
+                    <h4 className={`text-sm mb-1 ${message.unread ? 'font-semibold text-black' : 'font-normal text-gray-800'}`}>
+                      {message.subject?.replace(/^(Re:|Fwd:)\s*/, '') || '(No Subject)'}
                     </h4>
-                    <p className="text-xs text-gray-600 line-clamp-2">
+                    <p className="text-xs text-gray-600 line-clamp-2 mt-1">
                       {message.snippet}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <Calendar className="w-3 h-3" />
-                      {format(new Date(message.date), 'MMM dd')}
+                      {format(new Date(message.date), 'MMM dd, h:mm a')}
                     </div>
                     {message.unread && (
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                      <div className="w-3 h-3 bg-blue-600 rounded-full border-2 border-white shadow-sm"></div>
                     )}
                   </div>
                 </div>
