@@ -155,6 +155,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
       console.log('Callback using redirect URI:', redirectUri);
+      console.log('Received code:', req.query.code ? 'Present' : 'Missing');
+      
+      if (!req.query.code) {
+        console.error('No authorization code received');
+        return res.status(400).send('No authorization code received');
+      }
       
       const oauth2Client = new OAuth2(
         process.env.GOOGLE_CLIENT_ID,
@@ -163,12 +169,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       const { code } = req.query;
+      console.log('Attempting to exchange code for tokens...');
       const { tokens } = await oauth2Client.getToken(code as string);
+      console.log('Successfully received tokens');
       
       // Store tokens in session for both Drive and Gmail
       (req.session as any).googleAuthenticated = true;
       (req.session as any).googleTokens = tokens;
       (req.session as any).gmailTokens = tokens;
+      
+      console.log('Tokens stored in session');
       
       // Close the popup window and refresh parent
       res.send(`
@@ -183,7 +193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       `);
     } catch (error) {
       console.error('Google OAuth error:', error);
-      res.status(500).send('Authentication failed');
+      res.status(500).send(`Authentication failed: ${error.message}`);
     }
   });
 
