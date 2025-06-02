@@ -1718,6 +1718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             const auth = createDriveAuth((req.session as any).googleTokens);
             const drive = google.drive({ version: 'v3', auth });
+            const { Readable } = await import('stream');
 
             // Upload to Google Drive
             const driveResponse = await drive.files.create({
@@ -1727,7 +1728,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               },
               media: {
                 mimeType: mimeType,
-                body: require('stream').Readable.from(fileBuffer)
+                body: Readable.from(fileBuffer)
               }
             });
 
@@ -1742,9 +1743,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If Drive upload failed, save locally
       if (!driveFileId) {
+        const { promises: fs } = await import('fs');
         const fileId = `email-attachment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.pdf`;
         const filePath = path.join(uploadsDir, fileId);
-        await require('fs').promises.writeFile(filePath, fileBuffer);
+        await fs.writeFile(filePath, fileBuffer);
         driveFileId = fileId;
       }
       
