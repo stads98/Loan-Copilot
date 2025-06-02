@@ -1094,6 +1094,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get individual Gmail message with full content and attachments
+  app.get("/api/gmail/messages/:messageId", isAuthenticated, async (req, res) => {
+    try {
+      if (!(req.session as any)?.gmailTokens) {
+        return res.status(401).json({ message: "Gmail authentication required" });
+      }
+
+      const { google } = await import('googleapis');
+      const { createGmailAuth } = await import("./lib/gmail");
+      const gmail = google.gmail('v1');
+      
+      const gmailAuth = createGmailAuth(
+        (req.session as any).gmailTokens.access_token,
+        (req.session as any).gmailTokens.refresh_token
+      );
+
+      const messageId = req.params.messageId;
+
+      // Get full message content
+      const msgResponse = await gmail.users.messages.get({
+        auth: gmailAuth,
+        userId: 'me',
+        id: messageId,
+        format: 'full'
+      });
+
+      const msg = msgResponse.data;
+      let content = '';
+      const attachments = [];
+
+      // Extract content and attachments from payload
+      function processPayload(payload: any) {
+        if (payload.mimeType === 'text/plain' && payload.body?.data) {
+          content = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+        } else if (payload.mimeType === 'text/html' && payload.body?.data && !content) {
+          // Convert HTML to plain text if no plain text available
+          const html = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+          content = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+        }
+
+        // Check for attachments
+        if (payload.filename && payload.filename.length > 0 && payload.body?.attachmentId) {
+          attachments.push({
+            filename: payload.filename,
+            mimeType: payload.mimeType,
+            size: payload.body.size,
+            attachmentId: payload.body.attachmentId
+          });
+        }
+
+        // Process parts recursively
+        if (payload.parts) {
+          payload.parts.forEach(processPayload);
+        }
+      }
+
+      if (msg.payload) {
+        processPayload(msg.payload);
+      }
+
+      res.json({ 
+        content: content || msg.snippet || 'No content available',
+        attachments: attachments
+      });
+    } catch (error) {
+      console.error("Error fetching Gmail message content:", error);
+      res.status(500).json({ message: "Error fetching message content" });
+    }
+  });
+
   // Send to analyst
   app.post("/api/loans/:id/send-to-analyst", isAuthenticated, async (req, res) => {
     try {

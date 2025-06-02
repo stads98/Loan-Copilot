@@ -30,6 +30,7 @@ export default function GmailInbox({ className }: GmailInboxProps) {
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<GmailMessage | null>(null);
   const [messageContent, setMessageContent] = useState<string>("");
+  const [messageAttachments, setMessageAttachments] = useState<any[]>([]);
   const [isLoadingMessage, setIsLoadingMessage] = useState(false);
   const { toast } = useToast();
 
@@ -128,8 +129,10 @@ export default function GmailInbox({ className }: GmailInboxProps) {
     try {
       const response = await apiRequest("GET", `/api/gmail/messages/${message.id}`);
       setMessageContent(response.content || message.snippet);
+      setMessageAttachments(response.attachments || []);
     } catch (error) {
       setMessageContent(message.snippet);
+      setMessageAttachments([]);
       toast({
         title: "Could not load full email",
         description: "Showing preview instead",
@@ -143,17 +146,18 @@ export default function GmailInbox({ className }: GmailInboxProps) {
   const closeMessage = () => {
     setSelectedMessage(null);
     setMessageContent("");
+    setMessageAttachments([]);
   };
 
   useEffect(() => {
     checkGmailConnection();
     
-    // Auto-refresh every 5 minutes
+    // Auto-refresh every minute
     const interval = setInterval(() => {
       if (isConnected) {
         fetchMessages();
       }
-    }, 5 * 60 * 1000);
+    }, 60 * 1000);
 
     return () => clearInterval(interval);
   }, [isConnected]);
@@ -340,6 +344,34 @@ export default function GmailInbox({ className }: GmailInboxProps) {
                   </div>
                 )}
               </div>
+
+              {/* Attachments */}
+              {messageAttachments.length > 0 && (
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <Paperclip className="w-4 h-4" />
+                    Attachments ({messageAttachments.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {messageAttachments.map((attachment, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                        <div className="flex items-center gap-2">
+                          <Paperclip className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm font-medium">{attachment.filename}</span>
+                          {attachment.size && (
+                            <span className="text-xs text-gray-500">
+                              ({Math.round(attachment.size / 1024)} KB)
+                            </span>
+                          )}
+                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          {attachment.mimeType?.split('/')[1]?.toUpperCase() || 'FILE'}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Quick Actions */}
               <div className="flex gap-2 pt-4 border-t">
