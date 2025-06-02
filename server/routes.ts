@@ -824,7 +824,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/loans/:loanId/contacts/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid contact ID" });
+      }
+
+      const contact = await storage.getContact(id);
+      if (!contact) {
+        return res.status(404).json({ message: "Contact not found" });
+      }
+
+      const updatedContact = await storage.updateContact(id, req.body);
+      res.json(updatedContact);
+    } catch (error) {
+      res.status(500).json({ message: "Error updating contact" });
+    }
+  });
+
   app.delete("/api/contacts/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid contact ID" });
+      }
+
+      const success = await storage.deleteContact(id);
+      if (!success) {
+        return res.status(404).json({ message: "Contact not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Error deleting contact" });
+    }
+  });
+
+  app.delete("/api/loans/:loanId/contacts/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
