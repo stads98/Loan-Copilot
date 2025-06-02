@@ -399,12 +399,20 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
     
     setIsSendingReply(true);
     try {
-      await apiRequest("POST", '/api/gmail/send', {
-        to: selectedMessage.from,
-        subject: selectedMessage.subject.startsWith('Re:') ? selectedMessage.subject : `Re: ${selectedMessage.subject}`,
-        content: replyContent,
-        threadId: selectedMessage.threadId
+      // Create form data to match server expectations
+      const formData = new FormData();
+      formData.append('to', JSON.stringify([selectedMessage.from]));
+      formData.append('subject', selectedMessage.subject.startsWith('Re:') ? selectedMessage.subject : `Re: ${selectedMessage.subject}`);
+      formData.append('body', replyContent);
+
+      const response = await fetch('/api/gmail/send', {
+        method: 'POST',
+        body: formData
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to send reply');
+      }
 
       toast({
         title: "Reply Sent",
