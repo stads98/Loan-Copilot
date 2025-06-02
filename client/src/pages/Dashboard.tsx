@@ -69,6 +69,15 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
     enabled: !!activeLoanId,
   });
   
+  // Update drive connection status when loan details change
+  useEffect(() => {
+    if (loanDetails?.loan?.driveFolder || loanDetails?.loan?.googleDriveFolderId) {
+      setIsDriveConnected(true);
+    } else {
+      setIsDriveConnected(false);
+    }
+  }, [loanDetails]);
+  
   // Create a demo loan if no loans exist
   const createDemoLoan = async () => {
     try {

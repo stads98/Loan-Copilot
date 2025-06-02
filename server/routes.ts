@@ -526,8 +526,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Document not found" });
       }
 
-      // Check if it's an uploaded document (doesn't contain Google Drive patterns)
-      if (document.fileId && !document.fileId.includes('-') && document.fileId.length < 20) {
+      // Check if it's a Google Drive document (typical Drive file IDs are alphanumeric without hyphens and around 33-44 chars)
+      if (document.fileId && /^[a-zA-Z0-9_-]{25,50}$/.test(document.fileId) && !document.fileId.includes('.')) {
         // This looks like a Google Drive file ID
         res.json({ 
           type: 'drive',
