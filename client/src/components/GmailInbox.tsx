@@ -280,12 +280,25 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
         throw new Error('No attachment data received');
       }
       
-      // Decode base64 data safely
+      // Decode base64 data safely (Gmail uses URL-safe base64)
       let binaryData;
       try {
-        binaryData = Uint8Array.from(atob(response.data), c => c.charCodeAt(0));
+        // Gmail API returns URL-safe base64, convert to standard base64
+        let base64Data = response.data;
+        
+        // Replace URL-safe characters
+        base64Data = base64Data.replace(/-/g, '+').replace(/_/g, '/');
+        
+        // Add padding if needed
+        while (base64Data.length % 4) {
+          base64Data += '=';
+        }
+        
+        binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
       } catch (decodeError) {
         console.error('Base64 decode error:', decodeError);
+        console.error('Response data length:', response.data ? response.data.length : 'undefined');
+        console.error('Response data sample:', response.data ? response.data.substring(0, 50) : 'undefined');
         throw new Error('Failed to decode attachment data');
       }
       
