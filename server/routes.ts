@@ -1265,6 +1265,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Gmail attachment download route
+  app.get("/api/gmail/messages/:messageId/attachments/:attachmentId", isAuthenticated, async (req, res) => {
+    try {
+      if (!(req.session as any)?.gmailTokens) {
+        return res.status(401).json({ message: "Gmail authentication required" });
+      }
+
+      const { google } = await import('googleapis');
+      const { createGmailAuth } = await import("./lib/gmail");
+      const gmail = google.gmail('v1');
+      
+      const gmailAuth = createGmailAuth(
+        (req.session as any).gmailTokens.access_token,
+        (req.session as any).gmailTokens.refresh_token
+      );
+
+      const messageId = req.params.messageId;
+      const attachmentId = req.params.attachmentId;
+
+      // Get attachment data
+      const attachmentResponse = await gmail.users.messages.attachments.get({
+        auth: gmailAuth,
+        userId: 'me',
+        messageId: messageId,
+        id: attachmentId
+      });
+
+      res.json({ 
+        data: attachmentResponse.data.data // This is base64 encoded
+      });
+    } catch (error) {
+      console.error('Error downloading Gmail attachment:', error);
+      res.status(500).json({ message: "Error downloading attachment" });
+    }
+  });
+
+  // Save PDF attachment to documents route
+  app.post("/api/loans/:loanId/documents/from-email", isAuthenticated, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.loanId);
+      const { attachmentData, filename, mimeType, size, emailSubject, emailFrom } = req.body;
+
+      // Generate a unique file ID for the document
+      const fileId = `email-attachment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Determine document category based on filename
+      let category = 'Email Attachment';
+      const lowerFilename = filename.toLowerCase();
+      if (lowerFilename.includes('insurance') || lowerFilename.includes('policy')) {
+        category = 'Insurance';
+      } else if (lowerFilename.includes('appraisal')) {
+        category = 'Appraisal';
+      } else if (lowerFilename.includes('income') || lowerFilename.includes('bank') || lowerFilename.includes('statement')) {
+        category = 'Financial';
+      } else if (lowerFilename.includes('title')) {
+        category = 'Title';
+      }
+
+      // Create document record
+      const document = await storage.createDocument({
+        name: `${filename} (from ${emailFrom})`,
+        fileId: fileId,
+        loanId: loanId,
+        fileType: mimeType,
+        fileSize: size,
+        category: category,
+        status: 'Received via Email'
+      });
+
+      res.json({ 
+        success: true,
+        document: document,
+        message: `PDF attachment saved to loan documents`
+      });
+    } catch (error) {
+      console.error('Error saving email attachment to documents:', error);
+      res.status(500).json({ message: "Error saving attachment to documents" });
+    }
+  });
+
   // Send to analyst
   app.post("/api/loans/:id/send-to-analyst", isAuthenticated, async (req, res) => {
     try {

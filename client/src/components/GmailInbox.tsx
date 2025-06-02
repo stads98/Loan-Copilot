@@ -153,6 +153,51 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
     setMessageAttachments([]);
   };
 
+  const downloadAttachment = async (attachment: any) => {
+    try {
+      const response = await apiRequest("GET", `/api/gmail/messages/${selectedMessage?.id}/attachments/${attachment.attachmentId}`);
+      
+      if (attachment.mimeType?.includes('pdf')) {
+        // For PDFs, automatically save to documents section
+        const saveResponse = await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
+          attachmentData: response.data,
+          filename: attachment.filename,
+          mimeType: attachment.mimeType,
+          size: attachment.size,
+          emailSubject: selectedMessage?.subject,
+          emailFrom: selectedMessage?.from
+        });
+        
+        toast({
+          title: "PDF Saved",
+          description: `${attachment.filename} has been added to loan documents`,
+        });
+        
+        // Also open preview in new tab
+        const blob = new Blob([Uint8Array.from(atob(response.data), c => c.charCodeAt(0))], { type: attachment.mimeType });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      } else {
+        // For other files, just download
+        const blob = new Blob([Uint8Array.from(atob(response.data), c => c.charCodeAt(0))], { type: attachment.mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = attachment.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: "Could not download attachment. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   useEffect(() => {
     checkGmailConnection();
   }, []);
@@ -276,6 +321,16 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                       )}
                     </div>
                     <h4 className={`text-sm mb-1 truncate ${message.unread ? 'font-semibold' : 'font-normal'}`}>
+                      {message.subject?.startsWith('Re:') && (
+                        <span className="inline-flex items-center mr-1 px-1 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
+                          Reply
+                        </span>
+                      )}
+                      {message.subject?.startsWith('Fwd:') && (
+                        <span className="inline-flex items-center mr-1 px-1 py-0.5 text-xs bg-green-100 text-green-700 rounded">
+                          Forward
+                        </span>
+                      )}
                       {message.subject || '(No Subject)'}
                     </h4>
                     <p className="text-xs text-gray-600 line-clamp-2">
@@ -365,22 +420,51 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                     Attachments ({messageAttachments.length})
                   </h4>
                   <div className="space-y-2">
-                    {messageAttachments.map((attachment, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
-                        <div className="flex items-center gap-2">
-                          <Paperclip className="w-4 h-4 text-gray-500" />
-                          <span className="text-sm font-medium">{attachment.filename}</span>
-                          {attachment.size && (
-                            <span className="text-xs text-gray-500">
-                              ({Math.round(attachment.size / 1024)} KB)
-                            </span>
-                          )}
+                    {messageAttachments.map((attachment, index) => {
+                      const isPDF = attachment.mimeType?.includes('pdf');
+                      const isImage = attachment.mimeType?.includes('image');
+                      
+                      return (
+                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded border hover:bg-gray-100 transition-colors">
+                          <div className="flex items-center gap-3">
+                            {isPDF ? (
+                              <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center">
+                                <span className="text-red-600 text-xs font-bold">PDF</span>
+                              </div>
+                            ) : isImage ? (
+                              <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
+                                <span className="text-blue-600 text-xs font-bold">IMG</span>
+                              </div>
+                            ) : (
+                              <Paperclip className="w-6 h-6 text-gray-500" />
+                            )}
+                            <div>
+                              <span className="text-sm font-medium block">{attachment.filename}</span>
+                              {attachment.size && (
+                                <span className="text-xs text-gray-500">
+                                  {Math.round(attachment.size / 1024)} KB
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {isPDF && (
+                              <Badge variant="destructive" className="text-xs">
+                                PDF DOCUMENT
+                              </Badge>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => downloadAttachment(attachment)}
+                              className="text-xs"
+                            >
+                              {isPDF ? 'Preview & Save' : 'Download'}
+                            </Button>
+                          </div>
                         </div>
-                        <Badge variant="secondary" className="text-xs">
-                          {attachment.mimeType?.split('/')[1]?.toUpperCase() || 'FILE'}
-                        </Badge>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
