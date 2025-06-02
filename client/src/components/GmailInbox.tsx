@@ -75,6 +75,25 @@ export default function GmailInbox({ className }: GmailInboxProps) {
     }
   };
 
+  const disconnectGmail = async () => {
+    try {
+      await apiRequest("POST", "/api/gmail/disconnect");
+      setIsConnected(false);
+      setMessages([]);
+      setLastSync(null);
+      toast({
+        title: "Gmail Disconnected",
+        description: "Successfully disconnected from Gmail."
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to disconnect Gmail.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const fetchMessages = async () => {
     if (!isConnected) return;
     
@@ -162,6 +181,16 @@ export default function GmailInbox({ className }: GmailInboxProps) {
               onClick={connectGmail}
             >
               Connect Gmail
+            </Button>
+          )}
+          {isConnected && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={disconnectGmail}
+              className="text-red-600 hover:text-red-700"
+            >
+              Disconnect
             </Button>
           )}
         </div>

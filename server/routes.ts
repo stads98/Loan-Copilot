@@ -961,6 +961,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Disconnect Gmail
+  app.post("/api/gmail/disconnect", isAuthenticated, async (req, res) => {
+    try {
+      delete (req.session as any).gmailTokens;
+      res.json({ success: true, message: "Gmail disconnected successfully" });
+    } catch (error) {
+      console.error("Error disconnecting Gmail:", error);
+      res.status(500).json({ message: "Error disconnecting Gmail" });
+    }
+  });
+
   // Send Gmail email with attachments
   app.post("/api/gmail/send", isAuthenticated, upload.any(), async (req, res) => {
     try {
