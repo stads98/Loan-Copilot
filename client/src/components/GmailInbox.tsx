@@ -43,6 +43,8 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
   const [messageContent, setMessageContent] = useState<string>("");
   const [messageAttachments, setMessageAttachments] = useState<any[]>([]);
   const [isLoadingMessage, setIsLoadingMessage] = useState(false);
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
+  const [messageCache, setMessageCache] = useState<Map<string, {content: string, attachments: any[]}>>(new Map());
   const { toast } = useToast();
 
   // Function to parse email threads and separate individual messages
@@ -209,14 +211,39 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
     window.open('https://mail.google.com', '_blank');
   };
 
+  const toggleThread = (threadId: string) => {
+    const newExpanded = new Set(expandedThreads);
+    if (newExpanded.has(threadId)) {
+      newExpanded.delete(threadId);
+    } else {
+      newExpanded.add(threadId);
+    }
+    setExpandedThreads(newExpanded);
+  };
+
   const openMessage = async (message: GmailMessage) => {
     setSelectedMessage(message);
     setIsLoadingMessage(true);
     
+    // Check cache first
+    const cached = messageCache.get(message.id);
+    if (cached) {
+      setMessageContent(cached.content);
+      setMessageAttachments(cached.attachments);
+      setIsLoadingMessage(false);
+      return;
+    }
+    
     try {
       const response = await apiRequest("GET", `/api/gmail/messages/${message.id}`);
-      setMessageContent(response.content || message.snippet);
-      setMessageAttachments(response.attachments || []);
+      const content = response.content || message.snippet;
+      const attachments = response.attachments || [];
+      
+      // Cache the response
+      setMessageCache(prev => new Map(prev).set(message.id, { content, attachments }));
+      
+      setMessageContent(content);
+      setMessageAttachments(attachments);
     } catch (error) {
       setMessageContent(message.snippet);
       setMessageAttachments([]);
@@ -391,12 +418,7 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
               const hasThread = messages.some(m => m.threadId === message.threadId && m.id !== message.id);
               
               return (
-                <div
-                  key={message.id}
-                  className={`relative ${
-                    hasThread && !isThreadEnd ? 'border-l-4 border-l-gray-300 ml-2 pl-4' : ''
-                  }`}
-                >
+                <div key={message.id} className={`relative ${hasThread && !isThreadEnd ? 'border-l-4 border-l-gray-300 ml-2 pl-4' : ''}`}>
                   {hasThread && isThreadStart && (
                     <div className="text-xs text-gray-500 font-medium mb-2 flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-gray-300 rounded-full flex items-center justify-center">
@@ -411,90 +433,72 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                     } ${hasThread ? 'ml-4' : ''}`}
                     onClick={() => openMessage(message)}
                   >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      {message.subject?.startsWith('Re:') ? (
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                          <span className="inline-flex items-center px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded-full font-medium">
-                            REPLY
-                          </span>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {message.subject?.startsWith('Re:') ? (
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <span className="inline-flex items-center px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded-full font-medium">
+                                REPLY
+                              </span>
+                            </div>
+                          ) : message.subject?.startsWith('Fwd:') ? (
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              <span className="inline-flex items-center px-2 py-0.5 text-xs bg-green-50 text-green-700 rounded-full font-medium">
+                                FORWARD
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                              <span className="inline-flex items-center px-2 py-0.5 text-xs bg-gray-50 text-gray-700 rounded-full font-medium">
+                                ORIGINAL
+                              </span>
+                            </div>
+                          )}
+                          {message.hasAttachments && (
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs bg-orange-50 text-orange-700 rounded-full font-medium">
+                              <Paperclip className="w-3 h-3 mr-1" />
+                              ATTACHMENTS
+                            </span>
+                          )}
                         </div>
-                      ) : message.subject?.startsWith('Fwd:') ? (
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span className="inline-flex items-center px-2 py-0.5 text-xs bg-green-50 text-green-700 rounded-full font-medium">
-                            FORWARD
-                          </span>
+                        <div className="space-y-1 mb-2">
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                            <span className="text-xs text-gray-500 font-medium">FROM:</span>
+                            <span className={`text-sm font-medium ${message.unread ? 'text-black' : 'text-gray-700'}`}>
+                              {message.from}
+                            </span>
+                          </div>
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                          <span className="inline-flex items-center px-2 py-0.5 text-xs bg-gray-50 text-gray-700 rounded-full font-medium">
-                            ORIGINAL
-                          </span>
-                        </div>
-                      )}
-                      {message.hasAttachments && (
-                        <span className="inline-flex items-center px-2 py-0.5 text-xs bg-orange-50 text-orange-700 rounded-full font-medium">
-                          <Paperclip className="w-3 h-3 mr-1" />
-                          ATTACHMENTS
-                        </span>
-                      )}
-                    </div>
-                    <div className="space-y-1 mb-2">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                        <span className="text-xs text-gray-500 font-medium">FROM:</span>
-                        <span className={`text-sm font-medium ${message.unread ? 'text-black' : 'text-gray-700'}`}>
-                          {message.from}
-                        </span>
+                        <h4 className={`text-sm mb-1 ${message.unread ? 'font-semibold text-black' : 'font-normal text-gray-800'}`}>
+                          {message.subject?.replace(/^(Re:|Fwd:)\s*/, '') || '(No Subject)'}
+                        </h4>
+                        <p className="text-xs text-gray-600 line-clamp-2 mt-1">
+                          {message.snippet}
+                        </p>
                       </div>
-                      {message.to && (
+                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
                         <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 flex-shrink-0" />
-                          <span className="text-xs text-gray-500 font-medium">TO:</span>
-                          <span className="text-sm text-gray-600 truncate">
-                            {Array.isArray(message.to) ? message.to.join(', ') : message.to}
-                          </span>
+                          {message.unread ? (
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                              <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">UNREAD</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400 uppercase tracking-wide">READ</span>
+                          )}
                         </div>
-                      )}
-                      {message.cc && message.cc.length > 0 && (
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 flex-shrink-0" />
-                          <span className="text-xs text-gray-500 font-medium">CC:</span>
-                          <span className="text-sm text-gray-600 truncate">
-                            {Array.isArray(message.cc) ? message.cc.join(', ') : message.cc}
-                          </span>
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <Calendar className="w-3 h-3" />
+                          {format(new Date(message.date), 'MMM dd, h:mm a')}
                         </div>
-                      )}
-                    </div>
-                    <h4 className={`text-sm mb-1 ${message.unread ? 'font-semibold text-black' : 'font-normal text-gray-800'}`}>
-                      {message.subject?.replace(/^(Re:|Fwd:)\s*/, '') || '(No Subject)'}
-                    </h4>
-                    <p className="text-xs text-gray-600 line-clamp-2 mt-1">
-                      {message.snippet}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    <div className="flex items-center gap-2">
-                      {message.unread ? (
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                          <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">UNREAD</span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400 uppercase tracking-wide">READ</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <Calendar className="w-3 h-3" />
-                      {format(new Date(message.date), 'MMM dd, h:mm a')}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
                 </div>
               );
             })}
