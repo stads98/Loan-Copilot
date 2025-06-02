@@ -66,6 +66,7 @@ export const loans = pgTable("loans", {
   lenderId: integer("lender_id").notNull(),
   processorId: integer("processor_id").notNull(),
   completionPercentage: integer("completion_percentage").default(0),
+  completedRequirements: text("completed_requirements").array().default([]),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
