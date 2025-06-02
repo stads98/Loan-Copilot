@@ -378,7 +378,9 @@ export default function DocumentManager({
               </Card>
             ) : (
               <div className="grid gap-4">
-                {documents.map((doc) => (
+                {documents
+                  .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())
+                  .map((doc) => (
                   <Card key={doc.id} className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -393,7 +395,7 @@ export default function DocumentManager({
                             )}
                             {doc.uploadedAt && (
                               <span>
-                                {format(new Date(doc.uploadedAt), "MMM dd, yyyy")}
+                                {format(new Date(doc.uploadedAt), "MMM dd, yyyy 'at' h:mm a")}
                               </span>
                             )}
                             {doc.fileSize && (
