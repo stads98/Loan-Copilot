@@ -48,6 +48,8 @@ export default function DocumentManager({
   const [localCompletedRequirements, setLocalCompletedRequirements] = useState<Set<string>>(new Set());
   const [assignedDocuments, setAssignedDocuments] = useState<Record<string, string[]>>({}); // requirement -> document IDs
   const [customDocuments, setCustomDocuments] = useState<Array<{name: string, category: string}>>([]); // Custom missing documents
+  const [deletedDocuments, setDeletedDocuments] = useState<Document[]>([]);
+  const [showDeleted, setShowDeleted] = useState(false);
   const [newCustomDocumentName, setNewCustomDocumentName] = useState("");
   const [showAddCustomDocument, setShowAddCustomDocument] = useState(false);
   const [showInlineUpload, setShowInlineUpload] = useState<string | null>(null); // Track which requirement is showing upload
@@ -123,6 +125,22 @@ export default function DocumentManager({
       setIsSyncing(false);
     }
   };
+
+  const fetchDeletedDocuments = async () => {
+    try {
+      const response = await fetch(`/api/loans/${loanId}/deleted-documents`);
+      if (response.ok) {
+        const deleted = await response.json();
+        setDeletedDocuments(deleted);
+      }
+    } catch (error) {
+      console.error('Failed to fetch deleted documents:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchDeletedDocuments();
+  }, [loanId]);
   
   // Helper functions for managing requirements
   const assignDocumentToRequirement = async (requirementName: string, documentId: string) => {
@@ -392,6 +410,49 @@ export default function DocumentManager({
             </Button>
           </div>
         </div>
+
+        {/* Deleted Documents Section */}
+        {deletedDocuments.length > 0 && (
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-gray-700">Deleted Documents</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDeleted(!showDeleted)}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                {showDeleted ? 'Hide' : 'Show'} ({deletedDocuments.length})
+              </Button>
+            </div>
+            
+            {showDeleted && (
+              <div className="space-y-2 p-3 bg-gray-50 rounded-lg border">
+                {deletedDocuments.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between p-2 bg-white rounded border">
+                    <div className="flex items-center gap-2">
+                      {getFileIcon(doc)}
+                      <span className="text-sm text-gray-500 line-through">
+                        {doc.name}
+                      </span>
+                      <Badge variant="secondary" className="text-xs">
+                        {doc.category || 'other'}
+                      </Badge>
+                      {doc.source === 'gmail' && (
+                        <Badge variant="outline" className="text-xs">
+                          Email
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      Deleted {doc.uploadedAt && format(new Date(doc.uploadedAt), 'MMM d, yyyy')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">

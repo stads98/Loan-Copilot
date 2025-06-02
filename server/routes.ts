@@ -512,6 +512,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(documents);
   });
 
+  // Get deleted documents for a loan
+  app.get("/api/loans/:loanId/deleted-documents", isAuthenticated, async (req, res) => {
+    const loanId = parseInt(req.params.loanId);
+    if (isNaN(loanId)) {
+      return res.status(400).json({ message: "Invalid loan ID" });
+    }
+
+    try {
+      const allDocuments = await storage.getAllDocumentsByLoanId(loanId);
+      const deletedDocuments = allDocuments.filter(doc => doc.deleted);
+      res.json(deletedDocuments);
+    } catch (error) {
+      console.error('Error fetching deleted documents:', error);
+      res.status(500).json({ message: "Error fetching deleted documents" });
+    }
+  });
+
   // Download document endpoint
   // Add endpoint to view/serve uploaded documents
   app.get("/api/documents/:id/view", isAuthenticated, async (req, res) => {
@@ -1736,7 +1753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         auth: gmailAuth,
         userId: 'me',
         maxResults: 500, // Scan 500 recent emails for comprehensive filtering
-        q: 'in:inbox'
+        q: 'in:inbox OR in:sent' // Include both inbox and sent emails
       });
 
       const allMessages = [];
