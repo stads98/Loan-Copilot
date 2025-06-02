@@ -313,6 +313,10 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
           emailFrom: selectedMessage?.from
         });
         
+        // Invalidate documents cache to refresh the list
+        queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId] });
+        
         const fileType = attachment.mimeType?.includes('pdf') ? 'PDF' : 
                          attachment.mimeType?.includes('image') ? 'Image' : 'File';
         
