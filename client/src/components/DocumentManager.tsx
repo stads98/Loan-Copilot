@@ -44,6 +44,7 @@ export default function DocumentManager({
 }: DocumentManagerProps) {
   const [activeTab, setActiveTab] = useState("document-list");
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isScanningEmails, setIsScanningEmails] = useState(false);
   const [localCompletedRequirements, setLocalCompletedRequirements] = useState<Set<string>>(new Set());
   const [assignedDocuments, setAssignedDocuments] = useState<Record<string, string[]>>({}); // requirement -> document IDs
   const [customDocuments, setCustomDocuments] = useState<Array<{name: string, category: string}>>([]); // Custom missing documents
@@ -76,6 +77,29 @@ export default function DocumentManager({
     
     loadLoanData();
   }, [loanId]);
+
+  const scanAllEmails = async () => {
+    setIsScanningEmails(true);
+    try {
+      const response = await apiRequest("POST", `/api/loans/${loanId}/scan-all-emails`);
+      toast({
+        title: "Email Scan Complete",
+        description: response.message,
+      });
+      
+      // Refresh the documents
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId] });
+    } catch (error) {
+      toast({
+        title: "Scan Failed",
+        description: "Failed to scan emails for PDFs. Please ensure Gmail is connected.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsScanningEmails(false);
+    }
+  };
 
   const syncGoogleDrive = async () => {
     setIsSyncing(true);
@@ -333,6 +357,24 @@ export default function DocumentManager({
               documentAssignments={assignedDocuments}
               completedRequirements={Array.from(completedRequirements)}
             />
+            <Button
+              onClick={scanAllEmails}
+              disabled={isScanningEmails}
+              variant="outline"
+              size="sm"
+            >
+              {isScanningEmails ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Scanning...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 mr-2" />
+                  Scan All Emails
+                </>
+              )}
+            </Button>
             <Button 
               onClick={syncGoogleDrive}
               disabled={isSyncing}
