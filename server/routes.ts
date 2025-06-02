@@ -1114,11 +1114,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
             
-            // Check loan number/ID in subject
+            // Check loan number in subject (primary identifier)
             if (loan.loan?.loanNumber && subject.includes(loan.loan.loanNumber.toLowerCase())) {
-              return true;
-            }
-            if (subject.includes(loanId.toString())) {
               return true;
             }
             
