@@ -1042,11 +1042,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const maxResults = parseInt(req.query.maxResults as string) || 50;
       const loanId = req.query.loanId ? parseInt(req.query.loanId as string) : null;
 
-      // Always get inbox messages first - scan up to 200 recent emails
+      // Always get inbox messages first - scan up to 500 recent emails
       const listResponse = await gmail.users.messages.list({
         auth: gmailAuth,
         userId: 'me',
-        maxResults: 200, // Scan 200 recent emails for comprehensive filtering
+        maxResults: 500, // Scan 500 recent emails for comprehensive filtering
         q: 'in:inbox'
       });
 
