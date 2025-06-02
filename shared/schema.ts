@@ -67,6 +67,7 @@ export const loans = pgTable("loans", {
   processorId: integer("processor_id").notNull(),
   completionPercentage: integer("completion_percentage").default(0),
   completedRequirements: text("completed_requirements").array().default([]),
+  documentAssignments: json("document_assignments").$type<Record<string, string[]>>().default({}),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
