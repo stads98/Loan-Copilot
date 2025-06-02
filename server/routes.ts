@@ -531,6 +531,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Sync documents from Google Drive for a loan
+  app.post("/api/loans/:id/sync-drive", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const loanId = parseInt(id, 10);
+      
+      // Check if user has Google Drive authentication
+      if (!(req.session as any)?.googleAuthenticated) {
+        // Try to restore from database
+        if (req.user?.id) {
+          const driveToken = await storage.getUserToken(req.user.id, 'drive');
+          if (driveToken && driveToken.accessToken) {
+            // Restore tokens to session
+            (req.session as any).googleTokens = {
+              access_token: driveToken.accessToken,
+              refresh_token: driveToken.refreshToken,
+              expiry_date: driveToken.expiryDate?.getTime()
+            };
+            (req.session as any).googleAuthenticated = true;
+            console.log('Restored Google Drive tokens for sync operation');
+          } else {
+            return res.status(401).json({ 
+              message: "Google Drive authentication required. Please connect your Google Drive account first.",
+              requiresAuth: true 
+            });
+          }
+        } else {
+          return res.status(401).json({ 
+            message: "Google Drive authentication required. Please connect your Google Drive account first.",
+            requiresAuth: true 
+          });
+        }
+      }
+      
+      // Verify the loan exists
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      // Get the folder ID from loan data
+      const folderId = (loan as any).driveFolder;
+      if (!folderId) {
+        return res.status(400).json({ 
+          message: "No Google Drive folder associated with this loan. Please connect a folder first." 
+        });
+      }
+      
+      console.log(`Syncing documents from Google Drive folder: ${folderId} for loan: ${loanId}`);
+      
+      // Get files from Google Drive folder
+      const { getDriveFiles } = await import("./lib/google");
+      const googleTokens = (req.session as any)?.googleTokens;
+      const files = await getDriveFiles(folderId, googleTokens?.access_token);
+      
+      if (!files || files.length === 0) {
+        return res.status(404).json({ message: "No files found in the Google Drive folder" });
+      }
+      
+      console.log(`Found ${files.length} files to sync`);
+      
+      // Update existing documents or create new ones
+      let documentsUpdated = 0;
+      let documentsCreated = 0;
+      
+      for (const file of files) {
+        try {
+          // Check if document already exists
+          const existingDocs = await storage.getDocumentsByLoanId(loanId);
+          const existingDoc = existingDocs.find(doc => doc.fileId === file.id);
+          
+          if (existingDoc) {
+            // Update existing document
+            await storage.updateDocument(existingDoc.id, {
+              name: file.name,
+              fileType: file.mimeType,
+              fileSize: file.size ? parseInt(file.size) : null
+            });
+            documentsUpdated++;
+          } else {
+            // Create new document
+            await storage.createDocument({
+              name: file.name,
+              fileId: file.id,
+              fileType: file.mimeType,
+              fileSize: file.size ? parseInt(file.size) : null,
+              category: "imported",
+              loanId: loanId
+            });
+            documentsCreated++;
+          }
+        } catch (error) {
+          console.error(`Error processing file ${file.name}:`, error);
+        }
+      }
+      
+      res.json({
+        success: true,
+        message: "Documents synced successfully from Google Drive",
+        documentsCreated,
+        documentsUpdated,
+        totalFiles: files.length
+      });
+      
+    } catch (error) {
+      console.error("Error syncing Google Drive documents:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to sync documents from Google Drive" 
+      });
+    }
+  });
+
   // Sync documents from Google Drive for a loan with full OCR and OpenAI analysis
   app.post("/api/loans/:id/sync-documents", isAuthenticated, async (req, res) => {
     try {
