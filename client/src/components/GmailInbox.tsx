@@ -273,39 +273,67 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
     try {
       const response = await apiRequest("GET", `/api/gmail/messages/${selectedMessage?.id}/attachments/${attachment.attachmentId}`);
       
+      let binaryData;
+      // Handle different response formats
+      if (typeof response === 'string') {
+        // Base64 encoded string
+        binaryData = Uint8Array.from(atob(response), c => c.charCodeAt(0));
+      } else if (response.data) {
+        // Response with data property
+        if (typeof response.data === 'string') {
+          binaryData = Uint8Array.from(atob(response.data), c => c.charCodeAt(0));
+        } else {
+          binaryData = new Uint8Array(response.data);
+        }
+      } else {
+        // Direct binary data
+        binaryData = new Uint8Array(response);
+      }
+      
+      const blob = new Blob([binaryData], { type: attachment.mimeType || 'application/octet-stream' });
+      
       if (attachment.mimeType?.includes('pdf')) {
-        // For PDFs, automatically save to documents section
-        const saveResponse = await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
-          attachmentData: response.data,
-          filename: attachment.filename,
-          mimeType: attachment.mimeType,
-          size: attachment.size,
-          emailSubject: selectedMessage?.subject,
-          emailFrom: selectedMessage?.from
-        });
+        // For PDFs, save to documents and open preview
+        try {
+          const saveResponse = await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
+            attachmentData: btoa(String.fromCharCode(...binaryData)),
+            filename: attachment.filename,
+            mimeType: attachment.mimeType,
+            size: attachment.size,
+            emailSubject: selectedMessage?.subject,
+            emailFrom: selectedMessage?.from
+          });
+          
+          toast({
+            title: "PDF Saved",
+            description: `${attachment.filename} has been added to loan documents`,
+          });
+        } catch (saveError) {
+          console.warn('Could not save PDF to documents:', saveError);
+        }
         
-        toast({
-          title: "PDF Saved",
-          description: `${attachment.filename} has been added to loan documents`,
-        });
-        
-        // Also open preview in new tab
-        const blob = new Blob([Uint8Array.from(atob(response.data), c => c.charCodeAt(0))], { type: attachment.mimeType });
+        // Open preview in new tab
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       } else {
-        // For other files, just download
-        const blob = new Blob([Uint8Array.from(atob(response.data), c => c.charCodeAt(0))], { type: attachment.mimeType });
+        // For other files, download directly
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = attachment.filename;
+        a.download = attachment.filename || 'attachment';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        
+        toast({
+          title: "Download Complete",
+          description: `${attachment.filename} has been downloaded`,
+        });
       }
     } catch (error) {
+      console.error('Download error:', error);
       toast({
         title: "Download Failed",
         description: "Could not download attachment. Please try again.",
