@@ -384,14 +384,33 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
           </div>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors ${
-                  message.unread ? 'bg-blue-50 border-blue-200' : 'bg-white'
-                }`}
-                onClick={() => openMessage(message)}
-              >
+            {messages.map((message, index) => {
+              // Check if this message is part of a thread
+              const isThreadStart = index === 0 || messages[index - 1].threadId !== message.threadId;
+              const isThreadEnd = index === messages.length - 1 || messages[index + 1].threadId !== message.threadId;
+              const hasThread = messages.some(m => m.threadId === message.threadId && m.id !== message.id);
+              
+              return (
+                <div
+                  key={message.id}
+                  className={`relative ${
+                    hasThread && !isThreadEnd ? 'border-l-4 border-l-gray-300 ml-2 pl-4' : ''
+                  }`}
+                >
+                  {hasThread && isThreadStart && (
+                    <div className="text-xs text-gray-500 font-medium mb-2 flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-gray-300 rounded-full flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                      </div>
+                      CONVERSATION THREAD
+                    </div>
+                  )}
+                  <div
+                    className={`p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors ${
+                      message.unread ? 'bg-blue-50 border-blue-200' : 'bg-white'
+                    } ${hasThread ? 'ml-4' : ''}`}
+                    onClick={() => openMessage(message)}
+                  >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -424,11 +443,32 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                      <span className={`text-sm font-medium ${message.unread ? 'text-black' : 'text-gray-700'}`}>
-                        {message.from}
-                      </span>
+                    <div className="space-y-1 mb-2">
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                        <span className="text-xs text-gray-500 font-medium">FROM:</span>
+                        <span className={`text-sm font-medium ${message.unread ? 'text-black' : 'text-gray-700'}`}>
+                          {message.from}
+                        </span>
+                      </div>
+                      {message.to && (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 flex-shrink-0" />
+                          <span className="text-xs text-gray-500 font-medium">TO:</span>
+                          <span className="text-sm text-gray-600 truncate">
+                            {Array.isArray(message.to) ? message.to.join(', ') : message.to}
+                          </span>
+                        </div>
+                      )}
+                      {message.cc && message.cc.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 flex-shrink-0" />
+                          <span className="text-xs text-gray-500 font-medium">CC:</span>
+                          <span className="text-sm text-gray-600 truncate">
+                            {Array.isArray(message.cc) ? message.cc.join(', ') : message.cc}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <h4 className={`text-sm mb-1 ${message.unread ? 'font-semibold text-black' : 'font-normal text-gray-800'}`}>
                       {message.subject?.replace(/^(Re:|Fwd:)\s*/, '') || '(No Subject)'}
@@ -438,13 +478,20 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2">
+                      {message.unread ? (
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                          <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">UNREAD</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400 uppercase tracking-wide">READ</span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <Calendar className="w-3 h-3" />
                       {format(new Date(message.date), 'MMM dd, h:mm a')}
                     </div>
-                    {message.unread && (
-                      <div className="w-3 h-3 bg-blue-600 rounded-full border-2 border-white shadow-sm"></div>
-                    )}
                   </div>
                 </div>
               </div>
