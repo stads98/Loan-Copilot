@@ -400,7 +400,10 @@ export default function DocumentManager({
                             )}
                             {doc.fileSize && (
                               <span>
-                                {(doc.fileSize / 1024 / 1024).toFixed(1)} MB
+                                {doc.fileSize >= 1024 * 1024 
+                                  ? `${(doc.fileSize / 1024 / 1024).toFixed(1)} MB`
+                                  : `${Math.round(doc.fileSize / 1024)} KB`
+                                }
                               </span>
                             )}
                           </div>
