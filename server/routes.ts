@@ -1768,12 +1768,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const maxResults = parseInt(req.query.maxResults as string) || 50;
       const loanId = req.query.loanId ? parseInt(req.query.loanId as string) : null;
 
-      // Comprehensive search going back 6 weeks to catch all loan-related emails
-      const sixWeeksAgo = new Date();
-      sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
-      const dateQuery = sixWeeksAgo.toISOString().split('T')[0].replace(/-/g, '/');
+      // Comprehensive search going back 8 weeks to catch all loan-related emails
+      const eightWeeksAgo = new Date();
+      eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+      const dateQuery = eightWeeksAgo.toISOString().split('T')[0].replace(/-/g, '/');
       
-      // Search for all emails with attachments going back 6 weeks - cast a wide net
+      // Search for all emails with attachments going back 8 weeks - cast a wide net
       const searchQuery = `has:attachment after:${dateQuery}`;
       
       const listResponse = await gmail.users.messages.list({
