@@ -529,6 +529,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Restore a deleted document
+  app.patch("/api/documents/:id/restore", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid document ID" });
+      }
+
+      const restoredDocument = await storage.updateDocument(id, { deleted: false });
+      if (!restoredDocument) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      res.json({ success: true, document: restoredDocument });
+    } catch (error) {
+      console.error('Error restoring document:', error);
+      res.status(500).json({ message: "Error restoring document" });
+    }
+  });
+
   // Download document endpoint
   // Add endpoint to view/serve uploaded documents
   app.get("/api/documents/:id/view", isAuthenticated, async (req, res) => {

@@ -141,6 +141,29 @@ export default function DocumentManager({
   useEffect(() => {
     fetchDeletedDocuments();
   }, [loanId]);
+
+  const restoreDocument = async (documentId: number) => {
+    try {
+      const response = await apiRequest("PATCH", `/api/documents/${documentId}/restore`, {});
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Document restored successfully."
+        });
+        // Refresh both document lists and deleted documents
+        queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+        fetchDeletedDocuments();
+      } else {
+        throw new Error('Restore failed');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to restore document.",
+        variant: "destructive"
+      });
+    }
+  };
   
   // Helper functions for managing requirements
   const assignDocumentToRequirement = async (requirementName: string, documentId: string) => {
@@ -444,8 +467,19 @@ export default function DocumentManager({
                         </Badge>
                       )}
                     </div>
-                    <div className="text-xs text-gray-400">
-                      Deleted {doc.uploadedAt && format(new Date(doc.uploadedAt), 'MMM d, yyyy')}
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs text-gray-400">
+                        Deleted {doc.uploadedAt && format(new Date(doc.uploadedAt), 'MMM d, yyyy')}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => restoreDocument(doc.id)}
+                        className="h-6 px-2 text-blue-600 hover:text-blue-700"
+                        title="Restore document"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </Button>
                     </div>
                   </div>
                 ))}
