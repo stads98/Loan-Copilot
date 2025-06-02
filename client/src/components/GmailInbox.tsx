@@ -271,32 +271,24 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
 
   const downloadAttachment = async (attachment: any) => {
     try {
+      console.log('Downloading attachment:', attachment);
       const response = await apiRequest("GET", `/api/gmail/messages/${selectedMessage?.id}/attachments/${attachment.attachmentId}`);
+      console.log('Attachment response:', response);
       
-      let binaryData;
-      // Handle different response formats
-      if (typeof response === 'string') {
-        // Base64 encoded string
-        binaryData = Uint8Array.from(atob(response), c => c.charCodeAt(0));
-      } else if (response.data) {
-        // Response with data property
-        if (typeof response.data === 'string') {
-          binaryData = Uint8Array.from(atob(response.data), c => c.charCodeAt(0));
-        } else {
-          binaryData = new Uint8Array(response.data);
-        }
-      } else {
-        // Direct binary data
-        binaryData = new Uint8Array(response);
+      // The server returns { data: base64String }
+      if (!response || !response.data) {
+        throw new Error('No attachment data received');
       }
       
+      // Decode base64 data
+      const binaryData = Uint8Array.from(atob(response.data), c => c.charCodeAt(0));
       const blob = new Blob([binaryData], { type: attachment.mimeType || 'application/octet-stream' });
       
       if (attachment.mimeType?.includes('pdf')) {
         // For PDFs, save to documents and open preview
         try {
-          const saveResponse = await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
-            attachmentData: btoa(String.fromCharCode(...binaryData)),
+          await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
+            attachmentData: response.data, // Use the base64 data directly
             filename: attachment.filename,
             mimeType: attachment.mimeType,
             size: attachment.size,
@@ -336,7 +328,7 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
       console.error('Download error:', error);
       toast({
         title: "Download Failed",
-        description: "Could not download attachment. Please try again.",
+        description: error.message || "Could not download attachment. Please try again.",
         variant: "destructive"
       });
     }

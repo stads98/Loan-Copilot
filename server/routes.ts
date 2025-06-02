@@ -1636,6 +1636,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const messageId = req.params.messageId;
       const attachmentId = req.params.attachmentId;
 
+      console.log('Downloading attachment:', { messageId, attachmentId });
+
       // Get attachment data
       const attachmentResponse = await gmail.users.messages.attachments.get({
         auth: gmailAuth,
@@ -1644,12 +1646,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: attachmentId
       });
 
+      console.log('Gmail API attachment response:', {
+        hasData: !!attachmentResponse.data,
+        dataKeys: attachmentResponse.data ? Object.keys(attachmentResponse.data) : [],
+        size: attachmentResponse.data?.size,
+        hasAttachmentData: !!attachmentResponse.data?.data
+      });
+
+      if (!attachmentResponse.data?.data) {
+        console.error('No attachment data returned from Gmail API');
+        return res.status(404).json({ message: "Attachment data not found" });
+      }
+
       res.json({ 
         data: attachmentResponse.data.data // This is base64 encoded
       });
     } catch (error) {
       console.error('Error downloading Gmail attachment:', error);
-      res.status(500).json({ message: "Error downloading attachment" });
+      res.status(500).json({ message: "Error downloading attachment", error: error.message });
     }
   });
 
