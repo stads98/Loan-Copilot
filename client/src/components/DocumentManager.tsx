@@ -12,7 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
-import { Loader2, FileText, Image, File, Download, Trash2, Eye, Check, Plus, X, Upload } from "lucide-react";
+import { Loader2, FileText, Image, File, Download, Trash2, Eye, Check, Plus, X, Upload, RotateCcw } from "lucide-react";
 
 
 
