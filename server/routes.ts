@@ -1535,26 +1535,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const folderId = req.params.folderId;
       
-      // Use the service account to access Google Drive folders
+      // Use the service account to access Google Drive folders with recursive scanning
       try {
-        const files = await getDriveFiles(folderId);
+        console.log(`Scanning folder ${folderId} recursively for all files...`);
+        const { files, folders } = await scanFolderRecursively(folderId);
         
-        // Map the files to the expected format
-        const items = files.map(file => ({
-          id: file.id,
-          name: file.name,
-          type: file.mimeType === 'application/vnd.google-apps.folder' ? 'folder' : 'file',
-          mimeType: file.mimeType,
-          size: file.size ? parseInt(file.size) : undefined
-        }));
+        // Combine files and folders for display
+        const allItems = [
+          ...folders.map(folder => ({
+            id: folder.id,
+            name: folder.name,
+            type: 'folder' as const,
+            mimeType: folder.mimeType,
+            size: undefined
+          })),
+          ...files.map(file => ({
+            id: file.id,
+            name: file.name,
+            type: 'file' as const,
+            mimeType: file.mimeType,
+            size: file.size ? parseInt(file.size) : undefined
+          }))
+        ];
         
-        console.log(`Successfully retrieved ${items.length} items from Google Drive folder ${folderId}`);
-        return res.json({ items });
+        console.log(`Successfully retrieved ${files.length} files and ${folders.length} folders from Google Drive folder ${folderId}`);
+        return res.json({ 
+          items: allItems,
+          totalFiles: files.length,
+          totalFolders: folders.length
+        });
         
       } catch (driveError: any) {
         console.error('Google Drive access failed:', driveError.message);
         return res.status(500).json({ 
-          message: "Failed to access Google Drive folder", 
+          message: "Failed to access Google Drive folder. Please make sure the Google service account has access to this folder.", 
           error: driveError.message 
         });
       }

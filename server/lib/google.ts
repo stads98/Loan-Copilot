@@ -127,9 +127,15 @@ export async function scanFolderRecursively(folderId: string): Promise<{files: D
     
     // Recursively scan subfolders
     for (const folder of folders) {
-      const subContent = await scanFolderRecursively(folder.id);
-      files.push(...subContent.files);
-      folders.push(...subContent.folders);
+      console.log(`Scanning subfolder: ${folder.name} (ID: ${folder.id})`);
+      try {
+        const subContent = await scanFolderRecursively(folder.id);
+        console.log(`Found ${subContent.files.length} files in subfolder: ${folder.name}`);
+        files.push(...subContent.files);
+        folders.push(...subContent.folders);
+      } catch (subError) {
+        console.error(`Error scanning subfolder ${folder.name}:`, subError);
+      }
     }
     
     return { files, folders };
