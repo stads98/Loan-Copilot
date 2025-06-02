@@ -126,7 +126,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       const scopes = [
-        'https://www.googleapis.com/auth/drive.readonly'
+        'https://www.googleapis.com/auth/drive.readonly',
+        'https://www.googleapis.com/auth/gmail.send',
+        'https://www.googleapis.com/auth/userinfo.email'
       ];
 
       const authUrl = oauth2Client.generateAuthUrl({
@@ -157,9 +159,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { code } = req.query;
       const { tokens } = await oauth2Client.getToken(code as string);
       
-      // Store tokens in session
+      // Store tokens in session for both Drive and Gmail
       (req.session as any).googleAuthenticated = true;
       (req.session as any).googleTokens = tokens;
+      (req.session as any).gmailTokens = tokens;
       
       // Close the popup window and refresh parent
       res.send(`
@@ -923,35 +926,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/gmail/auth-url", isAuthenticated, async (req, res) => {
     try {
       const { getGmailAuthUrl } = await import("./lib/gmail");
-      const redirectUri = `${req.protocol}://${req.get('host')}/api/gmail/callback`;
+      const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
       const authUrl = getGmailAuthUrl(process.env.GOOGLE_CLIENT_ID!, redirectUri);
       res.json({ authUrl });
     } catch (error) {
       console.error("Error generating Gmail auth URL:", error);
       res.status(500).json({ message: "Error generating auth URL" });
-    }
-  });
-
-  app.get("/api/gmail/callback", async (req, res) => {
-    try {
-      const { code } = req.query;
-      if (!code) {
-        return res.status(400).json({ message: "Authorization code required" });
-      }
-
-      const { getGmailTokens } = await import("./lib/gmail");
-      const redirectUri = `${req.protocol}://${req.get('host')}/api/gmail/callback`;
-      const tokens = await getGmailTokens(code as string, process.env.GOOGLE_CLIENT_ID!, redirectUri);
-      
-      // Store tokens in session
-      if (req.session) {
-        (req.session as any).gmailTokens = tokens;
-      }
-
-      res.redirect('/dashboard?gmail=connected');
-    } catch (error) {
-      console.error("Error handling Gmail callback:", error);
-      res.redirect('/dashboard?gmail=error');
     }
   });
 
