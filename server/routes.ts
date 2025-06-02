@@ -1039,75 +1039,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (req.session as any).gmailTokens.refresh_token
       );
 
-      const maxResults = parseInt(req.query.maxResults as string) || 20;
+      const maxResults = parseInt(req.query.maxResults as string) || 50;
       const loanId = req.query.loanId ? parseInt(req.query.loanId as string) : null;
 
-      let searchQuery = 'in:inbox';
-
-      // If loanId is provided, build a filtered search query
-      if (loanId) {
-        const loan = await storage.getLoanWithDetails(loanId);
-        if (loan) {
-          const searchTerms = [];
-          
-          // Add property address terms
-          if (loan.property?.address) {
-            const address = loan.property.address;
-            searchTerms.push(`"${address}"`);
-            
-            // Extract street address without city/state for partial matches
-            const streetOnly = address.split(',')[0].trim();
-            if (streetOnly !== address) {
-              searchTerms.push(`"${streetOnly}"`);
-            }
-          }
-          
-          // Add loan number/ID terms
-          if (loan.loan?.loanNumber) {
-            searchTerms.push(`"${loan.loan.loanNumber}"`);
-          }
-          searchTerms.push(`"${loanId}"`);
-          
-          // Add contact email terms (from/to/cc any contact email)
-          if (loan.contacts && loan.contacts.length > 0) {
-            const contactEmails = loan.contacts
-              .map(c => c.email)
-              .filter(Boolean)
-              .map(email => `from:${email} OR to:${email} OR cc:${email}`)
-              .join(' OR ');
-            
-            if (contactEmails) {
-              searchTerms.push(`(${contactEmails})`);
-            }
-          }
-          
-          // Combine all search terms with OR
-          if (searchTerms.length > 0) {
-            searchQuery = `in:inbox AND (${searchTerms.join(' OR ')})`;
-          }
-        }
-      }
-
-      // Get message list
+      // Always get inbox messages first - scan up to 200 recent emails
       const listResponse = await gmail.users.messages.list({
         auth: gmailAuth,
         userId: 'me',
-        maxResults,
-        q: searchQuery
+        maxResults: 200, // Scan 200 recent emails for comprehensive filtering
+        q: 'in:inbox'
       });
 
-      const messages = [];
+      const allMessages = [];
       
       if (listResponse.data.messages) {
         // Get details for each message
-        for (const message of listResponse.data.messages.slice(0, maxResults)) {
+        for (const message of listResponse.data.messages) {
           try {
             const msgResponse = await gmail.users.messages.get({
               auth: gmailAuth,
               userId: 'me',
               id: message.id!,
               format: 'metadata',
-              metadataHeaders: ['From', 'Subject', 'Date']
+              metadataHeaders: ['From', 'Subject', 'Date', 'To', 'Cc']
             });
 
             const msg = msgResponse.data;
@@ -1115,13 +1069,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const fromHeader = headers.find(h => h.name === 'From');
             const subjectHeader = headers.find(h => h.name === 'Subject');
             const dateHeader = headers.find(h => h.name === 'Date');
+            const toHeader = headers.find(h => h.name === 'To');
+            const ccHeader = headers.find(h => h.name === 'Cc');
 
-            messages.push({
+            allMessages.push({
               id: msg.id,
               threadId: msg.threadId,
               snippet: msg.snippet,
               subject: subjectHeader?.value || '',
               from: fromHeader?.value || '',
+              to: toHeader?.value || '',
+              cc: ccHeader?.value || '',
               date: dateHeader?.value || '',
               unread: msg.labelIds?.includes('UNREAD') || false,
               hasAttachments: msg.payload?.parts?.some(part => 
@@ -1132,6 +1090,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error('Error fetching message details:', msgError);
           }
         }
+      }
+
+      let messages = allMessages;
+
+      // Filter messages if loanId is provided
+      if (loanId && allMessages.length > 0) {
+        const loan = await storage.getLoanWithDetails(loanId);
+        if (loan) {
+          const filteredMessages = allMessages.filter(message => {
+            const subject = message.subject.toLowerCase();
+            const from = message.from.toLowerCase();
+            const to = message.to.toLowerCase();
+            const cc = message.cc.toLowerCase();
+            
+            // Check property address in subject
+            if (loan.property?.address) {
+              const address = loan.property.address.toLowerCase();
+              const streetOnly = address.split(',')[0].trim().toLowerCase();
+              
+              if (subject.includes(address) || subject.includes(streetOnly)) {
+                return true;
+              }
+            }
+            
+            // Check loan number/ID in subject
+            if (loan.loan?.loanNumber && subject.includes(loan.loan.loanNumber.toLowerCase())) {
+              return true;
+            }
+            if (subject.includes(loanId.toString())) {
+              return true;
+            }
+            
+            // Check contact emails in from/to/cc
+            if (loan.contacts && loan.contacts.length > 0) {
+              const contactEmails = loan.contacts
+                .map(c => c.email)
+                .filter(Boolean)
+                .map(email => email.toLowerCase());
+              
+              for (const email of contactEmails) {
+                if (from.includes(email) || to.includes(email) || cc.includes(email)) {
+                  return true;
+                }
+              }
+            }
+            
+            return false;
+          });
+          
+          messages = filteredMessages.slice(0, maxResults);
+        }
+      } else {
+        // If no loan filtering, just limit to maxResults
+        messages = allMessages.slice(0, maxResults);
       }
 
       res.json({ messages });
