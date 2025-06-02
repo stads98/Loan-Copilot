@@ -123,7 +123,7 @@ export class MemStorage implements IStorage {
     this.createLoanType({ name: "Bridge", description: "Short-term financing" });
     this.createLoanType({ name: "Fix and Flip", description: "Rehabilitation loans" });
 
-    // Add a default user
+    // Add default users
     this.createUser({
       username: "demo",
       password: "password", // In a real app, this would be hashed
@@ -131,6 +131,15 @@ export class MemStorage implements IStorage {
       email: "maria@adlercapital.com",
       role: "processor",
       avatarUrl: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100"
+    });
+
+    this.createUser({
+      username: "stads98@gmail.com",
+      password: "password",
+      name: "Stads User",
+      email: "stads98@gmail.com",
+      role: "processor",
+      avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100"
     });
   }
 
