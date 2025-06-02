@@ -19,6 +19,8 @@ interface ContactListProps {
   loanNumber?: string;
   propertyAddress?: string;
   borrowerName?: string;
+  loanPurpose?: string;
+  borrowerEntityName?: string;
 }
 
 const contactSchema = z.object({
@@ -29,7 +31,7 @@ const contactSchema = z.object({
   role: z.string().min(1, "Role is required")
 });
 
-export default function ContactList({ contacts, loanId, loanNumber, propertyAddress, borrowerName }: ContactListProps) {
+export default function ContactList({ contacts, loanId, loanNumber, propertyAddress, borrowerName, loanPurpose, borrowerEntityName }: ContactListProps) {
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<number | null>(null);
@@ -120,6 +122,13 @@ export default function ContactList({ contacts, loanId, loanNumber, propertyAddr
   };
 
   const generateEmailTemplate = (contact: Contact, propertyAddress: string, borrowerName: string) => {
+    // Helper function to determine loan purpose text
+    const getLoanPurposeText = () => {
+      if (loanPurpose === 'purchase') return 'purchasing';
+      if (loanPurpose === 'refinance' || loanPurpose === 'cash_out_refinance') return 'refinancing';
+      return 'purchasing/refinancing'; // fallback for unknown purposes
+    };
+
     const getSubjectAndBody = () => {
       switch (contact.role) {
         case 'title':
@@ -127,7 +136,7 @@ export default function ContactList({ contacts, loanId, loanNumber, propertyAddr
             subject: `${propertyAddress} (Loan #${loanNumber || loanId}) - Title Order Request`,
             body: `Hi ${contact.name},
 
-I am working on originating a loan for my borrower, ${borrowerName}, who is [purchasing/refinancing] the property located at ${propertyAddress}. The title for this transaction is under the entity "[LLC Name]". Please process the title order in line with the attached instructions. 
+I am working on originating a loan for my borrower, ${borrowerName}, who is ${getLoanPurposeText()} the property located at ${propertyAddress}. The title for this transaction is under the entity "${borrowerEntityName || borrowerName}". Please process the title order in line with the attached instructions. 
 
 Please confirm Receipt of this email.
 
@@ -151,7 +160,7 @@ dan@adlercapital.us
             subject: `${propertyAddress} (Loan #${loanNumber || loanId}) – Insurance Requirements`,
             body: `Hi ${contact.name},
 
-I'm working on originating a loan for my borrower, ${borrowerName}, who is [purchasing/refinancing] the property located at ${propertyAddress}. The policyholder must be listed as "[LLC Name]".
+I'm working on originating a loan for my borrower, ${borrowerName}, who is ${getLoanPurposeText()} the property located at ${propertyAddress}. The policyholder must be listed as "${borrowerEntityName || borrowerName}".
 
 Attached below you will find the Insurance requirements for this transaction.
 
@@ -201,7 +210,7 @@ dan@adlercapital.us
             subject: `${propertyAddress} (Loan #${loanNumber || loanId}) - Payoff Request`,
             body: `Hi ${contact.name},
 
-I am working on originating a loan for my borrower, ${borrowerName}, who is [purchasing/refinancing] the property located at ${propertyAddress}. The title for this transaction is under the entity "[LLC Name]".
+I am working on originating a loan for my borrower, ${borrowerName}, who is ${getLoanPurposeText()} the property located at ${propertyAddress}. The title for this transaction is under the entity "${borrowerEntityName || borrowerName}".
 
 To proceed, we need a payoff letter for the existing loan (#[Loan Number]). Please provide a written payoff statement that includes the following details:
 

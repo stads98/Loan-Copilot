@@ -266,6 +266,8 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
                 loanNumber={loan.loanNumber}
                 propertyAddress={`${property.address}, ${property.city}, ${property.state} ${property.zipCode}`}
                 borrowerName={loan.borrowerName}
+                loanPurpose={loan.loanPurpose}
+                borrowerEntityName={loan.borrowerEntityName}
               />
 
               {/* Gmail Inbox */}
