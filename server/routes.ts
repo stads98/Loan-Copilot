@@ -15,9 +15,27 @@ import path from "path";
 
 const SessionStore = MemoryStore(session);
 
-// Configure multer for file uploads
+import fs from "fs";
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer for file uploads with disk storage
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+      // Create unique filename with timestamp
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const fileName = `${uniqueSuffix}-${file.originalname}`;
+      cb(null, fileName);
+    }
+  }),
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
@@ -495,6 +513,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Download document endpoint
+  // Add endpoint to view/serve uploaded documents
+  app.get("/api/documents/:id/view", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid document ID" });
+      }
+
+      const document = await storage.getDocument(id);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Check if it's an uploaded document (doesn't contain Google Drive patterns)
+      if (document.fileId && !document.fileId.includes('-') && document.fileId.length < 20) {
+        // This looks like a Google Drive file ID
+        res.json({ 
+          type: 'drive',
+          viewUrl: `https://drive.google.com/file/d/${document.fileId}/view`
+        });
+      } else {
+        // This is an uploaded document - serve it directly
+        res.json({ 
+          type: 'upload',
+          fileUrl: `/api/uploads/${document.fileId}`,
+          name: document.name,
+          fileType: document.fileType
+        });
+      }
+    } catch (error) {
+      console.error("Error viewing document:", error);
+      res.status(500).json({ message: "Error viewing document" });
+    }
+  });
+
   app.get("/api/documents/:id/download", isAuthenticated, async (req, res) => {
     try {
       const docId = parseInt(req.params.id);
@@ -882,7 +935,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const documentData = insertDocumentSchema.parse({
         name: name || req.file.originalname,
-        fileId: `upload_${Date.now()}_${req.file.originalname}`,
+        fileId: req.file.filename, // Store the actual filename from multer
         fileType: req.file.mimetype.split('/')[1],
         fileSize: req.file.size,
         category: category || 'other',

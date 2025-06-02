@@ -206,10 +206,21 @@ export default function DocumentManager({
 
   const viewDocument = async (doc: Document) => {
     try {
-      // Open the document in a new tab using Google Drive file ID
-      const viewUrl = `https://drive.google.com/file/d/${doc.fileId}/view`;
-      window.open(viewUrl, '_blank');
+      // Call the view endpoint to determine document type and get view URL
+      const response = await apiRequest("GET", `/api/documents/${doc.id}/view`);
+      
+      if (response.type === 'drive') {
+        // Open Google Drive document in new tab
+        window.open(response.viewUrl, '_blank');
+      } else if (response.type === 'upload') {
+        // For uploaded documents, show a message that preview isn't available
+        toast({
+          title: "Document Info",
+          description: `Document: ${response.name}\nType: ${response.fileType}\nNote: Preview not available for uploaded documents in current setup.`
+        });
+      }
     } catch (error) {
+      console.error("View document error:", error);
       toast({
         title: "Error",
         description: "Failed to open document.",

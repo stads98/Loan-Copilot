@@ -495,7 +495,9 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                   </div>
                 </div>
               </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>
