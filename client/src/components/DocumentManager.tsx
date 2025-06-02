@@ -213,11 +213,8 @@ export default function DocumentManager({
         // Open Google Drive document in new tab
         window.open(response.viewUrl, '_blank');
       } else if (response.type === 'upload') {
-        // For uploaded documents, show a message that preview isn't available
-        toast({
-          title: "Document Info",
-          description: `Document: ${response.name}\nType: ${response.fileType}\nNote: Preview not available for uploaded documents in current setup.`
-        });
+        // For uploaded documents, open the file directly
+        window.open(response.fileUrl, '_blank');
       }
     } catch (error) {
       console.error("View document error:", error);

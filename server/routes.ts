@@ -548,6 +548,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Serve uploaded files
+  app.get("/api/uploads/:filename", isAuthenticated, (req, res) => {
+    try {
+      const filename = req.params.filename;
+      const filePath = path.join(uploadsDir, filename);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      // Serve the file directly
+      res.sendFile(filePath);
+    } catch (error) {
+      console.error("Error serving file:", error);
+      res.status(500).json({ message: "Error serving file" });
+    }
+  });
+
   app.get("/api/documents/:id/download", isAuthenticated, async (req, res) => {
     try {
       const docId = parseInt(req.params.id);
