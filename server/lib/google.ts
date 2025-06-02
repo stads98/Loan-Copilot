@@ -25,7 +25,7 @@ export async function authenticateGoogle(req: Request, res: Response): Promise<v
 }
 
 // Function to download file content from Google Drive
-export async function downloadDriveFile(fileId: string): Promise<string> {
+export async function downloadDriveFile(fileId: string): Promise<Buffer> {
   try {
     const { google } = await import('googleapis');
     const serviceAccount = await import('../keys/service-account.json');
@@ -40,24 +40,44 @@ export async function downloadDriveFile(fileId: string): Promise<string> {
     await jwtClient.authorize();
     const drive = google.drive({ version: 'v3', auth: jwtClient });
     
-    // Try to export as text for Google Docs/Sheets
-    try {
+    // Get file metadata first to check mime type
+    const metadata = await drive.files.get({
+      fileId: fileId,
+      fields: 'mimeType, name'
+    });
+    
+    const mimeType = metadata.data.mimeType;
+    
+    // For Google Docs/Sheets/Slides, export as PDF
+    if (mimeType?.includes('google-apps.document')) {
       const response = await drive.files.export({
         fileId: fileId,
-        mimeType: 'text/plain'
-      });
-      return response.data as string;
-    } catch (exportError) {
-      // If export fails, try to get file content directly
+        mimeType: 'application/pdf'
+      }, { responseType: 'arraybuffer' });
+      return Buffer.from(response.data as ArrayBuffer);
+    } else if (mimeType?.includes('google-apps.spreadsheet')) {
+      const response = await drive.files.export({
+        fileId: fileId,
+        mimeType: 'application/pdf'
+      }, { responseType: 'arraybuffer' });
+      return Buffer.from(response.data as ArrayBuffer);
+    } else if (mimeType?.includes('google-apps.presentation')) {
+      const response = await drive.files.export({
+        fileId: fileId,
+        mimeType: 'application/pdf'
+      }, { responseType: 'arraybuffer' });
+      return Buffer.from(response.data as ArrayBuffer);
+    } else {
+      // For other files (PDFs, images, etc.), download directly
       const response = await drive.files.get({
         fileId: fileId,
         alt: 'media'
-      });
-      return response.data as string;
+      }, { responseType: 'arraybuffer' });
+      return Buffer.from(response.data as ArrayBuffer);
     }
   } catch (error) {
     console.error('Error downloading file:', error);
-    return `Could not read file content: ${error}`;
+    throw new Error(`Could not download file: ${error}`);
   }
 }
 
