@@ -303,41 +303,26 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
       }
       
       // Save all files (PDFs and images) to loan documents and Google Drive
-      try {
-        console.log('Attempting to save attachment:', attachment.filename);
-        const saveResponse = await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
-          attachmentData: response.data, // Use the base64 data directly
-          filename: attachment.filename,
-          mimeType: attachment.mimeType,
-          size: attachment.size,
-          emailSubject: selectedMessage?.subject,
-          emailFrom: selectedMessage?.from
-        });
-        
-        console.log('Save response received:', saveResponse);
-        
-        // If we reach here, the save was successful
-        // Invalidate documents cache to refresh the list
-        queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId] });
-        
-        const fileType = attachment.mimeType?.includes('pdf') ? 'PDF' : 
-                         attachment.mimeType?.includes('image') ? 'Image' : 'File';
-        
-        toast({
-          title: `${fileType} Saved`,
-          description: `${attachment.filename} has been added to loan documents and uploaded to Google Drive`,
-        });
-      } catch (saveError) {
-        console.error('Save error details:', saveError);
-        console.error('Save error type:', typeof saveError);
-        console.error('Save error keys:', Object.keys(saveError || {}));
-        toast({
-          title: "Save Failed",
-          description: `Could not save ${attachment.filename} to loan documents. Please try again.`,
-          variant: "destructive"
-        });
-      }
+      const saveResponse = await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
+        attachmentData: response.data, // Use the base64 data directly
+        filename: attachment.filename,
+        mimeType: attachment.mimeType,
+        size: attachment.size,
+        emailSubject: selectedMessage?.subject,
+        emailFrom: selectedMessage?.from
+      });
+      
+      // Invalidate documents cache to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId] });
+      
+      const fileType = attachment.mimeType?.includes('pdf') ? 'PDF' : 
+                       attachment.mimeType?.includes('image') ? 'Image' : 'File';
+      
+      toast({
+        title: `${fileType} Saved Successfully`,
+        description: `${attachment.filename} has been added to loan documents and uploaded to Google Drive`,
+      });
     } catch (error) {
       console.error('Download error:', error);
       toast({
