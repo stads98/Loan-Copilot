@@ -119,10 +119,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: 'Google credentials not configured' });
       }
       
+      const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
+      console.log('Using redirect URI:', redirectUri);
+      
       const oauth2Client = new OAuth2(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET,
-        'https://loanpilot.stads98.repl.co/api/auth/google/callback'
+        redirectUri
       );
 
       const scopes = [
@@ -150,10 +153,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { google } = require('googleapis');
       const OAuth2 = google.auth.OAuth2;
       
+      const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
+      console.log('Callback using redirect URI:', redirectUri);
+      
       const oauth2Client = new OAuth2(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET,
-        `${req.protocol}://${req.get('host')}/api/auth/google/callback`
+        redirectUri
       );
 
       const { code } = req.query;
