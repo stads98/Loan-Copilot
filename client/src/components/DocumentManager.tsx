@@ -195,6 +195,26 @@ export default function DocumentManager({
   const missingDocuments = allRequirements.filter(req => !completedRequirements.has(req.name));
   const completedDocuments = allRequirements.filter(req => completedRequirements.has(req.name));
 
+  // Handle document preview
+  const handleDocumentPreview = async (document: Document) => {
+    try {
+      const response = await fetch(`/api/documents/${document.id}/view`);
+      const data = await response.json();
+      
+      if (data.type === 'drive') {
+        window.open(data.viewUrl, '_blank');
+      } else if (data.type === 'upload') {
+        window.open(data.fileUrl, '_blank');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to preview document",
+        variant: "destructive"
+      });
+    }
+  };
+
   const getFileIcon = (document: Document) => {
     if (document.fileType?.includes('image')) {
       return <Image className="w-4 h-4 text-blue-500" />;
@@ -530,7 +550,7 @@ export default function DocumentManager({
                                       <Button
                                         size="sm"
                                         variant="ghost"
-                                        onClick={() => window.open(`/api/documents/${doc.id}/view`, '_blank')}
+                                        onClick={() => handleDocumentPreview(doc)}
                                         className="h-6 px-2 text-blue-600 hover:text-blue-700"
                                       >
                                         <Eye className="w-3 h-3" />
@@ -699,7 +719,7 @@ export default function DocumentManager({
                                           <Button
                                             size="sm"
                                             variant="ghost"
-                                            onClick={() => window.open(`/api/documents/${doc.id}/view`, '_blank')}
+                                            onClick={() => handleDocumentPreview(doc)}
                                             className="h-6 px-2 text-blue-600 hover:text-blue-700"
                                           >
                                             <Eye className="w-3 h-3" />
