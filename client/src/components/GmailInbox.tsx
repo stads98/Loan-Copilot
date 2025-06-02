@@ -155,7 +155,15 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
 
   useEffect(() => {
     checkGmailConnection();
-    
+  }, []);
+
+  useEffect(() => {
+    if (isConnected) {
+      fetchMessages();
+    }
+  }, [isConnected, loanId]);
+
+  useEffect(() => {
     // Auto-refresh every minute
     const interval = setInterval(() => {
       if (isConnected) {
@@ -164,7 +172,7 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
     }, 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [isConnected, loanId]);
+  }, [isConnected]);
 
   const unreadCount = messages.filter(msg => msg.unread).length;
 
