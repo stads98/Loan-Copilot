@@ -80,6 +80,7 @@ export const documents = pgTable("documents", {
   fileSize: integer("file_size"),
   category: text("category"), // borrower, property, title, insurance, etc.
   status: text("status").default("pending"), // pending, synced, processed, etc.
+  source: text("source").default("upload"), // upload, gmail, drive
   loanId: integer("loan_id").notNull(),
   uploadedAt: timestamp("uploaded_at").defaultNow(),
 });

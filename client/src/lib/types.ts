@@ -67,6 +67,7 @@ export interface Document {
   fileType?: string;
   fileSize?: number;
   category?: string; // borrower, property, title, insurance, etc.
+  source?: string; // upload, gmail, drive
   loanId: number;
   uploadedAt?: Date;
 }

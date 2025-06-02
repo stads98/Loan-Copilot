@@ -1493,13 +1493,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const to = message.to.toLowerCase();
             const cc = message.cc.toLowerCase();
             
-            // Check property address in subject
+            // Check property address in subject with enhanced matching
             if (loan.property?.address) {
-              const address = loan.property.address.toLowerCase();
-              const streetOnly = address.split(',')[0].trim().toLowerCase();
+              const fullAddress = loan.property.address.toLowerCase();
+              const streetOnly = fullAddress.split(',')[0].trim().toLowerCase();
               
-              if (subject.includes(address) || subject.includes(streetOnly)) {
-                return true;
+              // Create multiple address variations for better matching
+              const addressVariations = [];
+              
+              // Add full address and street-only
+              addressVariations.push(fullAddress, streetOnly);
+              
+              // Extract street number and name separately for partial matching
+              const streetMatch = streetOnly.match(/^(\d+)\s+(.+?)(\s+(st|street|dr|drive|ave|avenue|rd|road|ln|lane|blvd|boulevard|way|ct|court|pl|place))?$/i);
+              if (streetMatch) {
+                const streetNumber = streetMatch[1];
+                const streetName = streetMatch[2];
+                
+                // Add variations: just street name, street number + partial name
+                addressVariations.push(streetName);
+                addressVariations.push(`${streetNumber} ${streetName}`);
+                
+                // Handle common abbreviations
+                const streetWithAbbrev = streetOnly
+                  .replace(/\bdrive\b/gi, 'dr')
+                  .replace(/\bstreet\b/gi, 'st')
+                  .replace(/\bavenue\b/gi, 'ave')
+                  .replace(/\broad\b/gi, 'rd')
+                  .replace(/\bboulevard\b/gi, 'blvd');
+                  
+                if (streetWithAbbrev !== streetOnly) {
+                  addressVariations.push(streetWithAbbrev);
+                }
+              }
+              
+              // Check if any address variation matches
+              for (const variation of addressVariations) {
+                if (subject.includes(variation)) {
+                  return true;
+                }
               }
             }
             
@@ -1776,6 +1808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileType: mimeType,
         fileSize: size,
         category: category,
+        source: 'gmail',
         status: 'processed'
       });
 
