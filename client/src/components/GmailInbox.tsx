@@ -45,6 +45,9 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
   const [isLoadingMessage, setIsLoadingMessage] = useState(false);
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [messageCache, setMessageCache] = useState<Map<string, {content: string, attachments: any[]}>>(new Map());
+  const [showReply, setShowReply] = useState(false);
+  const [replyContent, setReplyContent] = useState("");
+  const [isSendingReply, setIsSendingReply] = useState(false);
   const { toast } = useToast();
 
   // Function to parse email threads and separate individual messages
@@ -53,18 +56,16 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
     
     const emails: ParsedEmail[] = [];
     
-    // Split by common email separators
-    const sections = emailContent.split(/(?=From:|On .+ wrote:|Sent:|Subject:)/i);
+    // Only split on clear email thread separators that indicate multiple different emails
+    // Be more conservative to avoid splitting single emails into multiple parts
+    const sections = emailContent.split(/(?=^From:\s*.+?\n.*?Subject:\s*.+?\n)/gm);
     
     for (let i = 0; i < sections.length; i++) {
       const section = sections[i].trim();
       if (!section) continue;
       
-      // Extract header information
-      const fromMatch = section.match(/From:\s*(.+?)(?:\n|$)/i);
-      const sentMatch = section.match(/Sent:\s*(.+?)(?:\n|$)/i);
-      const subjectMatch = section.match(/Subject:\s*(.+?)(?:\n|$)/i);
-      const dateMatch = section.match(/On\s+(.+?)\s+wrote:/i);
+      // Only treat as separate email if it has a complete email header structure
+      const hasCompleteHeader = section.match(/^From:\s*.+?\n.*?Subject:\s*.+?\n/m);
       
       let content = section;
       let hasHeader = false;
@@ -72,11 +73,17 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
       let subject = '';
       let date = '';
       
-      if (fromMatch || sentMatch || subjectMatch || dateMatch) {
+      if (hasCompleteHeader) {
         hasHeader = true;
+        
+        // Extract header information
+        const fromMatch = section.match(/From:\s*(.+?)(?:\n|$)/i);
+        const sentMatch = section.match(/Sent:\s*(.+?)(?:\n|$)/i);
+        const subjectMatch = section.match(/Subject:\s*(.+?)(?:\n|$)/i);
+        
         from = fromMatch ? fromMatch[1].trim() : '';
         subject = subjectMatch ? subjectMatch[1].trim() : '';
-        date = sentMatch ? sentMatch[1].trim() : (dateMatch ? dateMatch[1].trim() : '');
+        date = sentMatch ? sentMatch[1].trim() : '';
         
         // Remove header lines from content
         content = content
@@ -85,7 +92,6 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
           .replace(/To:\s*.+?\n/gi, '')
           .replace(/Cc:\s*.+?\n/gi, '')
           .replace(/Subject:\s*.+?\n/gi, '')
-          .replace(/On\s+.+?\s+wrote:/gi, '')
           .trim();
       }
       

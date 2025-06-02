@@ -162,39 +162,23 @@ dan@adlercapital.us
 
 I'm working on originating a loan for my borrower, ${borrowerName}, who is ${getLoanPurposeText()} the property located at ${propertyAddress}. The policyholder must be listed as "${borrowerEntityName || borrowerName}".
 
-Attached below you will find the Insurance requirements for this transaction.
+Please provide the following insurance requirements for this transaction:
 
-Below is a summary of the lender's requirements and instructions for approval. Please review carefully and respond accordingly to help avoid delays or follow-up revision requests.
+1. Bound Evidence of Insurance (EOI) or Binder – quotes are not accepted
+2. Dwelling Coverage: Must be listed with a dollar amount
+3. Coverage must be equal to or greater than the loan amount — OR — provide a Replacement Cost Estimate
+4. Named Storm/Hurricane (Florida only): Must be explicitly named on policy (Deductible must also be listed and not exceed 10% of coverage)
+5. Loss of Rent: Must be listed with a dollar amount
+6. Annual Premium must be listed on the policy
+7. Confirm that Wind and Fire are included in the policy
+8. Confirm whether the premium is paid in full or what balance is due
+9. Policy must include the Mortgagee Clause exactly as shown:
+   Shellpoint Mortgage Servicing ISAOA ATIMA
+   P.O. Box 7050, Troy, MI 48007-7050
+10. Include the Loan Number on the policy
+11. List the Borrower Name as the named insured exactly as legally spelled
 
-______________________________________________________________________
-
-REQUIRED COVERAGES
-
-Provide a Bound Evidence of Insurance (EOI) or Binder – quotes are not accepted
-
-Dwelling Coverage: Must be listed with a dollar amount
-
-Coverage must be equal to or greater than the loan amount — OR — provide a Replacement Cost Estimate (If you cannot provide this, confirm that the existing amount represents 100% of the replacement cost and also state that you are unable to provide it)
-Named Storm/Hurricane (Florida only): Must be explicitly named on policy (Deductible must also be listed and not exceed 10% of coverage)
-
-Loss of Rent: Must be listed with a dollar amount (If not labeled as "Loss of Rent," attach the full document outlining coverages)
-
-List the Annual Premium on the policy — or confirm it in your reply
-
-Confirm on that policy AND via email that Wind and Fire are included in the policy
-
-Confirm via email whether the premium is paid in full or what balance is due
-
-Policy must include the Mortgagee Clause exactly as shown:
-
-Shellpoint Mortgage Servicing ISAOA ATIMA
-P.O. Box 7050, Troy, MI 48007-7050
-
-Include the Loan Number on the policy
-
-List the Borrower Name as the named insured exactly as legally spelled
-
-______________________________________________________________________
+Please review carefully and respond accordingly to help avoid delays or follow-up revision requests.
 
 Thanks,
 
@@ -244,22 +228,22 @@ dan@adlercapital.us
 
 Please share the following documents/information to the secure portal below at your earliest convenience.
 
-Signed/Completed borrowing authorization form
-Signed/Completed disclosure form
-HUD (or Deed to show property ownership)
-2 recent bank statements
-Voided Check
-All Current Leases 
-Insurance Certificate and Proof of Premium Payment
-Insurance Agent Info (Name, Email, Phone)
-Title/Closing Agent Info (Name, Email, Phone)
-Payoff Letter from Existing Lenders (or if owned free and clear please specify here)
-Existing Lender Contact Info (Name, Email, Phone)
-LLC Docs:
-Articles of Organization
-Operating Agreement
-Certificate of Good Standing
-EIN Letter
+1. Signed/Completed borrowing authorization form
+2. Signed/Completed disclosure form
+3. HUD (or Deed to show property ownership)
+4. 2 recent bank statements
+5. Voided Check
+6. All Current Leases 
+7. Insurance Certificate and Proof of Premium Payment
+8. Insurance Agent Info (Name, Email, Phone)
+9. Title/Closing Agent Info (Name, Email, Phone)
+10. Payoff Letter from Existing Lenders (or if owned free and clear please specify here)
+11. Existing Lender Contact Info (Name, Email, Phone)
+12. LLC Docs:
+---Articles of Organization
+---Operating Agreement
+---Certificate of Good Standing
+---EIN Letter
 
 Please let me know if you have any questions or would like to discuss any of the above items.
 
