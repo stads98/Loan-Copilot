@@ -150,7 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/auth/google/callback", async (req, res) => {
     try {
-      const { google } = require('googleapis');
+      const { google } = await import('googleapis');
       const OAuth2 = google.auth.OAuth2;
       
       const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
