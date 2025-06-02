@@ -280,8 +280,15 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
         throw new Error('No attachment data received');
       }
       
-      // Decode base64 data
-      const binaryData = Uint8Array.from(atob(response.data), c => c.charCodeAt(0));
+      // Decode base64 data safely
+      let binaryData;
+      try {
+        binaryData = Uint8Array.from(atob(response.data), c => c.charCodeAt(0));
+      } catch (decodeError) {
+        console.error('Base64 decode error:', decodeError);
+        throw new Error('Failed to decode attachment data');
+      }
+      
       const blob = new Blob([binaryData], { type: attachment.mimeType || 'application/octet-stream' });
       
       if (attachment.mimeType?.includes('pdf')) {
@@ -302,33 +309,44 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
           });
         } catch (saveError) {
           console.warn('Could not save PDF to documents:', saveError);
+          // Continue with preview even if save fails
         }
         
         // Open preview in new tab
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        try {
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank');
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch (previewError) {
+          console.error('Preview error:', previewError);
+          throw new Error('Failed to open PDF preview');
+        }
       } else {
         // For other files, download directly
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = attachment.filename || 'attachment';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        
-        toast({
-          title: "Download Complete",
-          description: `${attachment.filename} has been downloaded`,
-        });
+        try {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = attachment.filename || 'attachment';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          
+          toast({
+            title: "Download Complete",
+            description: `${attachment.filename} has been downloaded`,
+          });
+        } catch (downloadError) {
+          console.error('Download error:', downloadError);
+          throw new Error('Failed to download file');
+        }
       }
     } catch (error) {
       console.error('Download error:', error);
       toast({
         title: "Download Failed",
-        description: error.message || "Could not download attachment. Please try again.",
+        description: error instanceof Error ? error.message : "Could not download attachment. Please try again.",
         variant: "destructive"
       });
     }
