@@ -16,6 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 interface ContactListProps {
   contacts: Contact[];
   loanId: number;
+  loanNumber?: string;
   propertyAddress?: string;
   borrowerName?: string;
 }
@@ -28,7 +29,7 @@ const contactSchema = z.object({
   role: z.string().min(1, "Role is required")
 });
 
-export default function ContactList({ contacts, loanId, propertyAddress, borrowerName }: ContactListProps) {
+export default function ContactList({ contacts, loanId, loanNumber, propertyAddress, borrowerName }: ContactListProps) {
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<number | null>(null);
@@ -123,7 +124,7 @@ export default function ContactList({ contacts, loanId, propertyAddress, borrowe
       switch (contact.role) {
         case 'title':
           return {
-            subject: `${propertyAddress} (#${loanId}) - Title Request`,
+            subject: `${propertyAddress} (#${loanNumber || loanId}) - Title Request`,
             body: `Dear ${contact.name},
 
 I hope this email finds you well. We have a new loan file that will require title services, and I wanted to reach out to coordinate the next steps.
@@ -131,7 +132,7 @@ I hope this email finds you well. We have a new loan file that will require titl
 Loan Details:
 • Property Address: ${propertyAddress}
 • Borrower: ${borrowerName}
-• Loan File ID: ${loanId}
+• Loan Number: ${loanNumber || loanId}
 
 We will need the following:
 • Title commitment
@@ -147,7 +148,7 @@ Loan Processing Team`
         
         case 'insurance':
           return {
-            subject: `${propertyAddress} (#${loanId}) - Insurance Request`,
+            subject: `${propertyAddress} (#${loanNumber || loanId}) - Insurance Request`,
             body: `Dear ${contact.name},
 
 We have a new loan file that requires insurance coverage and wanted to coordinate with you on the requirements.
@@ -155,7 +156,7 @@ We have a new loan file that requires insurance coverage and wanted to coordinat
 Loan Details:
 • Property Address: ${propertyAddress}
 • Borrower: ${borrowerName}
-• Loan File ID: ${loanId}
+• Loan Number: ${loanNumber || loanId}
 
 Required Insurance Documentation:
 • Property insurance binder showing lender as additional insured
@@ -171,7 +172,7 @@ Loan Processing Team`
         
         case 'lender':
           return {
-            subject: `${propertyAddress} (#${loanId}) - Payoff Request`,
+            subject: `${propertyAddress} (#${loanNumber || loanId}) - Payoff Request`,
             body: `Dear ${contact.name},
 
 We have a new loan file and need to request payoff information for the existing mortgage on the subject property.
@@ -179,7 +180,7 @@ We have a new loan file and need to request payoff information for the existing 
 Loan Details:
 • Property Address: ${propertyAddress}
 • Borrower: ${borrowerName}
-• Loan File ID: ${loanId}
+• Loan Number: ${loanNumber || loanId}
 
 Please provide:
 • Current payoff amount
@@ -196,14 +197,14 @@ Loan Processing Team`
         
         case 'borrower':
           return {
-            subject: `${propertyAddress} (#${loanId}) - Document Request`,
+            subject: `${propertyAddress} (#${loanNumber || loanId}) - Document Request`,
             body: `Dear ${contact.name},
 
 Thank you for working with us on your loan application. We are processing your file and need some additional documentation to move forward.
 
 Loan Details:
 • Property Address: ${propertyAddress}
-• Loan File ID: ${loanId}
+• Loan Number: ${loanNumber || loanId}
 
 We will follow up with a detailed list of any missing documents. Please have the following ready:
 • Recent bank statements
@@ -219,7 +220,7 @@ Loan Processing Team`
         
         default:
           return {
-            subject: `${propertyAddress} (#${loanId}) - Loan Coordination`,
+            subject: `${propertyAddress} (#${loanNumber || loanId}) - Loan Coordination`,
             body: `Dear ${contact.name},
 
 We have a new loan file and wanted to coordinate with you on the next steps.
@@ -227,7 +228,7 @@ We have a new loan file and wanted to coordinate with you on the next steps.
 Loan Details:
 • Property Address: ${propertyAddress}
 • Borrower: ${borrowerName}
-• Loan File ID: ${loanId}
+• Loan Number: ${loanNumber || loanId}
 
 Please let us know if you need any additional information from our side.
 
