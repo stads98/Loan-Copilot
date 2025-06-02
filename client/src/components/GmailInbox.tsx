@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Mail, RefreshCw, ExternalLink, User, Calendar, Paperclip, ArrowLeft } from "lucide-react";
+import { Mail, RefreshCw, ExternalLink, User, Calendar, Paperclip, ArrowLeft, Eye, Download, Save } from "lucide-react";
 import { format } from "date-fns";
 
 interface GmailMessage {
@@ -360,6 +360,46 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
       toast({
         title: "Download Failed",
         description: error instanceof Error ? error.message : "Could not download attachment. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const previewAttachment = async (attachment: any) => {
+    try {
+      console.log('Previewing attachment:', attachment);
+      const response = await apiRequest("GET", `/api/gmail/messages/${selectedMessage?.id}/attachments/${attachment.attachmentId}`);
+      
+      if (!response || !response.data) {
+        throw new Error('No attachment data received');
+      }
+      
+      // Decode base64 data safely (Gmail uses URL-safe base64)
+      let binaryData;
+      try {
+        let base64Data = response.data;
+        base64Data = base64Data.replace(/-/g, '+').replace(/_/g, '/');
+        while (base64Data.length % 4) {
+          base64Data += '=';
+        }
+        binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+      } catch (decodeError) {
+        console.error('Base64 decode error:', decodeError);
+        throw new Error('Failed to decode attachment data');
+      }
+      
+      const blob = new Blob([binaryData], { type: attachment.mimeType || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      
+      // Open preview in new tab
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      
+    } catch (error) {
+      console.error('Preview error:', error);
+      toast({
+        title: "Preview Failed",
+        description: error instanceof Error ? error.message : "Could not preview attachment. Please try again.",
         variant: "destructive"
       });
     }
@@ -730,14 +770,26 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                                 PDF DOCUMENT
                               </Badge>
                             )}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => downloadAttachment(attachment)}
-                              className="text-xs"
-                            >
-                              {isPDF ? 'Preview & Save' : 'Download'}
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => previewAttachment(attachment)}
+                                className="text-xs"
+                              >
+                                <Eye className="w-3 h-3 mr-1" />
+                                Preview
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => downloadAttachment(attachment)}
+                                className="text-xs"
+                              >
+                                <Save className="w-3 h-3 mr-1" />
+                                {isPDF ? 'Save' : 'Download'}
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       );
