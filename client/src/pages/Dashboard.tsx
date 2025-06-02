@@ -310,6 +310,7 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
               <DocumentManager 
                 documents={documents || []}
                 loanId={loan.id}
+                loanNumber={loan.loanNumber}
                 contacts={contacts || []}
                 propertyAddress={property?.address || ""}
                 requiredDocuments={getLenderSpecificRequirements(lender?.name || "AHL")}
