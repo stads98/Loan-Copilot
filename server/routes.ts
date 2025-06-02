@@ -499,7 +499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Public document view endpoint for direct file access
-  app.get("/api/documents/:id/view", async (req, res) => {
+  app.get("/api/documents/:id/view", isAuthenticated, async (req, res) => {
     try {
       const docId = parseInt(req.params.id);
       if (isNaN(docId)) {
@@ -513,6 +513,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if this is a Google Drive document or locally uploaded
       if (document.fileId && document.fileId.length > 10) {
+        // Check if user has Google Drive authentication
+        if (!(req.session as any)?.googleAuthenticated) {
+          // Try to restore from database
+          if (req.user?.id) {
+            const driveToken = await storage.getUserToken(req.user.id, 'drive');
+            if (driveToken && driveToken.accessToken) {
+              // Restore tokens to session
+              (req.session as any).googleTokens = {
+                access_token: driveToken.accessToken,
+                refresh_token: driveToken.refreshToken,
+                expiry_date: driveToken.expiryDate?.getTime()
+              };
+              (req.session as any).googleAuthenticated = true;
+              console.log('Restored Google Drive tokens for document viewing');
+            }
+          }
+        }
+
         // Google Drive document - redirect to Google Drive view URL
         const viewUrl = `https://drive.google.com/file/d/${document.fileId}/view`;
         res.redirect(viewUrl);
