@@ -1768,52 +1768,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const maxResults = parseInt(req.query.maxResults as string) || 50;
       const loanId = req.query.loanId ? parseInt(req.query.loanId as string) : null;
 
-      // Always get inbox messages first - scan up to 500 recent emails
+      // Comprehensive search going back 6 weeks to catch all loan-related emails
+      const sixWeeksAgo = new Date();
+      sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
+      const dateQuery = sixWeeksAgo.toISOString().split('T')[0].replace(/-/g, '/');
+      
+      // Comprehensive search for all loan-related content going back 6 weeks
+      const searchQuery = `(has:attachment OR loan OR refinance OR mortgage OR property OR title OR insurance OR appraisal OR inspection OR closing OR deed OR escrow OR underwriting OR EIN OR "EIN letter" OR "employer identification" OR tax OR bank OR statement OR W2 OR paystub OR income OR employment OR license OR LLC OR corp OR "articles of incorporation" OR "operating agreement" OR "certificate of formation" OR "business license" OR kiavi OR "samuel anicette" OR "sam anicette" OR "colony preserve") after:${dateQuery}`;
+      
       const listResponse = await gmail.users.messages.list({
         auth: gmailAuth,
         userId: 'me',
-        maxResults: 500, // Scan 500 recent emails for comprehensive filtering
-        q: 'in:inbox OR in:sent' // Include both inbox and sent emails
+        maxResults: 1000, // Increased to 1000 to catch more historical emails
+        q: searchQuery
       });
 
       const allMessages = [];
       
       if (listResponse.data.messages) {
-        // Get details for each message
+        // Track processed threads to avoid duplicates
+        const processedThreads = new Set();
+        
+        // Get details for each message and scan full conversation threads
         for (const message of listResponse.data.messages) {
           try {
-            const msgResponse = await gmail.users.messages.get({
-              auth: gmailAuth,
-              userId: 'me',
-              id: message.id!,
-              format: 'metadata',
-              metadataHeaders: ['From', 'Subject', 'Date', 'To', 'Cc']
-            });
+            // If we haven't processed this thread yet, get the full thread
+            if (!processedThreads.has(message.threadId)) {
+              processedThreads.add(message.threadId);
+              
+              // Get the full thread to capture all messages in the conversation
+              const threadResponse = await gmail.users.threads.get({
+                auth: gmailAuth,
+                userId: 'me',
+                id: message.threadId!,
+                format: 'metadata',
+                metadataHeaders: ['From', 'Subject', 'Date', 'To', 'Cc']
+              });
+              
+              // Process all messages in the thread
+              for (const threadMessage of threadResponse.data.messages || []) {
+                const headers = threadMessage.payload?.headers || [];
+                const fromHeader = headers.find(h => h.name === 'From');
+                const subjectHeader = headers.find(h => h.name === 'Subject');
+                const dateHeader = headers.find(h => h.name === 'Date');
+                const toHeader = headers.find(h => h.name === 'To');
+                const ccHeader = headers.find(h => h.name === 'Cc');
 
-            const msg = msgResponse.data;
-            const headers = msg.payload?.headers || [];
-            const fromHeader = headers.find(h => h.name === 'From');
-            const subjectHeader = headers.find(h => h.name === 'Subject');
-            const dateHeader = headers.find(h => h.name === 'Date');
-            const toHeader = headers.find(h => h.name === 'To');
-            const ccHeader = headers.find(h => h.name === 'Cc');
-
-            allMessages.push({
-              id: msg.id,
-              threadId: msg.threadId,
-              snippet: msg.snippet,
-              subject: subjectHeader?.value || '',
-              from: fromHeader?.value || '',
-              to: toHeader?.value || '',
-              cc: ccHeader?.value || '',
-              date: dateHeader?.value || '',
-              unread: msg.labelIds?.includes('UNREAD') || false,
-              hasAttachments: msg.payload?.parts?.some(part => 
-                part.filename && part.filename.length > 0
-              ) || false
-            });
+                allMessages.push({
+                  id: threadMessage.id,
+                  threadId: threadMessage.threadId,
+                  snippet: threadMessage.snippet,
+                  subject: subjectHeader?.value || '',
+                  from: fromHeader?.value || '',
+                  to: toHeader?.value || '',
+                  cc: ccHeader?.value || '',
+                  date: dateHeader?.value || '',
+                  unread: threadMessage.labelIds?.includes('UNREAD') || false,
+                  hasAttachments: threadMessage.payload?.parts?.some(part => 
+                    part.filename && part.filename.length > 0
+                  ) || false
+                });
+              }
+            }
           } catch (msgError) {
-            console.error('Error fetching message details:', msgError);
+            console.error('Error fetching thread details:', msgError);
           }
         }
       }
