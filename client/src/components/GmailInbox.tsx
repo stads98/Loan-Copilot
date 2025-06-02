@@ -19,6 +19,16 @@ interface GmailMessage {
   hasAttachments: boolean;
 }
 
+interface ParsedEmail {
+  header: boolean;
+  from: string;
+  subject: string;
+  date: string;
+  content: string;
+}
+
+
+
 interface GmailInboxProps {
   className?: string;
   loanId?: number;
@@ -34,6 +44,79 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
   const [messageAttachments, setMessageAttachments] = useState<any[]>([]);
   const [isLoadingMessage, setIsLoadingMessage] = useState(false);
   const { toast } = useToast();
+
+  // Function to parse email threads and separate individual messages
+  const parseEmailThread = (emailContent: string): ParsedEmail[] => {
+    if (!emailContent) return [{ header: false, from: '', subject: '', date: '', content: 'No content available' }];
+    
+    const emails: ParsedEmail[] = [];
+    
+    // Split by common email separators
+    const sections = emailContent.split(/(?=From:|On .+ wrote:|Sent:|Subject:)/i);
+    
+    for (let i = 0; i < sections.length; i++) {
+      const section = sections[i].trim();
+      if (!section) continue;
+      
+      // Extract header information
+      const fromMatch = section.match(/From:\s*(.+?)(?:\n|$)/i);
+      const sentMatch = section.match(/Sent:\s*(.+?)(?:\n|$)/i);
+      const subjectMatch = section.match(/Subject:\s*(.+?)(?:\n|$)/i);
+      const dateMatch = section.match(/On\s+(.+?)\s+wrote:/i);
+      
+      let content = section;
+      let hasHeader = false;
+      let from = '';
+      let subject = '';
+      let date = '';
+      
+      if (fromMatch || sentMatch || subjectMatch || dateMatch) {
+        hasHeader = true;
+        from = fromMatch ? fromMatch[1].trim() : '';
+        subject = subjectMatch ? subjectMatch[1].trim() : '';
+        date = sentMatch ? sentMatch[1].trim() : (dateMatch ? dateMatch[1].trim() : '');
+        
+        // Remove header lines from content
+        content = content
+          .replace(/From:\s*.+?\n/gi, '')
+          .replace(/Sent:\s*.+?\n/gi, '')
+          .replace(/To:\s*.+?\n/gi, '')
+          .replace(/Cc:\s*.+?\n/gi, '')
+          .replace(/Subject:\s*.+?\n/gi, '')
+          .replace(/On\s+.+?\s+wrote:/gi, '')
+          .trim();
+      }
+      
+      // Clean up content
+      content = content
+        .replace(/^[\s\n\r]+/, '')
+        .replace(/[\s\n\r]+$/, '')
+        .replace(/\n{3,}/g, '\n\n');
+      
+      if (content) {
+        emails.push({
+          header: hasHeader,
+          from,
+          subject,
+          date,
+          content
+        });
+      }
+    }
+    
+    // If no sections were found, treat the entire content as one email
+    if (emails.length === 0) {
+      emails.push({
+        header: false,
+        from: '',
+        subject: '',
+        date: '',
+        content: emailContent
+      });
+    }
+    
+    return emails;
+  };
 
   const checkGmailConnection = async () => {
     try {
@@ -418,13 +501,46 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                     <RefreshCw className="w-6 h-6 animate-spin" />
                   </div>
                 ) : (
-                  <div className="prose max-w-none">
-                    <div 
-                      className="whitespace-pre-wrap text-sm leading-relaxed"
-                      dangerouslySetInnerHTML={{ 
-                        __html: messageContent.replace(/\n/g, '<br>') 
-                      }}
-                    />
+                  <div className="space-y-4">
+                    {parseEmailThread(messageContent).map((email, index) => (
+                      <div 
+                        key={index} 
+                        className={`p-4 rounded-lg border-2 ${
+                          index === 0 
+                            ? 'border-blue-200 bg-blue-50' 
+                            : 'border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        {email.header && (
+                          <div className="border-b border-gray-300 pb-2 mb-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                                {index === 0 ? 'Latest Message' : `Previous Message ${index}`}
+                              </span>
+                              {email.date && (
+                                <span className="text-xs text-gray-500">{email.date}</span>
+                              )}
+                            </div>
+                            {email.from && (
+                              <p className="text-sm font-medium text-gray-800 mt-1">
+                                From: {email.from}
+                              </p>
+                            )}
+                            {email.subject && (
+                              <p className="text-sm text-gray-700">
+                                Subject: {email.subject}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        <div 
+                          className="prose prose-sm max-w-none text-gray-700"
+                          dangerouslySetInnerHTML={{ 
+                            __html: email.content.replace(/\n/g, '<br>') 
+                          }}
+                        />
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
