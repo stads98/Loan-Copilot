@@ -50,6 +50,7 @@ export interface IStorage {
   getDocument(id: number): Promise<Document | undefined>;
   getDocumentsByLoanId(loanId: number): Promise<Document[]>;
   createDocument(document: InsertDocument): Promise<Document>;
+  updateDocument(id: number, document: Partial<InsertDocument>): Promise<Document | undefined>;
   deleteDocument(id: number): Promise<boolean>;
 
   // Tasks
@@ -316,6 +317,15 @@ export class MemStorage implements IStorage {
     const document: Document = { ...insertDocument, id, uploadedAt: new Date() };
     this.documents.set(id, document);
     return document;
+  }
+
+  async updateDocument(id: number, document: Partial<InsertDocument>): Promise<Document | undefined> {
+    const existingDocument = this.documents.get(id);
+    if (!existingDocument) return undefined;
+
+    const updatedDocument = { ...existingDocument, ...document };
+    this.documents.set(id, updatedDocument);
+    return updatedDocument;
   }
 
   async deleteDocument(id: number): Promise<boolean> {
