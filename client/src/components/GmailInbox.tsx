@@ -302,58 +302,31 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
         throw new Error('Failed to decode attachment data');
       }
       
-      const blob = new Blob([binaryData], { type: attachment.mimeType || 'application/octet-stream' });
-      
-      if (attachment.mimeType?.includes('pdf')) {
-        // For PDFs, save to documents and open preview
-        try {
-          await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
-            attachmentData: response.data, // Use the base64 data directly
-            filename: attachment.filename,
-            mimeType: attachment.mimeType,
-            size: attachment.size,
-            emailSubject: selectedMessage?.subject,
-            emailFrom: selectedMessage?.from
-          });
-          
-          toast({
-            title: "PDF Saved",
-            description: `${attachment.filename} has been added to loan documents`,
-          });
-        } catch (saveError) {
-          console.warn('Could not save PDF to documents:', saveError);
-          // Continue with preview even if save fails
-        }
+      // Save all files (PDFs and images) to loan documents and Google Drive
+      try {
+        await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
+          attachmentData: response.data, // Use the base64 data directly
+          filename: attachment.filename,
+          mimeType: attachment.mimeType,
+          size: attachment.size,
+          emailSubject: selectedMessage?.subject,
+          emailFrom: selectedMessage?.from
+        });
         
-        // Open preview in new tab
-        try {
-          const url = URL.createObjectURL(blob);
-          window.open(url, '_blank');
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        } catch (previewError) {
-          console.error('Preview error:', previewError);
-          throw new Error('Failed to open PDF preview');
-        }
-      } else {
-        // For other files, download directly
-        try {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = attachment.filename || 'attachment';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-          
-          toast({
-            title: "Download Complete",
-            description: `${attachment.filename} has been downloaded`,
-          });
-        } catch (downloadError) {
-          console.error('Download error:', downloadError);
-          throw new Error('Failed to download file');
-        }
+        const fileType = attachment.mimeType?.includes('pdf') ? 'PDF' : 
+                         attachment.mimeType?.includes('image') ? 'Image' : 'File';
+        
+        toast({
+          title: `${fileType} Saved`,
+          description: `${attachment.filename} has been added to loan documents and uploaded to Google Drive`,
+        });
+      } catch (saveError) {
+        console.error('Could not save to documents:', saveError);
+        toast({
+          title: "Save Failed",
+          description: `Could not save ${attachment.filename} to loan documents. Please try again.`,
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error('Download error:', error);
@@ -787,7 +760,7 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                                 className="text-xs"
                               >
                                 <Save className="w-3 h-3 mr-1" />
-                                {isPDF ? 'Save' : 'Download'}
+                                Save
                               </Button>
                             </div>
                           </div>
