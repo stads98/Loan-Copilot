@@ -81,6 +81,7 @@ export const documents = pgTable("documents", {
   category: text("category"), // borrower, property, title, insurance, etc.
   status: text("status").default("pending"), // pending, synced, processed, etc.
   source: text("source").default("upload"), // upload, gmail, drive
+  deleted: boolean("deleted").default(false), // Soft delete flag
   loanId: integer("loan_id").notNull(),
   uploadedAt: timestamp("uploaded_at").defaultNow(),
 });

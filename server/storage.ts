@@ -50,6 +50,7 @@ export interface IStorage {
   // Documents
   getDocument(id: number): Promise<Document | undefined>;
   getDocumentsByLoanId(loanId: number): Promise<Document[]>;
+  getAllDocumentsByLoanId(loanId: number): Promise<Document[]>; // Include deleted documents for duplicate checking
   createDocument(document: InsertDocument): Promise<Document>;
   updateDocument(id: number, document: Partial<InsertDocument>): Promise<Document | undefined>;
   deleteDocument(id: number): Promise<boolean>;
@@ -317,6 +318,11 @@ export class MemStorage implements IStorage {
     return Array.from(this.documents.values()).filter(
       (document) => document.loanId === loanId,
     );
+  }
+
+  async getAllDocumentsByLoanId(loanId: number): Promise<Document[]> {
+    // Memory storage doesn't have soft deletes, so return same as regular method
+    return this.getDocumentsByLoanId(loanId);
   }
 
   async createDocument(insertDocument: InsertDocument): Promise<Document> {

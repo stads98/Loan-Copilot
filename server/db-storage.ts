@@ -185,7 +185,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDocumentsByLoanId(loanId: number): Promise<Document[]> {
-    return db.select().from(documents).where(eq(documents.loanId, loanId));
+    return db.select().from(documents).where(
+      and(eq(documents.loanId, loanId), eq(documents.deleted, false))
+    );
   }
 
   async createDocument(insertDocument: InsertDocument): Promise<Document> {
@@ -210,10 +212,16 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDocument(id: number): Promise<boolean> {
     const [deletedDocument] = await db
-      .delete(documents)
+      .update(documents)
+      .set({ deleted: true })
       .where(eq(documents.id, id))
       .returning();
     return !!deletedDocument;
+  }
+
+  // Get all documents including deleted ones (for duplicate checking)
+  async getAllDocumentsByLoanId(loanId: number): Promise<Document[]> {
+    return db.select().from(documents).where(eq(documents.loanId, loanId));
   }
 
   // Tasks
