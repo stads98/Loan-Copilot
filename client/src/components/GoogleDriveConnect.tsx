@@ -88,16 +88,9 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
     try {
       setIsLoading(true);
       
-      // Get the Google OAuth URL for both Gmail and Drive permissions
-      const response = await fetch('/api/auth/google/url');
-      const data = await response.json();
-      
-      if (data.authUrl) {
-        // Redirect to Google OAuth
-        window.location.href = data.authUrl;
-      } else {
-        throw new Error('Failed to get authentication URL');
-      }
+      // Use direct OAuth endpoint instead of getting URL first
+      // This avoids potential CORS/security issues with iframe blocking
+      window.location.href = '/api/auth/google';
     } catch (error) {
       console.error('Error connecting to Google:', error);
       toast({
