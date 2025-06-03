@@ -609,15 +609,24 @@ export async function uploadDocumentsToDrive(documents: any[], folderId: string,
           const fs = await import('fs');
           const path = await import('path');
           
-          const filename = document.filename || document.originalName || document.name;
+          const filename = document.fileId || document.filename || document.originalName || document.name;
           if (!filename) {
             console.error('Document has no filename:', document);
             failedCount++;
             continue;
           }
           
+          console.log(`Reading local file: ${filename}`);
           const filePath = path.join(process.cwd(), 'uploads', filename);
-          fileContent = fs.readFileSync(filePath);
+          
+          try {
+            fileContent = fs.readFileSync(filePath);
+            console.log(`Successfully read local file: ${filename}, size: ${fileContent.length} bytes`);
+          } catch (readError) {
+            console.error(`Failed to read local file ${filename}:`, readError);
+            failedCount++;
+            continue;
+          }
         }
         
         // Upload to target Google Drive folder
