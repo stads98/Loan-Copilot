@@ -17,14 +17,29 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
   
   const [showFolderBrowser, setShowFolderBrowser] = useState(false);
 
-  const handleConnectDrive = () => {
-    // Since you can already see your real folders, let's skip the auth popup
-    // and go directly to the folder browser
-    setShowFolderBrowser(true);
-    toast({
-      title: "Connected!",
-      description: "Access to your Google Drive folders"
-    });
+  const handleConnectDrive = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Get the Google OAuth URL for both Gmail and Drive permissions
+      const response = await fetch('/api/auth/google/url');
+      const data = await response.json();
+      
+      if (data.authUrl) {
+        // Redirect to Google OAuth
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error('Failed to get authentication URL');
+      }
+    } catch (error) {
+      console.error('Error connecting to Google:', error);
+      toast({
+        title: "Connection Failed",
+        description: "Unable to connect to Google services. Please try again.",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+    }
   };
 
   const handleFolderSelected = (folderId: string, folderName: string) => {
