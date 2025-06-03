@@ -145,12 +145,11 @@ export default function DocumentChecklist({ loanDetails, onDocumentToggle }: Doc
         try {
           const formData = new FormData();
           formData.append('file', file);
-          formData.append('loanId', loanDetails.loan.id.toString());
+          formData.append('name', doc.name);
           formData.append('category', doc.category);
           formData.append('requirementId', doc.id);
-          formData.append('documentName', doc.name);
 
-          const response = await fetch('/api/documents/upload', {
+          const response = await fetch(`/api/loans/${loanDetails.loan.id}/documents`, {
             method: 'POST',
             body: formData,
           });

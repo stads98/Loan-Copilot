@@ -2514,6 +2514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log('Gmail search query:', searchQuery);
+      console.log('Enhanced search now includes adlercapital.info domain and attachment filtering');
       const listResponse = await gmail.users.messages.list({
         auth: gmailAuth,
         userId: 'me',
