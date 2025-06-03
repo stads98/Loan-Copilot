@@ -580,7 +580,13 @@ export async function uploadDocumentsToDrive(documents: any[], folderId: string,
         let fileContent: Buffer;
         const documentName = document.name || document.originalName || `document_${document.id}`;
         
-        if (document.fileId && document.fileId.length > 10) {
+        // Check if this looks like a Google Drive file ID (format: alphanumeric, typically 25-44 characters, no file extension)
+        const isGoogleDriveId = document.fileId && 
+          document.fileId.length > 20 && 
+          /^[a-zA-Z0-9_-]+$/.test(document.fileId) && 
+          !document.fileId.includes('.');
+        
+        if (isGoogleDriveId) {
           console.log(`Downloading Google Drive document: ${document.fileId}`);
           try {
             // This is a Google Drive document - download it first

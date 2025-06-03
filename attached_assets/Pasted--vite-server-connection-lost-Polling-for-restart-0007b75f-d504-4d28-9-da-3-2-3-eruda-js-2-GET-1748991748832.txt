@@ -1,0 +1,36 @@
+[vite] server connection lost. Polling for restart...
+0007b75f-d504-4d28-9…da/3.2.3/eruda.js:2 
+ GET https://0007b75f-d504-4d28-927e-2b1824d99bb5-00-2pydj6ryedxd2.picard.replit.dev/api/gmail/messages?maxResults=20&loanId=36 502 (Bad Gateway)
+window.fetch	@	0007b75f-d504-4d28-9…da/3.2.3/eruda.js:2
+apiRequest	@	0007b75f-d504-4d28-9…ib/queryClient.ts:9
+fetchMessages	@	0007b75f-d504-4d28-9…/GmailInbox.tsx:153
+(anonymous)	@	0007b75f-d504-4d28-9…/GmailInbox.tsx:439
+setInterval		
+(anonymous)	@	0007b75f-d504-4d28-9…/GmailInbox.tsx:437
+commitHookEffectListMount	@	0007b75f-d504-4d28-9…js?v=a68780ab:16915
+commitPassiveMountOnFiber	@	0007b75f-d504-4d28-9…js?v=a68780ab:18156
+commitPassiveMountEffects_complete	@	0007b75f-d504-4d28-9…js?v=a68780ab:18129
+commitPassiveMountEffects_begin	@	0007b75f-d504-4d28-9…js?v=a68780ab:18119
+commitPassiveMountEffects	@	0007b75f-d504-4d28-9…js?v=a68780ab:18109
+flushPassiveEffectsImpl	@	0007b75f-d504-4d28-9…js?v=a68780ab:19490
+flushPassiveEffects	@	0007b75f-d504-4d28-9…js?v=a68780ab:19447
+(anonymous)	@	0007b75f-d504-4d28-9…js?v=a68780ab:19328
+workLoop	@	0007b75f-d504-4d28-9…N.js?v=a68780ab:197
+flushWork	@	0007b75f-d504-4d28-9…N.js?v=a68780ab:176
+performWorkUntilDeadline	@	0007b75f-d504-4d28-9…N.js?v=a68780ab:384
+0007b75f-d504-4d28-9…da/3.2.3/eruda.js:2 
+ GET https://0007b75f-d504-4d28-927e-2b1824d99bb5-00-2pydj6ryedxd2.picard.replit.dev/api/drive/folder/1YU3ZylVB08ZSB98rnJ8ldt4muOk5gTAt/name 502 (Bad Gateway)
+VM26 eruda.js:2 
+ GET https://0007b75f-d504-4d28-927e-2b1824d99bb5-00-2pydj6ryedxd2.picard.replit.dev/api/auth/user 401 (Unauthorized)
+Console.js:61 Loaded loan data: 
+{loan: {…}, property: {…}, lender: {…}, contacts: Array(1), documents: Array(2), …}
+Console.js:61 Setting document assignments: 
+{}
+Console.js:61 SendToDrive button clicked! 
+{driveFolder: '1YU3ZylVB08ZSB98rnJ8ldt4muOk5gTAt', loanId: 36}
+Console.js:61 Making POST request to send-to-drive...
+Console.js:61 Response status: 200
+Console.js:61 Send to drive result: 
+{uploadedCount: 0, failedCount: 2, message: '0 documents uploaded to Google Drive'}
+﻿
+
