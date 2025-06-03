@@ -51,6 +51,76 @@ const upload = multer({
   }
 });
 
+// Auto-sync function to trigger Google Drive synchronization
+async function triggerAutoSync(loanId: number, action: string, filename?: string) {
+  try {
+    console.log(`Auto-sync triggered for loan ${loanId}: ${action}${filename ? ` - ${filename}` : ''}`);
+    
+    // Get loan details to check if Google Drive is connected
+    const loan = await storage.getLoan(loanId);
+    if (!loan?.driveFolder) {
+      console.log('Auto-sync skipped: No Google Drive folder configured');
+      return;
+    }
+
+    // Trigger background sync without blocking the main request
+    setTimeout(async () => {
+      try {
+        console.log(`Executing auto-sync for loan ${loanId}...`);
+        
+        // Get Google Drive files for the loan folder
+        const { getDriveFiles } = await import("./lib/google");
+        const files = await getDriveFiles(loan.driveFolder);
+        
+        // Perform bidirectional sync
+        const driveFileIds = new Set(files.map(f => f.id));
+        const existingDocs = await storage.getDocumentsByLoanId(loanId);
+        
+        let syncChanges = 0;
+        
+        // Remove database documents that no longer exist in Google Drive
+        for (const existingDoc of existingDocs) {
+          if (existingDoc.fileId && !driveFileIds.has(existingDoc.fileId)) {
+            await storage.deleteDocument(existingDoc.id);
+            syncChanges++;
+            console.log(`Auto-sync: Removed ${existingDoc.name} - no longer in Google Drive`);
+          }
+        }
+        
+        // Add new documents from Google Drive
+        for (const file of files) {
+          const existingDoc = existingDocs.find(doc => doc.fileId === file.id);
+          if (!existingDoc) {
+            await storage.createDocument({
+              name: file.name,
+              fileId: file.id,
+              fileType: file.mimeType,
+              fileSize: file.size ? parseInt(file.size) : null,
+              category: "imported",
+              status: "received",
+              source: "google_drive",
+              loanId: loanId
+            });
+            syncChanges++;
+            console.log(`Auto-sync: Added ${file.name} from Google Drive`);
+          }
+        }
+        
+        if (syncChanges > 0) {
+          console.log(`Auto-sync completed: ${syncChanges} changes synchronized`);
+        } else {
+          console.log('Auto-sync completed: No changes needed');
+        }
+      } catch (syncError) {
+        console.error('Auto-sync error:', syncError);
+      }
+    }, 1000); // 1 second delay to avoid blocking
+    
+  } catch (error) {
+    console.error('Auto-sync trigger error:', error);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up session middleware
   app.use(
@@ -1660,6 +1730,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const document = await storage.createDocument(documentData);
+      
+      // Trigger auto-sync after document upload
+      await triggerAutoSync(loanId, "upload", document.name);
+      
       res.status(201).json(document);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1684,6 +1758,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedDocument = await storage.updateDocument(id, req.body);
+      
+      // Trigger auto-sync after document update
+      if (updatedDocument && document.loanId) {
+        await triggerAutoSync(document.loanId, "update", document.name);
+      }
+      
       res.json(updatedDocument);
     } catch (error) {
       console.error("Error updating document:", error);
@@ -1724,6 +1804,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Continue with local deletion even if Google Drive deletion fails
         }
       }
+
+      // Trigger auto-sync after document deletion
+      await triggerAutoSync(document.loanId, "delete", document.name);
 
       res.json({ success: true });
     } catch (error) {
