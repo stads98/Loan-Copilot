@@ -513,9 +513,11 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
         }
       }
 
-      // Refresh documents list
-      queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId] });
+      // Refresh documents list with multiple cache invalidations
+      await queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId] });
+      await queryClient.refetchQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/loans', loanId] });
 
       // Clear selection
       setSelectedEmails(new Set());
