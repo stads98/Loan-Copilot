@@ -103,9 +103,9 @@ Loan Processor
     subject: "{PROPERTY_ADDRESS} (Loan #{LOAN_NUMBER}) - Title Order Request",
     body: `Hi {TITLE_AGENT_NAME},
 
-I am working on originating a loan for my borrower, {BORROWER_NAME}, who is {LOAN_PURPOSE} the property located at {PROPERTY_ADDRESS}. The title for this transaction is under the entity "{BORROWER_ENTITY_NAME}". Please process the title order in line with the attached instructions. 
+I am working on originating a loan for my borrower, {BORROWER_NAME}, who is {LOAN_PURPOSE} the property located at {PROPERTY_ADDRESS}. The title for this transaction is under the entity "{BORROWER_ENTITY_NAME}". Please process the title order in line with the instructions below.
 
-Please confirm Receipt of this email.
+Please confirm receipt of this email.
 
 If you need further clarification or additional details, don't hesitate to reach me directly here or on my cell at (917) 963-0181.
 
@@ -114,23 +114,22 @@ I appreciate your help and look forward to working with you.
 Best regards,
 {PROCESSOR_NAME}
 
-ATTACHED: Kiavi Title Requirements Document
+------------- KIAVI TITLE REQUIREMENTS -------------
 
-------------- KEY REQUIREMENTS SUMMARY -------------
-
-Please provide the following documents:
+Please request the following documents from your client's escrow and title agent. To ensure a timely close, please make sure that the documentation includes the following as written:
 
 1. Preliminary title report or title commitment (must include coverage amount)
 2. A 24-month chain of title, including deeds
 3. Property address and APN referenced in report
 4. Vested owner matches seller on the purchase contract
+   If transaction is double closing, please provide non-executed Grant/Warranty deed for the first transaction
 5. Estimated HUD-1 that includes all fees for this transaction
 6. Closing Protection Letter
 7. Tax Certificate
 8. Contact information for closing documents
 9. Wire instructions
 10. Confirm property type and if there is an HOA associated with the property
-11. Title Endorsements: Environmental endorsement, ALTA 9 (except FL, OH, TX), PUD/condo endorsements if applicable, ALTA 19 & 20 for multiple parcels
+11. Title Endorsements: Lender will always require an environmental endorsement, as well as an ALTA 9 if the standard survey exception will remain on title (except in the states of FL, OH and TX where no ALTA 9 is required). If property is a PUD or condo those endorsements are also required. If the subject property includes multiple parcels, the lender requires both ALTA 19 & 20 endorsements.
 
 LOAN INFORMATION:
 Loan Number: {LOAN_NUMBER}
@@ -140,12 +139,14 @@ Property Address: {PROPERTY_ADDRESS}
 Target Signing Date: {TARGET_CLOSING_DATE}
 Loan Purpose: {LOAN_PURPOSE}
 
-Loss Payee / Proposed Insured:
-Adler Capital Funding, LLC
+Loss Payee / Proposed Insured, as written below:
+Kiavi Funding, Inc
 Its Successors and/or Assigns
+2 Allegheny Center, Nova Tower 2, Suite 200
+Pittsburgh, PA 15212
 RE: Loan no: {LOAN_NUMBER}
 
-Title policy must insure Adler Capital in 1st lien position. ALTA standard form title policy required (2016, 2021, or Short Form acceptable).`,
+Title Insurance Underwriter must be licensed in the state of the property location. We require an ALTA standard form title policy or equivalent state-promulgated coverage. Policy form version may be ALTA 2016 or 2021. ALTA Short Form or ALTA 2012 Short Form policies are also acceptable. (**ALTA 2006 policies are only acceptable in NY until the insurance commissioner approves a new form.) This is a business purpose loan and is not subject to TRID Regulations. A Closing Disclosure (CD) is not required but may be accepted in place of a HUD-1 Settlement Statement. Title policy must insure Kiavi in 1st lien position. Kiavi will require the payoff of all liens, judgments, lis pendens, recorded assessments or anything else that impairs our 1st lien position. Please note that Kiavi facilitates the disbursement process of the construction holdback (if any) so we do not require coverage for FUTURE mechanics liens for this policy (i.e. via endorsements or policy date-downs).`,
   },
   {
     id: 4,

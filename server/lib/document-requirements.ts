@@ -45,6 +45,9 @@ const baseRequirements: DocumentRequirement[] = [
   
   // Title
   { id: "title_contact", name: "Title Agent Contact Info", required: true, category: "title" },
+  { id: "preliminary_title", name: "Preliminary Title", required: true, category: "title" },
+  { id: "closing_protection_letter", name: "Closing Protection Letter", required: true, category: "title" },
+  { id: "wire_instructions", name: "Wire Instructions", required: true, category: "title" },
   
   // Payoff (if applicable)
   { id: "lender_contact", name: "Current Lender Contact Info", required: false, category: "payoff" },
