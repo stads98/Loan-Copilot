@@ -14,17 +14,33 @@ interface GoogleDriveConnectProps {
 export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: GoogleDriveConnectProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState(isConnected);
+  const [currentFolderName, setCurrentFolderName] = useState<string>("");
   const { toast } = useToast();
   
   const [showFolderBrowser, setShowFolderBrowser] = useState(false);
 
-  // Poll for connection status changes
+  // Poll for connection status changes and fetch folder info
   useEffect(() => {
     const checkConnectionStatus = async () => {
       try {
         const response = await fetch('/api/auth/google/status');
         const data = await response.json();
         setConnectionStatus(data.connected);
+        
+        // If connected, fetch current folder info
+        if (data.connected && loanId) {
+          try {
+            const loanResponse = await fetch(`/api/loans/${loanId}`);
+            const loanData = await loanResponse.json();
+            if (loanData.loan?.driveFolder) {
+              // Extract folder name from the folder path or use folder ID
+              const folderName = loanData.loan.driveFolderName || `Google Drive Folder`;
+              setCurrentFolderName(folderName);
+            }
+          } catch (error) {
+            console.error('Error fetching loan folder info:', error);
+          }
+        }
       } catch (error) {
         console.error('Error checking connection status:', error);
       }
@@ -37,7 +53,7 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
     const interval = setInterval(checkConnectionStatus, 2000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [loanId]);
 
   // Update local state when prop changes
   useEffect(() => {
@@ -167,6 +183,11 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
                 <p className="text-sm text-gray-500">
                   Gmail and Google Drive connected - documents are being analyzed automatically
                 </p>
+                {currentFolderName && (
+                  <p className="text-sm text-blue-600 mt-1">
+                    📁 Connected to: {currentFolderName}
+                  </p>
+                )}
               </div>
               <div className="ml-auto">
                 <Button variant="outline" size="sm" onClick={() => setShowFolderBrowser(true)}>
