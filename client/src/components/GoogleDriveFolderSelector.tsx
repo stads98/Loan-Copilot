@@ -60,9 +60,10 @@ export default function GoogleDriveFolderSelector({
       }
     } catch (error) {
       console.error('Error loading Google Drive folders:', error);
+      setRequiresAuth(true);
       toast({
-        title: "Error",
-        description: "Failed to load Google Drive folders. Please ensure you're connected to Google Drive.",
+        title: "Google Drive Authentication Required",
+        description: "Please reconnect your Google Drive account to access folders.",
         variant: "destructive"
       });
     } finally {
@@ -162,42 +163,69 @@ export default function GoogleDriveFolderSelector({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Create New Folder Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center">
-                <FolderPlus className="w-4 h-4 mr-2" />
-                Create New Folder
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Input
-                placeholder="Folder name"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-              />
-              <Button 
-                onClick={createNewFolder} 
-                disabled={creating || !newFolderName.trim()}
-                className="w-full"
-              >
-                {creating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Folder
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
+          {requiresAuth ? (
+            <Card className="border-destructive">
+              <CardHeader>
+                <CardTitle className="text-sm text-destructive">
+                  Google Drive Authentication Required
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Your Google Drive connection has expired. Please reconnect to access your loan folders.
+                </p>
+                <Button 
+                  onClick={() => window.open('/api/auth/google', '_blank')} 
+                  className="w-full"
+                >
+                  Reconnect Google Drive
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  After reconnecting, refresh this page and try again.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Create New Folder Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm flex items-center">
+                    <FolderPlus className="w-4 h-4 mr-2" />
+                    Create New Folder
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Input
+                    placeholder="Folder name"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                  />
+                  <Button 
+                    onClick={createNewFolder} 
+                    disabled={creating || !newFolderName.trim()}
+                    className="w-full"
+                  >
+                    {creating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create Folder
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            </>
+          )}
 
           {/* Select Existing Folder Section */}
-          <Card>
+          {!requiresAuth && (
+            <Card>
             <CardHeader>
               <CardTitle className="text-sm flex items-center">
                 <Folder className="w-4 h-4 mr-2" />
@@ -266,6 +294,7 @@ export default function GoogleDriveFolderSelector({
               </Button>
             </CardContent>
           </Card>
+          )}
         </div>
       </DialogContent>
     </Dialog>
