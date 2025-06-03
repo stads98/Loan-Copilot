@@ -2587,46 +2587,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   category = 'loan';
                 }
 
-                // Upload to Google Drive for backup and organization
-                try {
-                  const { uploadFileToGoogleDrive } = await import('./lib/google');
-                  const loanData = await storage.getLoanWithDetails(loanId);
-                  
-                  if (loanData?.loan?.driveFolder) {
-                    console.log(`Uploading ${attachment.filename} to Google Drive folder: ${loanData.loan.driveFolder}`);
-                    
-                    const driveFileId = await uploadFileToGoogleDrive(
-                      attachment.filename,
-                      data,
-                      attachment.mimeType,
-                      loanData.loan.driveFolder
-                    );
-                    
-                    console.log(`Successfully uploaded ${attachment.filename} to Google Drive with ID: ${driveFileId}`);
-                    
-                    // Create document record with Google Drive file ID
-                    const document = await storage.createDocument({
-                      name: attachment.filename,
-                      fileId: driveFileId, // Use Google Drive file ID instead of local
-                      loanId: loanId,
-                      fileType: attachment.mimeType,
-                      fileSize: attachment.size,
-                      category: category,
-                      source: `gmail:${message.from}`,
-                      status: 'processed'
-                    });
-                  } else {
-                    // Fallback: create local document record if no Drive folder
-                    const document = await storage.createDocument({
-                      name: attachment.filename,
-                      fileId: fileId,
-                      loanId: loanId,
-                      fileType: attachment.mimeType,
-                      fileSize: attachment.size,
-                      category: category,
-                      source: `gmail:${message.from}`,
-                      status: 'processed'
-                    });
+                // Save document to database with local file reference
+                const document = await storage.createDocument({
+                  name: attachment.filename,
+                  filename: fileId, // Use local filename for "Send to Drive" functionality
+                  loanId: loanId,
+                  fileType: attachment.mimeType,
+                  fileSize: attachment.size,
+                  category: category,
+                  source: `gmail:${message.from}`,
+                  status: 'processed'
+                });
+                
+                console.log(`Saved document locally: ${attachment.filename} as ${fileId}`);
                   }
                 } catch (driveError) {
                   console.error(`Failed to upload ${attachment.filename} to Google Drive:`, driveError);
