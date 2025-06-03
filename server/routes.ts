@@ -1485,7 +1485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/loans/:loanId/documents", isAuthenticated, upload.single('file'), async (req, res) => {
+  app.post("/api/loans/:loanId/documents", isAuthenticated, uploadMemory.single('file'), async (req, res) => {
     try {
       const loanId = parseInt(req.params.loanId);
       if (isNaN(loanId)) {
