@@ -3863,18 +3863,61 @@ Would you like me to draft an email to request any specific documents or informa
     }
   });
 
-  // Google Drive disconnect endpoint
-  app.post('/api/auth/google/disconnect', isAuthenticated, async (req, res) => {
+  // Google Drive specific disconnect endpoint
+  app.post('/api/auth/google-drive/disconnect', isAuthenticated, async (req, res) => {
     try {
-      // Clear Google tokens from session
-      if (req.session) {
-        delete req.session.googleTokens;
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
       }
+
+      // Delete Google Drive tokens from database
+      await storage.deleteUserToken(userId, 'google_drive');
       
+      console.log(`Google Drive disconnected for user: ${userId}`);
       res.json({ success: true, message: 'Google Drive disconnected successfully' });
     } catch (error) {
       console.error('Error disconnecting Google Drive:', error);
       res.status(500).json({ error: 'Failed to disconnect Google Drive' });
+    }
+  });
+
+  // Gmail specific disconnect endpoint  
+  app.post('/api/auth/gmail/disconnect', isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Delete Gmail tokens from database
+      await storage.deleteUserToken(userId, 'gmail');
+      
+      console.log(`Gmail disconnected for user: ${userId}`);
+      res.json({ success: true, message: 'Gmail disconnected successfully' });
+    } catch (error) {
+      console.error('Error disconnecting Gmail:', error);
+      res.status(500).json({ error: 'Failed to disconnect Gmail' });
+    }
+  });
+
+  // Legacy endpoint that disconnects both (for backward compatibility)
+  app.post('/api/auth/google/disconnect', isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Delete both Google Drive and Gmail tokens from database
+      await storage.deleteUserToken(userId, 'google_drive');
+      await storage.deleteUserToken(userId, 'gmail');
+      
+      console.log(`Google Drive and Gmail disconnected for user: ${userId}`);
+      res.json({ success: true, message: 'Google Drive and Gmail disconnected successfully' });
+    } catch (error) {
+      console.error('Error disconnecting Google services:', error);
+      res.status(500).json({ error: 'Failed to disconnect Google services' });
     }
   });
 

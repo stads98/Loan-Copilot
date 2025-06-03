@@ -49,7 +49,7 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
             <Button 
               onClick={isConnected ? async () => {
                 try {
-                  const response = await fetch('/api/auth/google/disconnect', {
+                  const response = await fetch('/api/auth/google-drive/disconnect', {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
