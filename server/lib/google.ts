@@ -582,18 +582,27 @@ export async function uploadDocumentsToDrive(documents: any[], folderId: string,
         
         if (document.fileId && document.fileId.length > 10) {
           console.log(`Downloading Google Drive document: ${document.fileId}`);
-          // This is a Google Drive document - download it first
-          const fileResponse = await drive.files.get({
-            fileId: document.fileId,
-            alt: 'media'
-          });
-          
-          if (fileResponse.data && typeof fileResponse.data === 'string') {
-            fileContent = Buffer.from(fileResponse.data);
-          } else if (Buffer.isBuffer(fileResponse.data)) {
-            fileContent = fileResponse.data;
-          } else {
-            throw new Error('Invalid file data received from Google Drive');
+          try {
+            // This is a Google Drive document - download it first
+            const fileResponse = await drive.files.get({
+              fileId: document.fileId,
+              alt: 'media'
+            });
+            
+            if (fileResponse.data && typeof fileResponse.data === 'string') {
+              fileContent = Buffer.from(fileResponse.data);
+            } else if (Buffer.isBuffer(fileResponse.data)) {
+              fileContent = fileResponse.data;
+            } else {
+              throw new Error('Invalid file data received from Google Drive');
+            }
+          } catch (driveError: any) {
+            if (driveError.status === 404) {
+              console.log(`Google Drive file ${document.fileId} no longer exists, skipping: ${documentName}`);
+              failedCount++;
+              continue;
+            }
+            throw driveError;
           }
         } else {
           // This is a local file - read from uploads folder
