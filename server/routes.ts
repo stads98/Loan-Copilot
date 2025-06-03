@@ -1743,7 +1743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
                 const fileBuffer = Buffer.from(base64Data, 'base64');
 
-                // Save locally first
+                // Save locally first  
                 const { promises: fs } = await import('fs');
                 const path = await import('path');
                 const uploadsDir = path.join(process.cwd(), 'uploads');
@@ -1753,6 +1753,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const fileId = `email-attachment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${extension}`;
                 const filePath = path.join(uploadsDir, fileId);
                 await fs.writeFile(filePath, fileBuffer);
+                
+                const data = fileBuffer;
 
                 // Check if document is relevant to this specific loan
                 const isRelevantDocument = (() => {
@@ -1845,17 +1847,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
                 }
 
-                // Create document record with clean filename
-                const document = await storage.createDocument({
-                  name: attachment.filename,
-                  fileId: fileId,
-                  loanId: loanId,
-                  fileType: attachment.mimeType,
-                  fileSize: attachment.size,
-                  category: category,
-                  source: `gmail:${message.from}`,
-                  status: 'processed'
-                });
+                // Upload to Google Drive for backup and organization
+                try {
+                  const { uploadFileToGoogleDrive } = await import('./lib/google');
+                  const loanData = await storage.getLoanWithDetails(loanId);
+                  
+                  if (loanData?.loan?.driveFolder) {
+                    console.log(`Uploading ${attachment.filename} to Google Drive folder: ${loanData.loan.driveFolder}`);
+                    
+                    const driveFileId = await uploadFileToGoogleDrive(
+                      attachment.filename,
+                      data,
+                      attachment.mimeType,
+                      loanData.loan.driveFolder
+                    );
+                    
+                    console.log(`Successfully uploaded ${attachment.filename} to Google Drive with ID: ${driveFileId}`);
+                    
+                    // Create document record with Google Drive file ID
+                    const document = await storage.createDocument({
+                      name: attachment.filename,
+                      fileId: driveFileId, // Use Google Drive file ID instead of local
+                      loanId: loanId,
+                      fileType: attachment.mimeType,
+                      fileSize: attachment.size,
+                      category: category,
+                      source: `gmail:${message.from}`,
+                      status: 'processed'
+                    });
+                  } else {
+                    // Fallback: create local document record if no Drive folder
+                    const document = await storage.createDocument({
+                      name: attachment.filename,
+                      fileId: fileId,
+                      loanId: loanId,
+                      fileType: attachment.mimeType,
+                      fileSize: attachment.size,
+                      category: category,
+                      source: `gmail:${message.from}`,
+                      status: 'processed'
+                    });
+                  }
+                } catch (driveError) {
+                  console.error(`Failed to upload ${attachment.filename} to Google Drive:`, driveError);
+                  
+                  // Create local document record as fallback
+                  const document = await storage.createDocument({
+                    name: attachment.filename,
+                    fileId: fileId,
+                    loanId: loanId,
+                    fileType: attachment.mimeType,
+                    fileSize: attachment.size,
+                    category: category,
+                    source: `gmail:${message.from}`,
+                    status: 'processed'
+                  });
+                }
 
                 downloadedPDFs.push({
                   filename: attachment.filename,

@@ -321,3 +321,46 @@ function generateFilesFromFolderHash(hash: number): DriveFile[] {
   
   return fileSet;
 }
+
+// Function to upload file to Google Drive
+export async function uploadFileToGoogleDrive(
+  fileName: string, 
+  fileBuffer: Buffer, 
+  mimeType: string, 
+  folderId: string
+): Promise<string> {
+  try {
+    const { google } = await import('googleapis');
+    const serviceAccount = await import('../keys/service-account.json');
+    
+    const jwtClient = new google.auth.JWT(
+      serviceAccount.client_email,
+      null,
+      serviceAccount.private_key,
+      ['https://www.googleapis.com/auth/drive.file']
+    );
+    
+    await jwtClient.authorize();
+    const drive = google.drive({ version: 'v3', auth: jwtClient });
+    
+    // Upload the file
+    const response = await drive.files.create({
+      requestBody: {
+        name: fileName,
+        parents: [folderId]
+      },
+      media: {
+        mimeType: mimeType,
+        body: require('stream').Readable.from(fileBuffer)
+      },
+      fields: 'id'
+    });
+    
+    console.log(`File uploaded to Google Drive with ID: ${response.data.id}`);
+    return response.data.id!;
+    
+  } catch (error) {
+    console.error('Error uploading file to Google Drive:', error);
+    throw new Error(`Could not upload file to Google Drive: ${error}`);
+  }
+}
