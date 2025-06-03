@@ -600,6 +600,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reset all documents for a loan (delete both active and deleted documents permanently)
+  app.delete("/api/loans/:loanId/reset-documents", isAuthenticated, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.loanId);
+      if (isNaN(loanId)) {
+        return res.status(400).json({ message: "Invalid loan ID" });
+      }
+
+      // Verify the loan exists
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Get all documents for this loan (including deleted ones)
+      const allDocuments = await storage.getAllDocumentsByLoanId(loanId);
+      
+      let deletedCount = 0;
+      
+      // Permanently delete all documents
+      for (const document of allDocuments) {
+        const deleted = await storage.deleteDocument(document.id);
+        if (deleted) {
+          deletedCount++;
+        }
+      }
+
+      // Clear document assignments for this loan
+      await storage.updateLoan(loanId, { documentAssignments: {} });
+
+      console.log(`Reset completed: Permanently deleted ${deletedCount} documents for loan ${loanId}`);
+
+      res.json({ 
+        success: true, 
+        message: `Successfully deleted ${deletedCount} documents from both active and deleted sections`,
+        deletedCount 
+      });
+    } catch (error) {
+      console.error('Error resetting documents:', error);
+      res.status(500).json({ message: "Error resetting documents" });
+    }
+  });
+
   // Download document endpoint
   // Add endpoint to view/serve uploaded documents
   app.get("/api/documents/:id/view", isAuthenticated, async (req, res) => {
