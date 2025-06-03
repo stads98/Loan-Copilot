@@ -38,7 +38,7 @@ const upload = multer({
     }
   }),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 50 * 1024 * 1024, // 50MB limit (matches Express configuration)
   },
   fileFilter: (req, file, cb) => {
     // Allow common file types
@@ -1190,20 +1190,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Found ${allLocalDocs.length} local documents to check for upload`);
         
         for (const localDoc of allLocalDocs) {
-          // Skip if document is already in Google Drive or doesn't have local file content
-          if (localDoc.fileId && localDoc.fileId.length > 10 && !localDoc.fileId.includes('.')) {
-            // This is already a Google Drive document
+          // Check if a file with the same name already exists in Drive
+          if (driveFileNames.has(localDoc.name)) {
             console.log(`Skipping ${localDoc.name} - already in Google Drive`);
             continue;
           }
           
-          // Check if a file with the same name already exists in Drive
-          if (driveFileNames.has(localDoc.name)) {
-            console.log(`Skipping upload of ${localDoc.name} - already exists in Google Drive`);
-            continue;
-          }
-          
-          // Upload local document to Google Drive using OAuth tokens
+          // Only upload documents that have local file content (uploaded files, not Google Drive documents)
           if (localDoc.fileId && localDoc.fileId.includes('.')) {
             // This is a local file (has extension in fileId)
             try {
@@ -1472,9 +1465,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Configure multer for file uploads
-  const upload = multer({
+  const uploadMemory = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit (matches Express configuration)
     fileFilter: (req, file, cb) => {
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       if (allowedTypes.includes(file.mimetype)) {
