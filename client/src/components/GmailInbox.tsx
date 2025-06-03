@@ -513,11 +513,33 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
         }
       }
 
-      // Refresh documents list with multiple cache invalidations
-      await queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
-      await queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId] });
-      await queryClient.refetchQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
-      await queryClient.refetchQueries({ queryKey: ['/api/loans', loanId] });
+      // Force immediate and complete cache refresh
+      console.log('Forcing cache refresh for loan documents...');
+      
+      // 1. Remove all cached data completely
+      queryClient.removeQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
+      queryClient.removeQueries({ queryKey: [`/api/loans/${loanId}`] });
+      queryClient.removeQueries({ queryKey: ['/api/loans', loanId] });
+      
+      // 2. Invalidate all related queries
+      await queryClient.invalidateQueries({ 
+        queryKey: ['/api/loans'], 
+        refetchType: 'all'
+      });
+      
+      // 3. Force immediate refetch with fresh network requests
+      setTimeout(async () => {
+        await queryClient.refetchQueries({ 
+          queryKey: [`/api/loans/${loanId}`],
+          type: 'active'
+        });
+        console.log('Documents refreshed successfully');
+      }, 100);
+      
+      // 4. Trigger a window reload as ultimate fallback if cache is stubborn
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
 
       // Clear selection
       setSelectedEmails(new Set());
