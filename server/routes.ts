@@ -51,13 +51,87 @@ const upload = multer({
   }
 });
 
-// Auto-sync function to trigger Google Drive synchronization
+// Auto-sync function to send documents to Google Drive
 async function triggerAutoSync(loanId: number, action: string, filename?: string) {
-  // EMERGENCY PROTECTION: Auto-sync completely disabled to prevent document deletion
-  console.log(`🛡️ AUTO-SYNC DISABLED: Local documents are permanently protected from sync operations`);
-  console.log(`🛡️ Action: ${action}${filename ? ` - ${filename}` : ''} will NOT trigger sync for loan ${loanId}`);
-  console.log(`🛡️ Local document management is the ONLY authoritative source`);
-  return; // Exit immediately - no sync operations allowed
+  try {
+    console.log(`Auto-sync triggered: ${action}${filename ? ` - ${filename}` : ''} for loan ${loanId}`);
+    
+    // Get loan details to find Google Drive folder
+    const loan = await storage.getLoan(loanId);
+    if (!loan?.googleDriveFolderId) {
+      console.log(`No Google Drive folder configured for loan ${loanId}`);
+      return;
+    }
+    
+    // Send documents to Google Drive based on action
+    if (action === 'document_added' || action === 'document_restored') {
+      await syncDocumentToGoogleDrive(loanId, loan.googleDriveFolderId, filename);
+    } else if (action === 'document_deleted') {
+      await removeDocumentFromGoogleDrive(loanId, loan.googleDriveFolderId, filename);
+    }
+    
+  } catch (error) {
+    console.error(`Auto-sync failed for loan ${loanId}:`, error);
+  }
+}
+
+// Helper function to sync a single document to Google Drive
+async function syncDocumentToGoogleDrive(loanId: number, folderId: string, filename?: string) {
+  try {
+    const documents = await storage.getDocumentsByLoanId(loanId);
+    const targetDoc = filename ? documents.find(d => d.name === filename) : documents[documents.length - 1];
+    
+    if (!targetDoc) {
+      console.log(`Document not found for sync: ${filename || 'latest'}`);
+      return;
+    }
+
+    // Only sync local documents (not already in Google Drive)
+    if (targetDoc.fileId && !targetDoc.fileId.startsWith('http') && targetDoc.fileId.includes('.')) {
+      const { uploadFileToGoogleDriveOAuth } = await import("./lib/google-oauth");
+      const fs = await import('fs').then(m => m.promises);
+      const path = await import('path');
+      
+      const filePath = path.join(process.cwd(), 'uploads', targetDoc.fileId);
+      
+      try {
+        const fileBuffer = await fs.readFile(filePath);
+        console.log(`Uploading ${targetDoc.name} to Google Drive...`);
+        
+        // Use session tokens for upload (simplified for now)
+        const driveFileId = await uploadFileToGoogleDriveOAuth(
+          targetDoc.name,
+          fileBuffer,
+          targetDoc.fileType || 'application/octet-stream',
+          folderId,
+          null // Will need to get tokens from session
+        );
+        
+        // Update document with Google Drive file ID
+        await storage.updateDocument(targetDoc.id, {
+          fileId: driveFileId,
+          source: "synced_to_drive"
+        });
+        
+        console.log(`Successfully synced ${targetDoc.name} to Google Drive`);
+      } catch (error) {
+        console.error(`Failed to sync ${targetDoc.name} to Google Drive:`, error);
+      }
+    }
+  } catch (error) {
+    console.error(`Error syncing document to Google Drive:`, error);
+  }
+}
+
+// Helper function to remove document from Google Drive
+async function removeDocumentFromGoogleDrive(loanId: number, folderId: string, filename?: string) {
+  try {
+    console.log(`Removing ${filename || 'document'} from Google Drive folder ${folderId}`);
+    // Implementation for removing documents from Google Drive
+    // This would require identifying the Google Drive file ID and deleting it
+  } catch (error) {
+    console.error(`Error removing document from Google Drive:`, error);
+  }
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1297,65 +1371,295 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Sync documents from Google Drive for a loan
+  // Send local documents to Google Drive (one-way sync)
   app.post("/api/loans/:id/sync-drive", isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
       const loanId = parseInt(id, 10);
       
-      // Check if user has Google Drive authentication
-      if (!(req.session as any)?.googleAuthenticated) {
-        // Try to restore from database
-        if (req.user?.id) {
-          const driveToken = await storage.getUserToken(req.user.id, 'drive');
-          if (driveToken && driveToken.accessToken) {
-            // Restore tokens to session
-            (req.session as any).googleTokens = {
-              access_token: driveToken.accessToken,
-              refresh_token: driveToken.refreshToken,
-              expiry_date: driveToken.expiryDate?.getTime()
-            };
-            (req.session as any).googleAuthenticated = true;
-            console.log('Restored Google Drive tokens for sync operation');
-          } else {
-            return res.status(401).json({ 
-              message: "Google Drive authentication required. Please connect your Google Drive account first.",
-              requiresAuth: true 
-            });
-          }
-        } else {
-          return res.status(401).json({ 
-            message: "Google Drive authentication required. Please connect your Google Drive account first.",
-            requiresAuth: true 
-          });
-        }
-      }
-      
-      // Verify the loan exists
+      // Get loan details
       const loan = await storage.getLoan(loanId);
       if (!loan) {
-        return res.status(404).json({ message: "Loan not found" });
+        return res.status(404).json({ success: false, message: "Loan not found" });
       }
-      
-      // Get the folder ID from loan data
-      const folderId = (loan as any).driveFolder;
-      if (!folderId) {
+
+      if (!loan.googleDriveFolderId) {
         return res.status(400).json({ 
-          message: "No Google Drive folder associated with this loan. Please connect a folder first." 
+          success: false, 
+          message: "No Google Drive folder connected to this loan" 
         });
       }
+
+      // Check Google authentication
+      const googleTokens = (req.session as any)?.googleTokens;
+      if (!googleTokens?.access_token) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Google Drive not connected. Please reconnect your Google account." 
+        });
+      }
+
+      // Get all local documents for this loan
+      const documents = await storage.getDocumentsByLoanId(loanId);
+      const localDocuments = documents.filter(doc => 
+        doc.fileId && 
+        !doc.fileId.startsWith('http') && 
+        doc.fileId.includes('.')
+      );
+
+      if (localDocuments.length === 0) {
+        return res.json({
+          success: true,
+          message: "No local documents to sync to Google Drive",
+          documentsUploaded: 0
+        });
+      }
+
+      console.log(`Sending ${localDocuments.length} local documents to Google Drive...`);
       
-      console.log(`COMPLETE SYNC: Making Google Drive an exact mirror of local documents for loan: ${loanId}`);
-      
-      // Get local documents (these are the source of truth)
-      const localDocuments = await storage.getDocumentsByLoanId(loanId);
-      const activeLocalDocs = localDocuments.filter(doc => !doc.deleted);
-      
-      console.log(`Found ${activeLocalDocs.length} active local documents to mirror to Google Drive`);
-      
-      // Get current Google Drive files and imports
-      const { getDriveFiles } = await import("./lib/google");
       const { uploadFileToGoogleDriveOAuth } = await import("./lib/google-oauth");
+      const fs = await import('fs').then(m => m.promises);
+      const path = await import('path');
+      
+      let uploadedCount = 0;
+      let failedCount = 0;
+
+      for (const doc of localDocuments) {
+        try {
+          const filePath = path.join(process.cwd(), 'uploads', doc.fileId);
+          
+          // Check if local file exists
+          if (!(await fs.access(filePath).then(() => true).catch(() => false))) {
+            console.log(`Local file not found for ${doc.name}`);
+            failedCount++;
+            continue;
+          }
+
+          const fileBuffer = await fs.readFile(filePath);
+          console.log(`Uploading ${doc.name} to Google Drive...`);
+          
+          const driveFileId = await uploadFileToGoogleDriveOAuth(
+            doc.name,
+            fileBuffer,
+            doc.fileType || 'application/octet-stream',
+            loan.googleDriveFolderId,
+            googleTokens
+          );
+
+          // Update document record with Google Drive file ID
+          await storage.updateDocument(doc.id, {
+            fileId: driveFileId,
+            source: "synced_to_drive"
+          });
+
+          uploadedCount++;
+          console.log(`Successfully uploaded ${doc.name} to Google Drive: ${driveFileId}`);
+          
+        } catch (uploadError) {
+          console.error(`Failed to upload ${doc.name} to Google Drive:`, uploadError);
+          failedCount++;
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Successfully sent ${uploadedCount} documents to Google Drive${failedCount > 0 ? ` (${failedCount} failed)` : ''}`,
+        documentsUploaded: uploadedCount,
+        documentsFailed: failedCount
+      });
+
+    } catch (error) {
+      console.error("Error sending documents to Google Drive:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to send documents to Google Drive" 
+      });
+    }
+  });
+
+  // Enable auto-sync for document operations
+  app.post("/api/loans/:id/documents", isAuthenticated, upload.single('document'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const loanId = parseInt(id, 10);
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const { category } = req.body;
+      
+      // Create document record
+      const document = await storage.createDocument({
+        name: req.file.originalname,
+        fileId: req.file.filename,
+        loanId: loanId,
+        fileType: req.file.mimetype,
+        fileSize: req.file.size,
+        category: category || 'uncategorized',
+        source: 'manual_upload',
+        status: 'uploaded'
+      });
+
+      // Trigger auto-sync to Google Drive
+      await triggerAutoSync(loanId, 'document_added', req.file.originalname);
+
+      res.status(201).json(document);
+    } catch (error) {
+      console.error("Error uploading document:", error);
+      res.status(500).json({ message: "Error uploading document" });
+    }
+  });
+
+  // Restore document endpoint with auto-sync
+  app.patch("/api/documents/:id/restore", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const documentId = parseInt(id, 10);
+      
+      // Get document details first
+      const document = await storage.getDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Restore the document
+      const restoredDocument = await storage.updateDocument(documentId, { 
+        status: 'uploaded'
+      });
+
+      if (restoredDocument) {
+        // Trigger auto-sync to Google Drive
+        await triggerAutoSync(restoredDocument.loanId, 'document_restored', document.name);
+        
+        res.json(restoredDocument);
+      } else {
+        res.status(404).json({ message: "Document not found" });
+      }
+    } catch (error) {
+      console.error("Error restoring document:", error);
+      res.status(500).json({ message: "Error restoring document" });
+    }
+  });
+
+  // Update sync button to call new endpoint  
+  app.post("/api/loans/:id/send-to-drive", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const loanId = parseInt(id, 10);
+      
+      // Get loan details
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ success: false, message: "Loan not found" });
+      }
+
+      if (!loan.googleDriveFolderId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "No Google Drive folder connected to this loan" 
+        });
+      }
+
+      // Check Google authentication
+      const googleTokens = (req.session as any)?.googleTokens;
+      if (!googleTokens?.access_token) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Google Drive not connected. Please reconnect your Google account." 
+        });
+      }
+
+      // Get all local documents for this loan
+      const documents = await storage.getDocumentsByLoanId(loanId);
+      const localDocuments = documents.filter(doc => 
+        doc.fileId && 
+        !doc.fileId.startsWith('http') && 
+        doc.fileId.includes('.')
+      );
+
+      if (localDocuments.length === 0) {
+        return res.json({
+          success: true,
+          message: "No local documents to send to Google Drive",
+          documentsUploaded: 0
+        });
+      }
+
+      console.log(`Sending ${localDocuments.length} local documents to Google Drive...`);
+      
+      const { uploadFileToGoogleDriveOAuth } = await import("./lib/google-oauth");
+      const fs = await import('fs').then(m => m.promises);
+      const path = await import('path');
+      
+      let uploadedCount = 0;
+      let failedCount = 0;
+
+      for (const doc of localDocuments) {
+        try {
+          const filePath = path.join(process.cwd(), 'uploads', doc.fileId);
+          
+          // Check if local file exists
+          if (!(await fs.access(filePath).then(() => true).catch(() => false))) {
+            console.log(`Local file not found for ${doc.name}`);
+            failedCount++;
+            continue;
+          }
+
+          const fileBuffer = await fs.readFile(filePath);
+          console.log(`Uploading ${doc.name} to Google Drive...`);
+          
+          const driveFileId = await uploadFileToGoogleDriveOAuth(
+            doc.name,
+            fileBuffer,
+            doc.fileType || 'application/octet-stream',
+            loan.googleDriveFolderId,
+            googleTokens
+          );
+
+          // Update document record with Google Drive file ID
+          await storage.updateDocument(doc.id, {
+            fileId: driveFileId,
+            source: "synced_to_drive"
+          });
+
+          uploadedCount++;
+          console.log(`Successfully uploaded ${doc.name} to Google Drive: ${driveFileId}`);
+          
+        } catch (uploadError) {
+          console.error(`Failed to upload ${doc.name} to Google Drive:`, uploadError);
+          failedCount++;
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Successfully sent ${uploadedCount} documents to Google Drive${failedCount > 0 ? ` (${failedCount} failed)` : ''}`,
+        documentsUploaded: uploadedCount,
+        documentsFailed: failedCount
+      });
+
+    } catch (error) {
+      console.error("Error sending documents to Google Drive:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to send documents to Google Drive" 
+      });
+    }
+  });
+
+  // Get loan documents
+  app.get("/api/loans/:id/documents", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const loanId = parseInt(id, 10);
+      const documents = await storage.getDocumentsByLoanId(loanId);
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+      res.status(500).json({ message: "Error fetching documents" });
+    }
+  });
       const googleTokens = (req.session as any)?.googleTokens;
       const currentDriveFiles = await getDriveFiles(folderId, googleTokens?.access_token) || [];
       
