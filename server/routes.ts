@@ -2265,28 +2265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               }
 
-              // Check loan number
-              if (!isRelevant && loan.loan?.loanNumber && subject.includes(loan.loan.loanNumber.toLowerCase())) {
-                isRelevant = true;
-              }
-
-              // Check borrower name
-              if (!isRelevant && loan.loan?.borrowerName) {
-                const borrowerName = loan.loan.borrowerName.toLowerCase();
-                if (subject.includes(borrowerName) || from.includes(borrowerName) || to.includes(borrowerName)) {
-                  isRelevant = true;
-                }
-              }
-
-              // Check entity name
-              if (!isRelevant && loan.loan?.borrowerEntityName) {
-                const entityName = loan.loan.borrowerEntityName.toLowerCase();
-                if (subject.includes(entityName) || from.includes(entityName) || to.includes(entityName)) {
-                  isRelevant = true;
-                }
-              }
-
-              // Check contact emails
+              // Check contact emails from the current loan
               if (!isRelevant && loan.contacts && loan.contacts.length > 0) {
                 const contactEmails = loan.contacts
                   .map((c: any) => c.email)
@@ -2298,28 +2277,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     isRelevant = true;
                     break;
                   }
-                }
-              }
-
-              // Check for Samuel's email specifically (from your Gmail inbox)
-              if (!isRelevant && (from.includes('sam2345@live.com') || to.includes('sam2345@live.com'))) {
-                isRelevant = true;
-              }
-            }
-
-            // Check for other key emails from your inbox
-            const keyEmails = [
-              'kellie.rossi@lendinghome.com',
-              'kristian@newpathtitle.com', 
-              'luma@planlifeusa.com',
-              'noah.dlott@kiavi.com'
-            ];
-            
-            if (!isRelevant) {
-              for (const email of keyEmails) {
-                if (from.includes(email) || to.includes(email)) {
-                  isRelevant = true;
-                  break;
                 }
               }
             }
