@@ -2428,7 +2428,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error scanning visible emails for PDFs:', error);
       res.status(500).json({ message: "Error scanning visible emails for PDFs" });
     }
-  });
 
   // Create HTTP server  
   const httpServer = createServer(app);
