@@ -1983,15 +1983,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Add property-specific searches (more restrictive - require both borrower AND property)
-      if (loan.loan?.borrowerName && loan.loan?.propertyAddress) {
-        // Extract the street address (first part before the comma)
+      // Add property-specific searches (subject line only - street address variations)
+      if (loan.loan?.propertyAddress) {
         const streetAddress = loan.loan.propertyAddress.split(',')[0].trim();
-        // More restrictive: require BOTH borrower name AND street address in subject or body
-        searchTerms.push(`(subject:("${loan.loan.borrowerName}" "${streetAddress}") OR ("${loan.loan.borrowerName}" AND "${streetAddress}" AND (subject:"loan" OR subject:"application" OR subject:"closing" OR subject:"refinance"))) after:${dateQuery}`);
+        const streetMatch = streetAddress.match(/^(\d+)\s+(.+?)(\s+(st|street|dr|drive|ave|avenue|rd|road|ln|lane|blvd|boulevard|way|ct|court|pl|place|cir|circle|pkwy|parkway))?$/i);
+        
+        if (streetMatch) {
+          const streetNumber = streetMatch[1];
+          const streetName = streetMatch[2];
+          
+          // Create variations for street types and directions
+          const streetVariations = [streetAddress];
+          
+          // Add common abbreviations
+          const abbreviations = {
+            'street': 'st', 'drive': 'dr', 'avenue': 'ave', 'road': 'rd',
+            'boulevard': 'blvd', 'court': 'ct', 'lane': 'ln', 'place': 'pl',
+            'circle': 'cir', 'parkway': 'pkwy', 'way': 'way'
+          };
+          
+          // Add directional variations
+          const directions = {
+            'north': 'n', 'northeast': 'ne', 'northwest': 'nw',
+            'south': 's', 'southeast': 'se', 'southwest': 'sw',
+            'east': 'e', 'west': 'w'
+          };
+          
+          Object.entries(abbreviations).forEach(([full, abbrev]) => {
+            if (streetName.toLowerCase().includes(full)) {
+              streetVariations.push(`${streetNumber} ${streetName.toLowerCase().replace(full, abbrev)}`);
+            }
+            if (streetName.toLowerCase().includes(abbrev)) {
+              streetVariations.push(`${streetNumber} ${streetName.toLowerCase().replace(abbrev, full)}`);
+            }
+          });
+          
+          Object.entries(directions).forEach(([full, abbrev]) => {
+            if (streetAddress.toLowerCase().includes(full)) {
+              streetVariations.push(streetAddress.toLowerCase().replace(full, abbrev));
+            }
+            if (streetAddress.toLowerCase().includes(abbrev)) {
+              streetVariations.push(streetAddress.toLowerCase().replace(abbrev, full));
+            }
+          });
+          
+          // Search subject lines for any street variation
+          const streetSearches = streetVariations.map(variation => `subject:"${variation}"`).join(' OR ');
+          searchTerms.push(`(${streetSearches}) after:${dateQuery}`);
+        }
       }
+      
+      // Add loan number search (subject line only)
       if (loan.loan?.loanNumber) {
-        searchTerms.push(`"${loan.loan.loanNumber}" after:${dateQuery}`);
+        searchTerms.push(`subject:"${loan.loan.loanNumber}" after:${dateQuery}`);
       }
       
       const searchQuery = `(${searchTerms.join(' OR ')})`;
@@ -2251,7 +2295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       - Will process: ${isFromRelevantContact ? 'YES' : 'NO'}`);
                   }
                   
-                  // 2. OR mentions this specific property
+                  // 2. OR mentions this specific property address in subject line
                   const mentionsProperty = (() => {
                     if (!loan.loan?.propertyAddress) return false;
                     
@@ -2263,40 +2307,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     const streetNumber = streetMatch[1];
                     const streetName = streetMatch[2];
                     
-                    // Check if filename or subject includes the street number
-                    const hasStreetNumber = filename.includes(streetNumber) || subject.includes(streetNumber);
-                    if (!hasStreetNumber) return false;
+                    // Check if subject includes the street number
+                    if (!subject.includes(streetNumber)) return false;
                     
-                    // Create variations of the street name
+                    // Create variations for street types and directions
                     const streetVariations = [streetName];
                     
                     // Add common abbreviations
-                    const streetWithAbbrev = streetName
-                      .replace(/\bdrive\b/gi, 'dr')
-                      .replace(/\bstreet\b/gi, 'st')
-                      .replace(/\bavenue\b/gi, 'ave')
-                      .replace(/\broad\b/gi, 'rd')
-                      .replace(/\bboulevard\b/gi, 'blvd')
-                      .replace(/\bcourt\b/gi, 'ct')
-                      .replace(/\blane\b/gi, 'ln')
-                      .replace(/\bplace\b/gi, 'pl')
-                      .replace(/\bcircle\b/gi, 'cir')
-                      .replace(/\bparkway\b/gi, 'pkwy');
+                    const abbreviations = {
+                      'street': 'st', 'drive': 'dr', 'avenue': 'ave', 'road': 'rd',
+                      'boulevard': 'blvd', 'court': 'ct', 'lane': 'ln', 'place': 'pl',
+                      'circle': 'cir', 'parkway': 'pkwy', 'way': 'way'
+                    };
                     
-                    if (streetWithAbbrev !== streetName) {
-                      streetVariations.push(streetWithAbbrev);
-                    }
+                    // Add directional variations
+                    const directions = {
+                      'north': 'n', 'northeast': 'ne', 'northwest': 'nw',
+                      'south': 's', 'southeast': 'se', 'southwest': 'sw',
+                      'east': 'e', 'west': 'w'
+                    };
                     
-                    return streetVariations.some(variation => 
-                      filename.includes(variation) || subject.includes(variation)
-                    );
+                    Object.entries(abbreviations).forEach(([full, abbrev]) => {
+                      if (streetName.includes(full)) {
+                        streetVariations.push(streetName.replace(full, abbrev));
+                      }
+                      if (streetName.includes(abbrev)) {
+                        streetVariations.push(streetName.replace(abbrev, full));
+                      }
+                    });
+                    
+                    Object.entries(directions).forEach(([full, abbrev]) => {
+                      if (streetName.includes(full)) {
+                        streetVariations.push(streetName.replace(full, abbrev));
+                      }
+                      if (streetName.includes(abbrev)) {
+                        streetVariations.push(streetName.replace(abbrev, full));
+                      }
+                    });
+                    
+                    // Check if subject includes any street variation
+                    return streetVariations.some(variation => subject.includes(variation));
                   })();
                   
-                  // 3. OR mentions loan number
-                  const mentionsLoanNumber = loan.loan?.loanNumber && (
-                    filename.includes(loan.loan.loanNumber.toLowerCase()) || 
-                    subject.includes(loan.loan.loanNumber.toLowerCase())
-                  );
+                  // 3. OR mentions loan number in subject line only
+                  const mentionsLoanNumber = loan.loan?.loanNumber && subject.includes(loan.loan.loanNumber.toLowerCase());
                   
                   // 4. OR mentions borrower name
                   const mentionsBorrower = loan.loan?.borrowerName && (

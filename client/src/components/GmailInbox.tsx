@@ -443,8 +443,47 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
   useEffect(() => {
     if (isConnected) {
       fetchMessages();
+      // Auto-process when Gmail loads: Scan All Emails then Sync Google Drive
+      if (loanId) {
+        autoProcessLoanEmails();
+      }
     }
   }, [isConnected, loanId]);
+
+  const autoProcessLoanEmails = async () => {
+    try {
+      // Step 1: Scan All Emails
+      console.log('Auto-processing: Starting email scan for loan', loanId);
+      const scanResponse = await apiRequest("POST", `/api/loans/${loanId}/scan-all-emails`, {});
+      
+      if (scanResponse.success) {
+        console.log('Auto-processing: Email scan completed', scanResponse.message);
+        
+        // Step 2: Sync Google Drive
+        console.log('Auto-processing: Starting Google Drive sync');
+        const syncResponse = await apiRequest("POST", `/api/loans/${loanId}/sync-drive`, {});
+        
+        if (syncResponse.success !== false) {
+          console.log('Auto-processing: Google Drive sync completed', syncResponse.message);
+          
+          // Refresh loan data to show updated documents
+          queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+          
+          // Show success toast only if documents were processed
+          const totalProcessed = (scanResponse.downloaded?.length || 0) + (syncResponse.documentsUploaded || 0);
+          if (totalProcessed > 0) {
+            toast({
+              title: "Auto-Processing Complete",
+              description: `Processed ${scanResponse.downloaded?.length || 0} emails, uploaded ${syncResponse.documentsUploaded || 0} documents to Drive`
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Auto-processing error:', error);
+      // Don't show error toast to avoid spam - auto-processing should be silent
+    }
+  };
 
   useEffect(() => {
     // Auto-refresh every minute
