@@ -636,6 +636,11 @@ export async function uploadDocumentsToDrive(documents: any[], folderId: string,
         }
         
         // Upload to target Google Drive folder
+        const { Readable } = await import('stream');
+        const stream = new Readable();
+        stream.push(fileContent);
+        stream.push(null); // End the stream
+        
         await drive.files.create({
           requestBody: {
             name: documentName,
@@ -643,7 +648,7 @@ export async function uploadDocumentsToDrive(documents: any[], folderId: string,
           },
           media: {
             mimeType: document.fileType || 'application/octet-stream',
-            body: fileContent
+            body: stream
           }
         });
         
