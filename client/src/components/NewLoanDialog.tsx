@@ -66,6 +66,7 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
 
   // Calculate LTV when loan amount or estimated value changes
   const calculateLTV = (estimatedValue: string, loanAmount: string) => {
+    if (!estimatedValue || !loanAmount) return;
     const value = parseFloat(estimatedValue.replace(/[,$]/g, ''));
     const amount = parseFloat(loanAmount.replace(/[,$]/g, ''));
     if (value && amount && value > 0) {
@@ -76,6 +77,7 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
 
   // Calculate loan amount when LTV or estimated value changes
   const calculateLoanAmount = (estimatedValue: string, ltv: string) => {
+    if (!estimatedValue || !ltv) return;
     const value = parseFloat(estimatedValue.replace(/[,$]/g, ''));
     const ltvPercent = parseFloat(ltv.replace(/[%]/g, ''));
     if (value && ltvPercent && value > 0 && ltvPercent > 0) {
@@ -138,8 +140,7 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
         loanPurpose: data.loanPurpose,
         funder: data.funder,
         targetCloseDate: data.targetCloseDate,
-        googleDriveFolderId: folderId || null,
-        driveFolder: data.googleDriveLink || null,
+        googleDriveFolderId: selectedFolderId || null,
       };
 
       // If Google Drive folder is provided, use comprehensive scanning
@@ -345,7 +346,14 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
                   <FormItem>
                     <FormLabel>LTV % (Optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="80" {...field} />
+                      <Input 
+                        placeholder="80" 
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          calculateLoanAmount(form.getValues("estimatedValue"), e.target.value);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -369,8 +377,7 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
                       <SelectContent>
                         <SelectItem value="DSCR">DSCR</SelectItem>
                         <SelectItem value="Fix & Flip">Fix & Flip</SelectItem>
-                        <SelectItem value="Bridge">Bridge</SelectItem>
-                        <SelectItem value="Commercial">Commercial</SelectItem>
+                        <SelectItem value="Ground up Construction">Ground up Construction</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

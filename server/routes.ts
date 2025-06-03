@@ -219,7 +219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             accessToken: tokens.access_token || '',
             refreshToken: tokens.refresh_token || '',
             expiryDate: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
-            scope: 'drive.readonly'
+            scope: 'drive.file,drive'
           });
           
           console.log('Tokens saved to database for user:', req.user.id);
@@ -309,12 +309,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Check if we have a refresh token
-      if (!googleTokens.refresh_token) {
-        return res.status(401).json({ 
-          error: 'Google Drive authentication expired. Please reconnect.',
-          requiresReauth: true 
-        });
+      // Check if token is expired and refresh if needed
+      if (googleTokens.expiry_date && googleTokens.expiry_date < Date.now()) {
+        if (googleTokens.refresh_token) {
+          try {
+            console.log('Token expired, refreshing...');
+            const { google } = await import('googleapis');
+            const OAuth2 = google.auth.OAuth2;
+            
+            const oauth2Client = new OAuth2(
+              process.env.GOOGLE_CLIENT_ID,
+              process.env.GOOGLE_CLIENT_SECRET,
+              'http://localhost:3000/callback'
+            );
+            
+            oauth2Client.setCredentials({
+              refresh_token: googleTokens.refresh_token
+            });
+            
+            const { credentials } = await oauth2Client.refreshAccessToken();
+            
+            // Update tokens
+            googleTokens = {
+              access_token: credentials.access_token,
+              refresh_token: credentials.refresh_token || googleTokens.refresh_token,
+              expiry_date: credentials.expiry_date
+            };
+            
+            // Update session and database
+            (req.session as any).googleTokens = googleTokens;
+            await storage.updateUserToken(userId, 'drive', {
+              accessToken: credentials.access_token || '',
+              refreshToken: credentials.refresh_token || googleTokens.refresh_token,
+              expiryDate: credentials.expiry_date ? new Date(credentials.expiry_date) : null
+            });
+            
+            console.log('Token refreshed successfully');
+          } catch (refreshError) {
+            console.error('Token refresh failed:', refreshError);
+            return res.status(401).json({ 
+              error: 'Google Drive authentication expired. Please reconnect.',
+              requiresReauth: true 
+            });
+          }
+        } else {
+          return res.status(401).json({ 
+            error: 'Google Drive authentication expired. Please reconnect.',
+            requiresReauth: true 
+          });
+        }
       }
 
       // Use OAuth tokens to list folders from main loan folder
