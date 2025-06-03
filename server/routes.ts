@@ -4020,6 +4020,17 @@ Would you like me to draft an email to request any specific documents or informa
       // Get all documents for this loan
       const documents = await storage.getDocumentsByLoanId(loanId);
       
+      console.log(`Found ${documents.length} documents for loan ${loanId}`);
+      documents.forEach((doc, i) => {
+        console.log(`Document ${i + 1}:`, {
+          id: doc.id,
+          name: doc.name,
+          fileId: doc.fileId,
+          filename: (doc as any).filename,
+          originalName: (doc as any).originalName
+        });
+      });
+      
       if (documents.length === 0) {
         return res.json({ uploadedCount: 0, message: 'No documents to upload' });
       }

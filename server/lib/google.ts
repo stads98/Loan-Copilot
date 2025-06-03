@@ -569,29 +569,65 @@ export async function uploadDocumentsToDrive(documents: any[], folderId: string,
     
     for (const document of documents) {
       try {
-        const fs = await import('fs');
-        const path = await import('path');
+        console.log('Processing document:', {
+          id: document.id,
+          name: document.name,
+          fileId: document.fileId,
+          hasFileId: !!document.fileId,
+          fileIdLength: document.fileId?.length
+        });
         
-        // Read the file from local storage
-        const filePath = path.join(process.cwd(), 'uploads', document.filename);
-        const fileContent = fs.readFileSync(filePath);
+        let fileContent: Buffer;
+        const documentName = document.name || document.originalName || `document_${document.id}`;
         
-        // Upload to Google Drive
+        if (document.fileId && document.fileId.length > 10) {
+          console.log(`Downloading Google Drive document: ${document.fileId}`);
+          // This is a Google Drive document - download it first
+          const fileResponse = await drive.files.get({
+            fileId: document.fileId,
+            alt: 'media'
+          });
+          
+          if (fileResponse.data && typeof fileResponse.data === 'string') {
+            fileContent = Buffer.from(fileResponse.data);
+          } else if (Buffer.isBuffer(fileResponse.data)) {
+            fileContent = fileResponse.data;
+          } else {
+            throw new Error('Invalid file data received from Google Drive');
+          }
+        } else {
+          // This is a local file - read from uploads folder
+          const fs = await import('fs');
+          const path = await import('path');
+          
+          const filename = document.filename || document.originalName || document.name;
+          if (!filename) {
+            console.error('Document has no filename:', document);
+            failedCount++;
+            continue;
+          }
+          
+          const filePath = path.join(process.cwd(), 'uploads', filename);
+          fileContent = fs.readFileSync(filePath);
+        }
+        
+        // Upload to target Google Drive folder
         await drive.files.create({
           requestBody: {
-            name: document.originalName || document.filename,
+            name: documentName,
             parents: [folderId]
           },
           media: {
-            mimeType: document.mimeType || 'application/octet-stream',
+            mimeType: document.fileType || 'application/octet-stream',
             body: fileContent
           }
         });
         
+        console.log(`Successfully uploaded document to Google Drive: ${documentName}`);
         successCount++;
         
       } catch (fileError) {
-        console.error(`Error uploading document ${document.filename}:`, fileError);
+        console.error(`Error uploading document ${document.name || document.id}:`, fileError);
         failedCount++;
       }
     }
