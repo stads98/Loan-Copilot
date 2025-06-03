@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { Loader2, FileText, Image, File, Download, Trash2, Eye, Check, Plus, X, Upload, RotateCcw } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 
 
@@ -54,6 +55,8 @@ export default function DocumentManager({
   const [newCustomDocumentName, setNewCustomDocumentName] = useState("");
   const [showAddCustomDocument, setShowAddCustomDocument] = useState(false);
   const [showInlineUpload, setShowInlineUpload] = useState<string | null>(null); // Track which requirement is showing upload
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const { toast } = useToast();
   
   // Use external completed requirements if provided, otherwise use local state
@@ -124,6 +127,39 @@ export default function DocumentManager({
       });
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const resetAllDocuments = async () => {
+    setIsResetting(true);
+    try {
+      const response = await apiRequest("DELETE", `/api/loans/${loanId}/reset-documents`, {});
+      if (!response.ok) {
+        throw new Error('Reset failed');
+      }
+      
+      // Clear local state
+      setAssignedDocuments({});
+      setDeletedDocuments([]);
+      
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
+      
+      toast({
+        title: "Success",
+        description: "All documents have been permanently deleted from both active and deleted sections."
+      });
+      
+      setShowResetConfirmation(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reset documents. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -429,6 +465,25 @@ export default function DocumentManager({
                 </>
               ) : (
                 "Sync Google Drive"
+              )}
+            </Button>
+            <Button
+              onClick={() => setShowResetConfirmation(true)}
+              disabled={isResetting}
+              variant="outline"
+              size="sm"
+              className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
+            >
+              {isResetting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Resetting...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Reset Documents
+                </>
               )}
             </Button>
           </div>
@@ -944,6 +999,37 @@ export default function DocumentManager({
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Reset Documents Confirmation Dialog */}
+      <AlertDialog open={showResetConfirmation} onOpenChange={setShowResetConfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset All Documents</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action will permanently delete ALL documents from both the active documents section and the deleted documents section. This cannot be undone.
+              <br /><br />
+              Are you sure you want to reset all documents for this loan?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={resetAllDocuments}
+              disabled={isResetting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isResetting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Resetting...
+                </>
+              ) : (
+                'Yes, Reset All Documents'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
