@@ -1649,19 +1649,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Download each PDF
           for (const attachment of pdfAttachments) {
             try {
-              // Check for duplicates based on filename and approximate size
+              // Create a unique key for this attachment
+              const attachmentKey = `${attachment.filename.toLowerCase()}_${attachment.size}`;
+              
+              // Check for duplicates in existing documents and current scan
               const isDuplicate = existingDocuments.some(doc => {
                 const cleanExistingName = doc.name.split(' (from ')[0].toLowerCase();
                 const cleanAttachmentName = attachment.filename.toLowerCase();
                 const sizeDiff = doc.fileSize ? Math.abs(doc.fileSize - attachment.size) : attachment.size;
                 
                 return cleanExistingName === cleanAttachmentName && sizeDiff < 1000; // 1KB tolerance
-              });
+              }) || downloadedInThisScan.has(attachmentKey);
 
               if (isDuplicate) {
                 console.log(`Skipping duplicate: ${attachment.filename}`);
                 continue;
               }
+
+              // Mark as downloaded in this scan
+              downloadedInThisScan.add(attachmentKey);
 
               // Download attachment data
               const attachmentResponse = await gmail.users.messages.attachments.get({
