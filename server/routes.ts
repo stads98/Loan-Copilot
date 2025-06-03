@@ -4011,7 +4011,9 @@ Would you like me to draft an email to request any specific documents or informa
       await clearDriveFolder(folderId, tokens.accessToken, tokens.refreshToken || '');
 
       // Upload all documents
+      console.log("Documents to upload:", documents.map(d => ({ id: d.id, name: d.name, fileId: d.fileId })));
       const uploadResult = await uploadDocumentsToDrive(documents, folderId, tokens.accessToken, tokens.refreshToken || '');
+      console.log("Upload result:", uploadResult);
       
       res.json({ 
         uploadedCount: uploadResult.successCount,
