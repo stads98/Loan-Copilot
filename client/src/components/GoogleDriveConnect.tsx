@@ -47,16 +47,32 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
           </div>
           <div className="mt-5 sm:mt-0">
             <Button 
-              onClick={handleConnectDrive}
-              disabled={isLoading || isConnected}
-              className="inline-flex items-center"
+              onClick={isConnected ? async () => {
+                try {
+                  const response = await fetch('/api/auth/google/disconnect', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                  });
+                  
+                  if (response.ok) {
+                    window.location.reload();
+                  }
+                } catch (error) {
+                  console.error('Error disconnecting Google Drive:', error);
+                }
+              } : handleConnectDrive}
+              disabled={isLoading}
+              className={`inline-flex items-center ${isConnected ? 'text-orange-600 hover:text-orange-700 border-orange-300 hover:border-orange-400' : ''}`}
+              variant={isConnected ? "outline" : "default"}
             >
               <svg viewBox="0 0 24 24" className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg">
                 <path d="M4.433 22l-4.433-7.667 4.527-7.833h9.005l4.433 7.667-4.527 7.833h-9.005z" fill="#4285f4"/>
                 <path d="M23.071 14.333l-4.433 7.667-4.527-7.833h-9.006l4.433-7.667 4.527 7.833h9.006z" fill="#4285f4"/>
                 <path d="M8.96 14.333h9.006l-4.527-7.833h-9.005l4.527 7.833z" fill="#4285f4"/>
               </svg>
-              {isConnected ? "Connected" : "Connect Drive"}
+              {isConnected ? "Disconnect" : "Connect Drive"}
             </Button>
           </div>
         </div>
@@ -97,35 +113,9 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
                   Documents are being analyzed automatically
                 </p>
               </div>
-              <div className="ml-auto flex gap-2">
+              <div className="ml-auto">
                 <Button variant="outline" size="sm" onClick={() => setShowFolderBrowser(true)}>
                   Change Folder
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="text-orange-600 hover:text-orange-700 border-orange-300 hover:border-orange-400"
-                  onClick={async () => {
-                    try {
-                      const response = await fetch('/api/auth/google/disconnect', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                        },
-                      });
-                      
-                      if (response.ok) {
-                        // Refresh the page to update connection status
-                        window.location.reload();
-                      } else {
-                        console.error('Disconnect failed');
-                      }
-                    } catch (error) {
-                      console.error('Error disconnecting Google Drive:', error);
-                    }
-                  }}
-                >
-                  Reconnect Drive
                 </Button>
               </div>
             </div>
