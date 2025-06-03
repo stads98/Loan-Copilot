@@ -80,18 +80,7 @@ export default function DocumentManager({
       }
     };
     
-    const checkGoogleDriveStatus = async () => {
-      try {
-        const response = await fetch('/api/auth/google/status');
-        const data = await response.json();
-        setGoogleDriveConnected(data.authenticated || data.connected);
-      } catch (error) {
-        console.error("Failed to check Google Drive status:", error);
-      }
-    };
-    
     loadLoanData();
-    checkGoogleDriveStatus();
   }, [loanId]);
 
 
