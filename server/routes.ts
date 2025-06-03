@@ -2073,79 +2073,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const to = message.to.toLowerCase();
             const cc = message.cc.toLowerCase();
             
-            // Check property address in subject with enhanced matching
-            if (loan.property?.address) {
-              const fullAddress = loan.property.address.toLowerCase();
-              const streetOnly = fullAddress.split(',')[0].trim().toLowerCase();
-              
-              // Create multiple address variations for better matching
-              const addressVariations = [];
-              
-              // Add full address and street-only
-              addressVariations.push(fullAddress, streetOnly);
-              
-              // Extract street number and name separately for partial matching
-              const streetMatch = streetOnly.match(/^(\d+)\s+(.+?)(\s+(st|street|dr|drive|ave|avenue|rd|road|ln|lane|blvd|boulevard|way|ct|court|pl|place))?$/i);
-              if (streetMatch) {
-                const streetNumber = streetMatch[1];
-                const streetName = streetMatch[2];
-                
-                // Add variations: just street name, street number + partial name
-                addressVariations.push(streetName);
-                addressVariations.push(`${streetNumber} ${streetName}`);
-                
-                // Handle common abbreviations
-                const streetWithAbbrev = streetOnly
-                  .replace(/\bdrive\b/gi, 'dr')
-                  .replace(/\bstreet\b/gi, 'st')
-                  .replace(/\bavenue\b/gi, 'ave')
-                  .replace(/\broad\b/gi, 'rd')
-                  .replace(/\bboulevard\b/gi, 'blvd');
-                  
-                if (streetWithAbbrev !== streetOnly) {
-                  addressVariations.push(streetWithAbbrev);
-                }
-              }
-              
-              // Check if any address variation matches
-              for (const variation of addressVariations) {
-                if (subject.includes(variation)) {
-                  return true;
-                }
-              }
+            // First priority: Check if from/to any of the loan contacts
+            const contactEmails = loan.contacts?.map((c: any) => c.email?.toLowerCase()).filter(Boolean) || [];
+            const isFromLoanContact = contactEmails.some(email => 
+              from.includes(email) || to.includes(email) || cc.includes(email)
+            );
+            
+            if (isFromLoanContact) {
+              return true; // Always include emails from loan contacts
             }
             
-            // Check loan number in subject (primary identifier)
-            if (loan.loan?.loanNumber && subject.includes(loan.loan.loanNumber.toLowerCase())) {
+            // Second priority: Check loan number
+            if (loan.loan?.loanNumber && (subject.includes(loan.loan.loanNumber) || message.snippet?.toLowerCase().includes(loan.loan.loanNumber.toLowerCase()))) {
               return true;
             }
             
-            // Check borrower name in email content
-            if (loan.loan?.borrowerName) {
+            // Third priority: Check if it's the primary property AND borrower together (more restrictive)
+            if (loan.loan?.borrowerName && loan.property?.address) {
               const borrowerName = loan.loan.borrowerName.toLowerCase();
-              if (subject.includes(borrowerName) || from.includes(borrowerName) || to.includes(borrowerName)) {
+              const streetAddress = loan.property.address.split(',')[0].trim().toLowerCase();
+              
+              // Only include if BOTH borrower name and street address are in subject AND it's loan-related
+              const hasBothInSubject = subject.includes(borrowerName) && subject.includes(streetAddress);
+              const isLoanRelated = subject.includes('loan') || subject.includes('application') || 
+                                   subject.includes('closing') || subject.includes('refinance') || 
+                                   subject.includes('mortgage') || subject.includes('refi');
+              
+              if (hasBothInSubject && isLoanRelated) {
                 return true;
               }
             }
             
-            // Check contact emails in from/to/cc (including borrower's email)
-            if (loan.contacts && loan.contacts.length > 0) {
-              const contactEmails = loan.contacts
-                .map((c: any) => c.email)
-                .filter(Boolean)
-                .map((email: any) => email.toLowerCase());
-              
-              console.log(`Checking email ${message.id} - Contact emails:`, contactEmails);
-              console.log(`Email details - from: "${from}", to: "${to}", cc: "${cc}"`);
-              
-              for (const email of contactEmails) {
-                if (from.includes(email) || to.includes(email) || cc.includes(email)) {
-                  console.log(`Match found for contact email: ${email}`);
-                  return true;
-                }
-              }
-            }
-            
+            // Exclude everything else - especially emails that only mention borrower name in passing
             return false;
           });
           
