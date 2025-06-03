@@ -1,36 +1,13 @@
 import { Request, Response } from 'express';
 import { google } from 'googleapis';
 
-// Get the correct domain for OAuth redirect
-const getRedirectUri = () => {
-  // Use REPLIT_DOMAINS which contains the actual domain
-  if (process.env.REPLIT_DOMAINS) {
-    const uri = `https://${process.env.REPLIT_DOMAINS}/api/auth/google/callback`;
-    console.log('Using REPLIT_DOMAINS redirect URI:', uri);
-    return uri;
-  }
-  // Check if we're in Replit environment
-  if (process.env.REPLIT_DEV_DOMAIN) {
-    const uri = `${process.env.REPLIT_DEV_DOMAIN}/api/auth/google/callback`;
-    console.log('Using REPLIT_DEV_DOMAIN redirect URI:', uri);
-    return uri;
-  }
-  // Check for other environment variables that might contain the correct URL
-  if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
-    const uri = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/auth/google/callback`;
-    console.log('Using REPL_SLUG/REPL_OWNER redirect URI:', uri);
-    return uri;
-  }
-  // Fallback to localhost for development
-  const uri = 'http://localhost:5000/api/auth/google/callback';
-  console.log('Using localhost fallback redirect URI:', uri);
-  return uri;
-};
+// Force the correct redirect URI for Replit environment
+const REDIRECT_URI = 'https://0007b75f-d504-4d28-927e-2b1824d99bb5-00-2pydj6ryedxd2.picard.replit.dev/api/auth/google/callback';
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  getRedirectUri()
+  REDIRECT_URI
 );
 
 // Generate OAuth URL for user consent
