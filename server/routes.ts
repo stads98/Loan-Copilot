@@ -641,20 +641,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       oauth2Client.setCredentials(googleTokens);
       const driveClient = google.drive({ version: 'v3', auth: oauth2Client });
 
+      // Try service account first for better permissions
+      try {
+        const { getDriveFolderName } = await import("./lib/google");
+        const folderName = await getDriveFolderName(folderId);
+        
+        if (folderName) {
+          console.log('Successfully fetched folder name via service account:', folderName);
+          return res.json({ 
+            id: folderId,
+            name: folderName,
+            source: 'service_account'
+          });
+        }
+      } catch (serviceError) {
+        console.log('Service account method failed, trying OAuth...');
+      }
+
+      // Fallback to OAuth
       const response = await driveClient.files.get({
         fileId: folderId,
         fields: 'id,name'
       });
 
-      console.log('Folder API response:', response.data);
+      console.log('Folder API response via OAuth:', response.data);
       
       res.json({ 
         id: response.data.id,
-        name: response.data.name 
+        name: response.data.name,
+        source: 'oauth'
       });
     } catch (error) {
       console.error('Error fetching folder name:', error);
-      res.status(500).json({ error: 'Failed to fetch folder name' });
+      
+      // Return helpful error message for re-authentication
+      res.status(403).json({ 
+        error: 'Insufficient permissions to read folder metadata',
+        requiresReauth: true,
+        message: 'Please reconnect Google Drive with enhanced permissions to view actual folder names'
+      });
     }
   });
 

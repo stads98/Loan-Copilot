@@ -11,6 +11,29 @@ interface DriveFile {
   modifiedTime?: string;
 }
 
+export async function getDriveFolderName(folderId: string): Promise<string | null> {
+  try {
+    const { google } = await import('googleapis');
+    
+    const auth = new google.auth.GoogleAuth({
+      credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY!),
+      scopes: ['https://www.googleapis.com/auth/drive.readonly']
+    });
+
+    const drive = google.drive({ version: 'v3', auth });
+    
+    const response = await drive.files.get({
+      fileId: folderId,
+      fields: 'id,name'
+    });
+
+    return response.data.name || null;
+  } catch (error) {
+    console.error('Error fetching folder name with service account:', error);
+    return null;
+  }
+}
+
 export async function authenticateGoogle(req: Request, res: Response): Promise<void> {
   // In a real implementation, this would redirect to Google's OAuth consent screen
   // For demo purposes, we'll simulate successful authentication

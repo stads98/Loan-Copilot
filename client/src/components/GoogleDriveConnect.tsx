@@ -27,15 +27,37 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
         const data = await response.json();
         setConnectionStatus(data.connected);
         
-        // If connected, fetch current folder info
+        // If connected, fetch actual Google Drive folder name
         if (data.connected && loanId) {
           try {
             const loanResponse = await fetch(`/api/loans/${loanId}`);
             const loanData = await loanResponse.json();
             if (loanData.loan?.driveFolder) {
-              // Use descriptive loan-based folder name for display
-              const folderName = `${loanData.loan.borrowerName || 'Borrower'} - ${loanData.loan.propertyAddress || loanData.loan.loanNumber}`;
-              setCurrentFolderName(folderName);
+              // Fetch actual folder name from Google Drive
+              try {
+                const folderResponse = await fetch(`/api/drive/folder/${loanData.loan.driveFolder}/name`);
+                if (folderResponse.ok) {
+                  const folderData = await folderResponse.json();
+                  setCurrentFolderName(folderData.name || 'Unknown Folder');
+                } else if (folderResponse.status === 403) {
+                  // Permission error - show helpful message
+                  const errorData = await folderResponse.json();
+                  if (errorData.requiresReauth) {
+                    setCurrentFolderName('⚠️ Re-authentication required for folder names');
+                  } else {
+                    setCurrentFolderName('⚠️ Permission denied for folder access');
+                  }
+                } else {
+                  // Fallback to loan-based name
+                  const folderName = `${loanData.loan.borrowerName || 'Borrower'} - ${loanData.loan.propertyAddress || loanData.loan.loanNumber}`;
+                  setCurrentFolderName(folderName);
+                }
+              } catch (folderError) {
+                console.error('Error fetching folder name:', folderError);
+                // Fallback to loan-based name
+                const folderName = `${loanData.loan.borrowerName || 'Borrower'} - ${loanData.loan.propertyAddress || loanData.loan.loanNumber}`;
+                setCurrentFolderName(folderName);
+              }
             }
           } catch (error) {
             console.error('Error fetching loan folder info:', error);
