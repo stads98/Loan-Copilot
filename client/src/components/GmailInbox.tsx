@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { 
@@ -18,7 +19,6 @@ import {
   Eye,
   Paperclip
 } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 
 interface GmailMessage {
@@ -110,17 +110,15 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
     
     setIsLoading(true);
     try {
-      const url = loanId 
-        ? `/api/gmail/messages?maxResults=20&loanId=${loanId}`
-        : "/api/gmail/messages?maxResults=20";
-      const response = await apiRequest("GET", url);
+      const response = await apiRequest("GET", "/api/gmail/messages");
       setMessages(response.messages || []);
       setLastSync(new Date());
     } catch (error) {
+      console.error("Failed to fetch messages:", error);
       toast({
-        title: "Error",
-        description: "Failed to fetch Gmail messages.",
-        variant: "destructive"
+        title: "Fetch Failed",
+        description: "Could not fetch Gmail messages. Please check your connection.",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -134,17 +132,18 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
   const openMessage = async (message: GmailMessage) => {
     setSelectedMessage(message);
     setIsLoadingMessage(true);
-    setShowReply(false);
-    setReplyContent("");
-
+    setMessageContent("");
+    setMessageAttachments([]);
+    
     try {
       const response = await apiRequest("GET", `/api/gmail/message/${message.id}`);
-      setMessageContent(response.content || "");
+      setMessageContent(response.body);
       setMessageAttachments(response.attachments || []);
     } catch (error) {
+      console.error("Failed to load message:", error);
       toast({
-        title: "Error",
-        description: "Failed to load message content.",
+        title: "Load Failed",
+        description: "Could not load message content.",
         variant: "destructive",
       });
     } finally {
@@ -161,60 +160,75 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
   };
 
   const parseEmailThread = (content: string): ParsedEmail[] => {
-    const sections = content.split(/(?=From:|Subject:|Date:|On .* wrote:)/);
-    return sections.map((section, index) => {
-      const isHeader = section.includes('From:') || section.includes('Subject:') || section.includes('Date:');
-      const fromMatch = section.match(/From:\s*(.+)/);
-      const subjectMatch = section.match(/Subject:\s*(.+)/);
-      const dateMatch = section.match(/Date:\s*(.+)/);
-      
-      return {
-        header: isHeader,
-        from: fromMatch?.[1] || '',
-        subject: subjectMatch?.[1] || '',
-        date: dateMatch?.[1] || '',
-        content: section.replace(/^(From:|Subject:|Date:).*/gm, '').trim()
-      };
-    }).filter(email => email.content.length > 0);
+    const emails: ParsedEmail[] = [];
+    const lines = content.split('\n');
+    let currentEmail: ParsedEmail = { header: false, from: '', subject: '', date: '', content: '' };
+    let inHeader = false;
+
+    for (const line of lines) {
+      if (line.startsWith('From:')) {
+        if (currentEmail.content || currentEmail.from) {
+          emails.push({ ...currentEmail });
+        }
+        currentEmail = { header: true, from: line.replace('From:', '').trim(), subject: '', date: '', content: '' };
+        inHeader = true;
+      } else if (line.startsWith('Subject:') && inHeader) {
+        currentEmail.subject = line.replace('Subject:', '').trim();
+      } else if (line.startsWith('Date:') && inHeader) {
+        currentEmail.date = line.replace('Date:', '').trim();
+      } else if (line.trim() === '' && inHeader) {
+        inHeader = false;
+      } else if (!inHeader) {
+        currentEmail.content += line + '\n';
+      }
+    }
+
+    if (currentEmail.content || currentEmail.from) {
+      emails.push(currentEmail);
+    }
+
+    if (emails.length === 0) {
+      emails.push({ header: false, from: '', subject: '', date: '', content: content });
+    }
+
+    return emails;
   };
 
   const downloadAttachment = async (attachmentId: string, filename: string) => {
     try {
-      const response = await fetch(`/api/gmail/attachment/${selectedMessage?.id}/${attachmentId}`, {
-        method: 'GET',
-      });
-      
-      if (!response.ok) throw new Error('Failed to download attachment');
-      
+      const response = await fetch(`/api/gmail/attachment/${selectedMessage?.id}/${attachmentId}`);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.style.display = 'none';
       a.href = url;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
-      toast({
-        title: "Download Complete",
-        description: `Downloaded ${filename}`,
-      });
     } catch (error) {
+      console.error('Download error:', error);
       toast({
         title: "Download Failed",
-        description: "Could not download attachment. Please try again.",
+        description: "Could not download attachment.",
         variant: "destructive",
       });
     }
   };
 
-  const previewAttachment = (attachment: any) => {
-    if (attachment.mimeType?.startsWith('image/')) {
-      window.open(`/api/gmail/attachment/${selectedMessage?.id}/${attachment.attachmentId}`, '_blank');
-    } else {
-      downloadAttachment(attachment.attachmentId, attachment.filename);
+  const previewAttachment = async (attachment: any) => {
+    try {
+      const response = await fetch(`/api/gmail/attachment/${selectedMessage?.id}/${attachment.attachmentId}`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Preview error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to preview document",
+        variant: "destructive"
+      });
     }
   };
 
@@ -449,41 +463,53 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
             {conversations.map(({ latestMessage, messageCount, hasUnread }) => (
               <div
                 key={latestMessage.threadId}
-                className={`p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors ${
+                className={`p-3 rounded-lg border hover:bg-gray-50 transition-colors ${
                   hasUnread ? 'bg-blue-50 border-blue-200' : 'bg-white'
                 }`}
-                onClick={() => openMessage(latestMessage)}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      {messageCount > 1 && (
-                        <span className="inline-flex items-center px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded-full font-medium">
-                          {messageCount} messages
-                        </span>
-                      )}
-                      {latestMessage.hasAttachments && (
-                        <span className="inline-flex items-center px-2 py-0.5 text-xs bg-orange-50 text-orange-700 rounded-full font-medium">
-                          <Paperclip className="w-3 h-3 mr-1" />
-                          ATTACHMENTS
-                        </span>
-                      )}
-                    </div>
-                    <div className="space-y-1 mb-2">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                        <span className="text-xs text-gray-500 font-medium">FROM:</span>
-                        <span className={`text-sm font-medium ${hasUnread ? 'text-black' : 'text-gray-700'}`}>
-                          {latestMessage.from}
-                        </span>
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    {loanId && (
+                      <Checkbox
+                        checked={selectedEmails.has(latestMessage.id)}
+                        onCheckedChange={() => toggleEmailSelection(latestMessage.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-1"
+                      />
+                    )}
+                    <div 
+                      className="flex-1 min-w-0 cursor-pointer"
+                      onClick={() => openMessage(latestMessage)}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        {messageCount > 1 && (
+                          <span className="inline-flex items-center px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded-full font-medium">
+                            {messageCount} messages
+                          </span>
+                        )}
+                        {latestMessage.hasAttachments && (
+                          <span className="inline-flex items-center px-2 py-0.5 text-xs bg-orange-50 text-orange-700 rounded-full font-medium">
+                            <Paperclip className="w-3 h-3 mr-1" />
+                            ATTACHMENTS
+                          </span>
+                        )}
                       </div>
+                      <div className="space-y-1 mb-2">
+                        <div className="flex items-center gap-2">
+                          <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                          <span className="text-xs text-gray-500 font-medium">FROM:</span>
+                          <span className={`text-sm font-medium ${hasUnread ? 'text-black' : 'text-gray-700'}`}>
+                            {latestMessage.from}
+                          </span>
+                        </div>
+                      </div>
+                      <h4 className={`text-sm mb-1 ${hasUnread ? 'font-semibold text-black' : 'font-normal text-gray-800'}`}>
+                        {latestMessage.subject?.replace(/^(Re:|Fwd:)\s*/, '') || '(No Subject)'}
+                      </h4>
+                      <p className="text-xs text-gray-600 line-clamp-2 mt-1">
+                        {latestMessage.snippet}
+                      </p>
                     </div>
-                    <h4 className={`text-sm mb-1 ${hasUnread ? 'font-semibold text-black' : 'font-normal text-gray-800'}`}>
-                      {latestMessage.subject?.replace(/^(Re:|Fwd:)\s*/, '') || '(No Subject)'}
-                    </h4>
-                    <p className="text-xs text-gray-600 line-clamp-2 mt-1">
-                      {latestMessage.snippet}
-                    </p>
                   </div>
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
                     <div className="flex items-center gap-2">
