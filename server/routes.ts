@@ -1190,6 +1190,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Found ${allLocalDocs.length} local documents to check for upload`);
         
         for (const localDoc of allLocalDocs) {
+          // Skip deleted documents - they should not sync to Google Drive
+          if (localDoc.deleted) {
+            console.log(`Skipping deleted document: ${localDoc.name}`);
+            continue;
+          }
+          
           // Check if a file with the same name already exists in Drive
           if (driveFileNames.has(localDoc.name)) {
             console.log(`Skipping ${localDoc.name} - already in Google Drive`);
@@ -1197,6 +1203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           // Only upload documents that have local file content (uploaded files or email attachments)
+          // Google Drive IDs are long strings without extensions, local files have extensions or email-attachment prefix
           if (localDoc.fileId && (localDoc.fileId.includes('.') || localDoc.fileId.startsWith('email-attachment-'))) {
             // This is a local file (has extension in fileId or is an email attachment)
             try {
