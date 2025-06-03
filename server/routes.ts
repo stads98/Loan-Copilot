@@ -1497,8 +1497,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Add property-specific searches (only include borrower name if it mentions the property)
-      if (loan.loan?.borrowerName && loan.property?.address) {
-        searchTerms.push(`("${loan.loan.borrowerName}" AND "12333 Colony Preserve") after:${dateQuery}`);
+      if (loan.loan?.borrowerName && loan.loan?.propertyAddress) {
+        // Extract the street address (first part before the comma)
+        const streetAddress = loan.loan.propertyAddress.split(',')[0].trim();
+        searchTerms.push(`("${loan.loan.borrowerName}" AND "${streetAddress}") after:${dateQuery}`);
       }
       if (loan.loan?.loanNumber) {
         searchTerms.push(`"${loan.loan.loanNumber}" after:${dateQuery}`);

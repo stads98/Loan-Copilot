@@ -122,9 +122,13 @@ app.use((req, res, next) => {
           const subject = headers.find(h => h.name === 'Subject')?.value?.toLowerCase() || '';
           
           // Check if message is relevant to this loan
-          const isRelevant = subject.includes('12333 colony preserve') || 
-                           subject.includes('34991748') || 
-                           subject.includes('samuel anicette');
+          const propertyAddress = loan.loan?.propertyAddress?.split(',')[0]?.trim()?.toLowerCase() || '';
+          const loanNumber = loan.loan?.loanNumber || '';
+          const borrowerName = loan.loan?.borrowerName?.toLowerCase() || '';
+          
+          const isRelevant = (propertyAddress && subject.includes(propertyAddress)) || 
+                           (loanNumber && subject.includes(loanNumber)) || 
+                           (borrowerName && subject.includes(borrowerName));
           
           if (isRelevant) {
             // Get full message to check for PDF attachments

@@ -1,0 +1,775 @@
+Loan Processing Co-Pilot
+Smart assistance for processing DSCR real estate loans
+
+New Loan
+Loan Details
+Edit
+Loan Information
+Loan Number
+34988110
+
+Borrower Name
+Galit Mazor
+
+Entity Name
+Dongal Investments LLC
+
+Property Information
+Property Address
+4473 SW 51st St, Dania Beach, FL 33314
+
+Property Type
+duplex
+
+Loan Information
+Loan Amount
+429,100.00
+
+Loan Type
+dscr
+
+Loan Purpose
+cash_out_refinance
+
+Status & Timeline
+Status
+application
+
+Target Close Date
+2025-06-03
+
+Notes
+No notes added
+
+Document Status
+Current progress of required documents
+
+View full checklist
+Overall Completion
+0%
+Borrower Documents
+0/10
+John Smith • Copy: (555) 123-4567 • john.smith@example.com
+Title Documents
+0/1
+Citadel Title & Escrow Company, LLC • (954) 796-3857 • tracy@citadeltitle.com
+Insurance Documents
+0/4
+REI Express • (239) 215-2444 • Britt@rei.express
+Key Contacts
+People involved in this loan file
+
+Add Analyst
+Add Contact
+Loan Analysts
+3
+Keaton Smith
+Analyst
+
+
+
+4keatonsmith111@gmail.com
+
+9176829902
+
+kiavi
+Neftaly Aceves
+Analyst
+
+
+
+neftaly.aceves@lendinghome.com
+
+lending Home
+Neftaly Aceves
+Analyst
+
+
+
+neftaly.aceves@kiavi.com
+
+Kiavi
+Other Contacts
+4
+Britt Vivani
+Email
+
+
+
+Britt@rei.express
+
+(239) 215-2444
+
+REI Express
+Tracy Rosenholtz
+Email
+
+
+
+tracy@citadeltitle.com
+
+(954) 796-3857
+
+Citadel Title & Escrow Company, LLC
+Katy Csapo
+Email
+
+
+
+katy@citadeltitle.com
+
+954-796-3857
+
+Citadel Title & Escrow Company, LLC
+Galit Mazor
+Email
+
+
+
+donnggal@aol.com
+
+(305) 788-1809
+
+DONGAL INVESTMENTS, LLC
+Gmail Inbox
+Last sync: 21:27
+
+
+Disconnect
+ORIGINAL
+FROM:
+dan@adlercapital.us
+4473 SW 51st St, Dania Beach, FL 33314 (Loan #34988110) - Documents Attached
+Dear Keaton, Please review the attached documents for the loan file: Property: 4473 SW 51st St, Dania Beach, FL 33314 Loan Number: 34988110 Date: June 02, 2025 Documents attached (4): • Articles of
+
+READ
+Jun 02, 9:07 PM
+ORIGINAL
+FROM:
+dan@adlercapital.us
+4473 SW 51st St, Dania Beach, FL 33314 (Loan #34988110) - Documents Attached
+Dear Keaton, Please review the attached documents for the loan file: Property: 4473 SW 51st St, Dania Beach, FL 33314 Loan Number: 34988110 Date: June 02, 2025 Documents attached (6): • 4473 SW 51st St
+
+READ
+Jun 02, 6:20 PM
+ORIGINAL
+FROM:
+dan@adlercapital.us
+4473 SW 51st St, Dania Beach, FL 33314, , (#16) - Insurance Request
+Dear Britt Vivani, We have a new loan file that requires insurance coverage and wanted to coordinate with you on the requirements. Loan Details: • Property Address: 4473 SW 51st St, Dania Beach, FL
+
+READ
+Jun 02, 5:14 PM
+ORIGINAL
+FROM:
+dan@adlercapital.us
+4473 SW 51st St, Dania Beach, FL 33314, , (#16) - Insurance Request
+Dear Britt Vivani, We have a new loan file that requires insurance coverage and wanted to coordinate with you on the requirements. Loan Details: • Property Address: 4473 SW 51st St, Dania Beach, FL
+
+READ
+Jun 02, 5:14 PM
+ORIGINAL
+FROM:
+dan@adlercapital.us
+4473 SW 51st St, Dania Beach, FL 33314 (Loan #16) - Documents Attached
+Subject: 4473 SW 51st St, Dania Beach, FL 33314 (Loan #16) - Documents Attached Dear Keaton, Please review the attached documents for the loan file: Property: 4473 SW 51st St, Dania Beach, FL 33314
+
+READ
+Jun 02, 4:57 PM
+ORIGINAL
+FROM:
+dan@adlercapital.us
+4473 SW 51st St, Dania Beach, FL 33314 (Loan #16) - Documents Attached
+Subject: 4473 SW 51st St, Dania Beach, FL 33314 (Loan #16) - Documents Attached Dear Keaton, Please review the attached documents for the loan file: Property: 4473 SW 51st St, Dania Beach, FL 33314
+
+READ
+Jun 02, 4:56 PM
+ORIGINAL
+FROM:
+dan@adlercapital.us
+4473 SW 51st St, Dania Beach, FL 33314 (Loan #16) - Documents Attached
+Subject: 4473 SW 51st St, Dania Beach, FL 33314 (Loan #16) - Documents Attached Dear Keaton, Please review the attached documents for the loan file: Property: 4473 SW 51st St, Dania Beach, FL 33314
+
+READ
+Jun 02, 3:49 PM
+ORIGINAL
+FROM:
+dan@adlercapital.us
+4533 SW 51st St Fort Lauderdale, FL 33314 (Loan #16) - Documents Attached
+Subject: 4473 SW 51st St, Dania Beach, FL 33314 (Loan #16) - Documents Attached Dear keaton, Please review the attached documents for the loan file: Property: 4473 SW 51st St, Dania Beach, FL 33314
+
+READ
+Jun 02, 2:46 PM
+ORIGINAL
+FROM:
+dan@adlercapital.us
+4533 SW 51st St Fort Lauderdale, FL 33314 (Loan #16) - Documents Attached
+Subject: 4473 SW 51st St, Dania Beach, FL 33314 (Loan #16) - Documents Attached Dear keaton, Please review the attached documents for the loan file: Property: 4473 SW 51st St, Dania Beach, FL 33314
+
+READ
+Jun 02, 2:45 PM
+ORIGINAL
+FROM:
+dan@adlercapital.us
+4533 SW 51st St Fort Lauderdale, FL 33314 (Loan #16) - Documents Attached
+Subject: 4473 SW 51st St, Dania Beach, FL 33314 (Loan #16) - Documents Attached Dear keaton, Please review the attached documents for the loan file: Property: 4473 SW 51st St, Dania Beach, FL 33314
+
+READ
+Jun 02, 2:41 PM
+REPLY
+FROM:
+Derek Foltz <derek.foltz@kiavi.com>
+Insurance Request - 4473 SW 51ST ST, Fort Lauderdale, FL, 33314, USA - 34988110
+Hi Daniel, We are just waiting on a correction to the appraisal report; we will follow up and check on the status of that. Thank you! Derek FoltzBroker Experience Manager(415) 231-2439 derek.foltz@
+
+READ
+Jun 02, 12:54 PM
+ORIGINAL
+FROM:
+Tracy Rosenholtz <tracy@citadeltitle.com>
+RE: Title Order Request - 4473 SW 51ST ST, Fort Lauderdale, FL, 33314, USA - 34988110
+Gotcha!! 😊 WIRING INSTRUCTIONS: WARNING! All wiring instructions will be sent to you via SECURE email from an address ending in citadeltitle.com. We will never send instructions from Hotmail, gmail or
+
+READ
+Jun 02, 11:34 AM
+REPLY
+FROM:
+Neftaly Aceves <neftaly.aceves@lendinghome.com>
+4473 SW 51ST ST, Fort Lauderdale, FL, 33314, USA - 34988110 (rental confirmation)
+Greetings, Received, thank you very much! This has been submitted for review, and I will contact you if I have any further questions. I greatly appreciate your assistance, Please note that Kiavi will
+
+READ
+May 30, 1:43 PM
+REPLY
+FROM:
+Neftaly Aceves <neftaly.aceves@lendinghome.com>
+Payment Receipt for Policy 09115272349600
+Greetings, Received, thank you very much! This has been submitted for review, and I will contact you if I have any further questions. I greatly appreciate your assistance, Please note that Kiavi will
+
+READ
+May 29, 6:21 PM
+REPLY
+FROM:
+Daniel <dan@adlercapital.us>
+4473 SW 51ST ST, Fort Lauderdale, FL, 33314, USA - 34988110
+Thank you! Please schedule closing for Tuesday. I&#39;ll wrap up the conditions today. Best, Dan Daniel Adler Private Lending Advisor Adler Capital dan@adlercapital.us (917) 963-0181 On Wed, May 21,
+
+READ
+May 29, 3:19 PM
+REPLY
+FROM:
+Neftaly Aceves <neftaly.aceves@lendinghome.com>
+Request- Dongal Invest- 4473 SW 51 Street
+Greetings, Received, thank you very much! This has been submitted for review, and I will contact you if I have any further questions. I greatly appreciate your assistance, Please note that Kiavi will
+
+READ
+May 28, 7:19 PM
+ORIGINAL
+FROM:
+Galit Mazor <donnggal@aol.com>
+lease
+Galit Mazor (305) 788-1809 donnggal@aol.com
+
+READ
+May 28, 3:17 PM
+ORIGINAL
+FROM:
+Anna Niemczura <anna.niemczura@ahlend.com>
+Notice of Incomplete Application - 25052877, Galit Mazor
+Your loan file has been registered, but your application is incomplete and has not been disclosed. Please see the attached Notice of Incomplete and disclose your loan prior to the expiration date to
+
+READ
+May 28, 9:30 AM
+REPLY
+FROM:
+Daniel <stads98@gmail.com>
+4473 SW 51ST ST, Fort Lauderdale, FL, 33314
+Hi Alicia, As requested, please see some comparable properties and a comprehensive rental analysis report for 4473 SW 51st St, Dania Beach. Thanks, Dan On Mon, May 19, 2025 at 8:10 AM Daniel &lt;
+
+READ
+May 21, 3:49 PM
+Priority Action Items
+Action Items
+Tasks to complete for this loan file
+
+Add task
+
+Call borrower to get 2 banks statements Medium
+Due Jun 7
+
+call insurance agent to get rceMedium
+Completed Jun 8
+1 of 2 tasks completed
+Google Drive Integration
+Connect to view and analyze loan documents
+
+Connected
+Connected to Google Drive
+Documents are being analyzed automatically
+
+Change Folder
+Loan Processing Co-Pilot
+AI-powered guidance and document analysis
+
+Active
+WHAT IS MISSING HERE?
+
+12:36 PM
+To determine what is missing in the loan file for Galit Mazor, we need to identify the specific lender requirements from Kiavi. Unfortunately, the lender's specific document requirements are not listed. However, typically for a DSCR (Debt Service Coverage Ratio) loan, the following documents might be required:
+
+1. **Property Appraisal** - You have "Appraisal - 4533 SW 51 Street.pdf".
+2. **Lease Agreements** - You have "D'ANGELO LEASE 2024 (1).pdf" and "GRIMSTEAD LEASE 2024 (1).pdf".
+3. **Insurance Documents** - You have several insurance-related documents.
+4. **Trust Documents** - You have "galit certificate of trust (1).pdf" and "Galit Mazor Revocable Trust.pdf".
+5. **Payoff Letter** - You have "Payoff Letter -4533 SW 51st St.^J Dania Beach^J Fl 33314 (2).pdf".
+6. **Voided Check** - You have "VOIDED CHECK (4).pdf".
+7. **Operating Agreement** - You have "EW LESA LLC OPERATING AGREEMENT (1).pdf".
+8. **EIN Number** - You have "EW LESA LLC EIN NUMBER.pdf".
+
+Steps to identify missing documents:
+
+1. **Confirm Lender Requirements**: Contact Kiavi to confirm the required documents for a DSCR cash-out refinance loan.
+2. **Cross-Check Documents**: Compare the confirmed list with the collected documents.
+3. **Identify Missing Documents**: Note any missing documents based on the confirmed lender requirements.
+
+If you have specific lender requirements or additional tasks, please provide them, and I can assist further.
+
+12:36 PM
+whata re all emails i need to send
+
+04:35 PM
+Based on the current tasks and document requirements, here are the emails you may need to send:
+
+1. **Request Bank Statements from the Borrower**:
+- Email Galit Mazor to request the two most recent bank statements.
+
+2. **Confirm Lender Requirements**:
+- Email either Jenn Pannek or Jami Analyst at Kiavi to confirm the specific document requirements for the DSCR loan.
+
+Here are the email templates for these tasks:
+
+**1. Request Bank Statements from the Borrower**
+
+Subject: Request for Bank Statements for Your Loan Application
+
+Dear Galit Mazor,
+
+I hope this message finds you well. As part of the documentation process for your DSCR loan application, we require the two most recent bank statements.
+
+Please email these documents at your earliest convenience to ensure a smooth processing of your loan application.
+
+Thank you for your cooperation.
+
+Best regards,
+
+[Your Name]
+Loan Processing Assistant
+Adler Capital
+
+---
+
+**2. Confirm Lender Requirements with Kiavi**
+
+Subject: Confirmation of Required Documents for DSCR Loan
+
+Dear [Jenn/Jami],
+
+I hope this message finds you well. I am reaching out to confirm the specific document requirements for the DSCR cash-out refinance loan for borrower Galit Mazor.
+
+Could you please provide a checklist or any additional documentation requirements needed for this loan type?
+
+Thank you for your assistance.
+
+Best regards,
+
+[Your Name]
+Loan Processing Assistant
+Adler Capital
+
+---
+
+Feel free to adjust the templates as needed and send them accordingly.
+
+04:35 PM
+Ask about DSCR loans, documents, or request email templates...
+Send
+Document Management
+Send to Analyst
+Scan All Emails
+Sync Google Drive
+Deleted Documents
+Show (1)
+All Documents (42)
+Missing (20)
+Upload
+Completed (0)
+Search documents by name...
+Notice of Incomplete Application and Request for Additional Information.pdf (from Anna Niemczura anna.niemczura@ahlend.com)
+
+other
+Jun 02, 2025 at 9:26 PM
+140 KB
+
+
+
+disclosure form.pdf
+
+Auto-downloaded
+Daniel
+Jun 02, 2025 at 9:23 PM
+19 KB
+
+
+
+borrowing authorization form.pdf
+
+Auto-downloaded
+Daniel
+Jun 02, 2025 at 9:23 PM
+244 KB
+
+
+
+title_report_prelim - 12333 COLONY PRESERVE DR, Boynton Beach, FL, 33436, USA.pdf
+
+Auto-downloaded
+Daniel
+Jun 02, 2025 at 9:23 PM
+19 KB
+
+
+
+CPL.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:23 PM
+156 KB
+
+
+
+Tax Account Summary.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:23 PM
+540 KB
+
+
+
+Survey.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:23 PM
+922 KB
+
+
+
+Property Appraiser.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:23 PM
+164 KB
+
+
+
+Deed of Record.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:23 PM
+225 KB
+
+
+
+Anicettes Transportation LLC.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:23 PM
+207 KB
+
+
+
+2024 Tax Bill.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:23 PM
+215 KB
+
+
+
+2024 Tax Bill Detail.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:23 PM
+504 KB
+
+
+
+107709991_RETAILER POLICY-ERisk-New Path Title-2025-2026.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:23 PM
+1.2 MB
+
+
+
+Escrow FULL Wiring Instructions.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:23 PM
+67 KB
+
+
+
+staples_scan.pdf
+
+Auto-downloaded
+samuel anicette
+Jun 02, 2025 at 9:23 PM
+1.0 MB
+
+
+
+Title Commitment.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:23 PM
+253 KB
+
+
+
+Prelim CD.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:23 PM
+144 KB
+
+
+
+DischargeStatement_323__2025-05-21-2.pdf
+
+Auto-downloaded
+samuel anicette
+Jun 02, 2025 at 9:23 PM
+483 KB
+
+
+
+FedEx Scan 2025-05-21_18-11-25.pdf
+
+Auto-downloaded
+samuel anicette
+Jun 02, 2025 at 9:23 PM
+2.4 MB
+
+
+
+ACH Blank Form.pdf
+
+Auto-downloaded
+Daniel
+Jun 02, 2025 at 9:23 PM
+396 KB
+
+
+
+staples_scan.pdf
+
+Auto-downloaded
+samuel anicette
+Jun 02, 2025 at 9:23 PM
+646 KB
+
+
+
+hazard_insurance - 12333 Colony Preserve Drive, Boynton Beach, FL 33436.pdf
+
+Auto-downloaded
+Daniel
+Jun 02, 2025 at 9:22 PM
+25 KB
+
+
+
+Olympus quote.pdf
+
+Auto-downloaded
+Luma Aref
+Jun 02, 2025 at 9:22 PM
+437 KB
+
+
+
+Appraisal 12333 Colony Preserve Dr, Boynton Beach, FL 33436.pdf
+
+Auto-downloaded
+samuel anicette
+Jun 02, 2025 at 9:22 PM
+1.8 MB
+
+
+
+Olympus quote-higher deductible.pdf
+
+Auto-downloaded
+Daniel
+Jun 02, 2025 at 9:19 PM
+436 KB
+
+
+
+borrowing authorization form revised.pdf
+
+Auto-downloaded
+Daniel
+Jun 02, 2025 at 9:19 PM
+545 KB
+
+
+
+Tax Account Summary.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:19 PM
+363 KB
+
+
+
+COT.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:19 PM
+2.1 MB
+
+
+
+Title Commitment.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:19 PM
+3.0 MB
+
+
+
+Community Specific Comps.pdf
+
+Auto-downloaded
+samuel anicette
+Jun 02, 2025 at 9:19 PM
+1.3 MB
+
+
+
+Mortgage Payoff - Update 2.pdf
+
+Auto-downloaded
+Kristian Negrin
+Jun 02, 2025 at 9:19 PM
+575 KB
+
+
+
+DischargeStatement_323__2025-05-21-3.pdf
+
+Auto-downloaded
+samuel anicette
+Jun 02, 2025 at 9:19 PM
+575 KB
+
+
+
+Olympus Application to be signed.pdf
+
+Auto-downloaded
+Luma Aref
+Jun 02, 2025 at 9:19 PM
+5.8 MB
+
+
+
+Personal Liability Rejection.pdf
+
+Auto-downloaded
+Luma Aref
+Jun 02, 2025 at 9:19 PM
+832 KB
+
+
+
+LLC Questionnaire.pdf
+
+Auto-downloaded
+Luma Aref
+Jun 02, 2025 at 9:19 PM
+66 KB
+
+
+
+Olympus Invoice.pdf
+
+Auto-downloaded
+Daniel
+Jun 02, 2025 at 9:18 PM
+353 KB
+
+
+
+Tax Account Summary.pdf
+
+Auto-downloaded
+Daniel
+Jun 02, 2025 at 9:18 PM
+516 KB
+
+
+
+4473 SW 51st St, Dania Beach Rental Analysis .pdf
+
+other
+Jun 02, 2025 at 9:18 PM
+538 KB
+
+
+
+PAYMENT JAN (1).pdf (from dan@adlercapital.us)
+
+other
+Jun 02, 2025 at 9:18 PM
+378 KB
+
+
+
+4533 sw 51st st hud.pdf (from dan@adlercapital.us)
+
+other
+Jun 02, 2025 at 9:18 PM
+1004 KB
+
+
+
+4473 SW 51st St, Dania Beach Rental Analysis .pdf (from Daniel stads98@gmail.com)
+
+other
+Jun 02, 2025 at 9:18 PM
+538 KB
+
+
+
+VOIDED CHECK (4).pdf (from dan@adlercapital.us)
+
+other
+Jun 02, 2025 at 9:15 PM
+460 KB
