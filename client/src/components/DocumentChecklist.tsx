@@ -84,10 +84,8 @@ export const getDocumentRequirements = (funder: string): DocumentRequirement[] =
     case 'kiavi':
       return [
         ...baseRequirements,
-        { id: "kiavi_auth_form", name: "Borrowing Authorization", required: true, category: "lender_specific", funderSpecific: true },
+        { id: "kiavi_auth_form", name: "Borrowing Authorization Form", required: true, category: "lender_specific", funderSpecific: true },
         { id: "kiavi_disclosure", name: "Disclosure Form", required: true, category: "lender_specific", funderSpecific: true },
-        { id: "kiavi_liquidity", name: "Proof of Liquidity/Down Payment", required: true, category: "lender_specific", funderSpecific: true },
-        { id: "kiavi_reserves", name: "Proof of Reserves (6 months PITI)", required: true, category: "lender_specific", funderSpecific: true },
       ];
 
     case 'visio':
