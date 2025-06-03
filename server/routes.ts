@@ -283,17 +283,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('Tokens stored in session and database');
       
-      // Close the popup window and refresh parent
-      res.send(`
-        <script>
-          if (window.opener) {
-            window.opener.location.reload();
-            window.close();
-          } else {
-            window.location.href = '/dashboard';
-          }
-        </script>
-      `);
+      // Redirect back to the application with success
+      res.redirect('/?auth=success');
     } catch (error) {
       console.error('Google OAuth error:', error);
       res.status(500).send(`Authentication failed: ${error.message}`);
