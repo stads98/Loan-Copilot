@@ -97,9 +97,35 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
                   Documents are being analyzed automatically
                 </p>
               </div>
-              <div className="ml-auto">
+              <div className="ml-auto flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setShowFolderBrowser(true)}>
                   Change Folder
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="text-orange-600 hover:text-orange-700 border-orange-300 hover:border-orange-400"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/auth/google/disconnect', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                      });
+                      
+                      if (response.ok) {
+                        // Refresh the page to update connection status
+                        window.location.reload();
+                      } else {
+                        console.error('Disconnect failed');
+                      }
+                    } catch (error) {
+                      console.error('Error disconnecting Google Drive:', error);
+                    }
+                  }}
+                >
+                  Reconnect Drive
                 </Button>
               </div>
             </div>
