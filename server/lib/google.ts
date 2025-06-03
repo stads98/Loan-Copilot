@@ -346,6 +346,10 @@ export async function uploadFileToGoogleDrive(
     await jwtClient.authorize();
     const drive = google.drive({ version: 'v3', auth: jwtClient });
     
+    // Convert Buffer to readable stream for Google Drive API
+    const { Readable } = await import('stream');
+    const fileStream = Readable.from(fileBuffer);
+    
     // Upload the file
     const response = await drive.files.create({
       requestBody: {
@@ -354,7 +358,7 @@ export async function uploadFileToGoogleDrive(
       },
       media: {
         mimeType: mimeType,
-        body: fileBuffer
+        body: fileStream
       },
       fields: 'id'
     });

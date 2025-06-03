@@ -2230,6 +2230,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   const relevantContacts = loan.contacts?.map((c: any) => c.email?.toLowerCase()).filter(Boolean) || [];
                   const isFromRelevantContact = relevantContacts.some(contact => messageFrom.includes(contact));
                   
+                  // Debug logging for 3keatonsmith111@gmail.com
+                  if (messageFrom.includes('3keatonsmith111') || messageFrom.includes('keatonsmith111')) {
+                    console.log(`Keaton Smith email debug:
+                      - Message from: ${messageFrom}
+                      - Relevant contacts: ${JSON.stringify(relevantContacts)}
+                      - Is from relevant contact: ${isFromRelevantContact}
+                      - Filename: ${filename}
+                      - Subject: ${subject}`);
+                  }
+                  
                   // 2. OR mentions this specific property
                   const mentionsProperty = (() => {
                     if (!loan.loan?.propertyAddress) return false;
@@ -2284,8 +2294,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     messageFrom.includes(loan.loan.borrowerName.toLowerCase())
                   );
                   
-                  // Only include if from relevant contact OR mentions this specific property/loan/borrower
-                  return isFromRelevantContact || mentionsProperty || mentionsLoanNumber || mentionsBorrower;
+                  // If from a relevant contact (like title company), always allow
+                  if (isFromRelevantContact) {
+                    console.log(`Document allowed - from relevant contact: ${filename}`);
+                    return true;
+                  }
+                  
+                  // Otherwise, require property/loan/borrower mention
+                  return mentionsProperty || mentionsLoanNumber || mentionsBorrower;
                 })();
 
                 if (!isRelevantDocument) {
