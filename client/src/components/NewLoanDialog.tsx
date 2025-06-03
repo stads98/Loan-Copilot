@@ -330,7 +330,10 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
                         {...field}
                         onChange={(e) => {
                           field.onChange(e);
-                          calculateLTV(form.getValues("estimatedValue"), e.target.value);
+                          const estimatedValue = form.getValues("estimatedValue");
+                          if (estimatedValue) {
+                            calculateLTV(estimatedValue, e.target.value);
+                          }
                         }}
                       />
                     </FormControl>
@@ -351,7 +354,10 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
                         {...field}
                         onChange={(e) => {
                           field.onChange(e);
-                          calculateLoanAmount(form.getValues("estimatedValue"), e.target.value);
+                          const estimatedValue = form.getValues("estimatedValue");
+                          if (estimatedValue) {
+                            calculateLoanAmount(estimatedValue, e.target.value);
+                          }
                         }}
                       />
                     </FormControl>
