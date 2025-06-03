@@ -145,10 +145,18 @@ export default function DocumentManager({
   const resetAllDocuments = async () => {
     setIsResetting(true);
     try {
-      const response = await apiRequest("DELETE", `/api/loans/${loanId}/reset-documents`, {});
+      const response = await fetch(`/api/loans/${loanId}/reset-documents`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
       if (!response.ok) {
         throw new Error('Reset failed');
       }
+      
+      const result = await response.json();
       
       // Clear local state
       setAssignedDocuments({});

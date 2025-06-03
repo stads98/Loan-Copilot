@@ -620,8 +620,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Function to normalize filename by removing macOS download suffixes like (1), (2), etc.
       function normalizeFileName(filename: string): string {
-        // Remove patterns like " (1)", " (2)", etc. from the end before the file extension
-        return filename.replace(/\s*\(\d+\)(\.[^.]+)?$/, '$1');
+        // Only remove patterns like " (1)", " (2)", etc. if they're BEFORE the file extension
+        // This prevents "Policy Declaration (1).pdf" from becoming "Policy Declaration.pdf"
+        const match = filename.match(/^(.+)\s+\((\d+)\)(\.[^.]+)$/);
+        if (match) {
+          return match[1] + match[3]; // base name + extension, removing the (number)
+        }
+        return filename; // Return original if no pattern matches
       }
       
       // Group by normalized name and file_size to find duplicates
