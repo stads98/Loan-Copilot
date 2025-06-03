@@ -443,10 +443,7 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
   useEffect(() => {
     if (isConnected) {
       fetchMessages();
-      // Auto-process when Gmail loads: Scan All Emails then Sync Google Drive
-      if (loanId) {
-        autoProcessLoanEmails();
-      }
+      // Auto-processing disabled - only manual operations allowed
     }
   }, [isConnected, loanId]);
 
