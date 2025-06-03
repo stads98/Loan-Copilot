@@ -78,14 +78,9 @@ async function triggerAutoSync(loanId: number, action: string, filename?: string
         
         let syncChanges = 0;
         
-        // Remove database documents that no longer exist in Google Drive
-        for (const existingDoc of existingDocs) {
-          if (existingDoc.fileId && !driveFileIds.has(existingDoc.fileId)) {
-            await storage.deleteDocument(existingDoc.id);
-            syncChanges++;
-            console.log(`Auto-sync: Removed ${existingDoc.name} - no longer in Google Drive`);
-          }
-        }
+        // DO NOT remove local documents - local storage is the primary source
+        // Instead, check for documents that need to be uploaded to Google Drive
+        console.log(`Auto-sync: Preserving all ${existingDocs.length} local documents as primary source`);
         
         // Add new documents from Google Drive
         for (const file of files) {
@@ -1348,17 +1343,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let documentsCreated = 0;
       let documentsUploaded = 0;
       
-      // Step 1: Sync FROM Google Drive TO Database - ensure exact matching
+      // Step 1: Sync FROM Google Drive TO Database - only add new files, don't remove local files
       const driveFileIds = new Set(files.map(f => f.id));
       const existingDocs = await storage.getDocumentsByLoanId(loanId);
       
-      // Remove database documents that no longer exist in Google Drive
-      for (const existingDoc of existingDocs) {
-        if (existingDoc.fileId && !driveFileIds.has(existingDoc.fileId)) {
-          console.log(`Removing document ${existingDoc.name} - no longer exists in Google Drive`);
-          await storage.deleteDocument(existingDoc.id);
-        }
-      }
+      // DO NOT remove local documents - local storage is the primary source
+      // Google Drive is backup/sync destination only
+      console.log(`Preserving all ${existingDocs.length} local documents as primary source`);
       
       // Add or update documents from Google Drive
       for (const file of files) {
