@@ -1406,7 +1406,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const loanId = parseInt(req.params.loanId);
+      console.log('=== EMAIL SCAN START ===');
+      console.log('Getting loan details for ID:', loanId);
+      
       const loan = await storage.getLoanWithDetails(loanId);
+      console.log('Loan loaded:', !!loan);
+      console.log('Loan structure:', Object.keys(loan || {}));
+      
       if (!loan) {
         return res.status(404).json({ message: "Loan not found" });
       }
