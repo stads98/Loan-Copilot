@@ -409,19 +409,22 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="googleDriveLink"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Google Drive Folder (Optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://drive.google.com/drive/folders/..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Google Drive Folder (Optional)</label>
+              <GoogleDriveFolderSelector
+                onFolderSelected={(folderId, folderName) => {
+                  setSelectedFolderId(folderId);
+                  setSelectedFolderName(folderName);
+                }}
+                propertyAddress={form.watch("propertyAddress")}
+                currentFolderId={selectedFolderId}
+              />
+              {selectedFolderName && (
+                <p className="text-xs text-muted-foreground">
+                  Selected: {selectedFolderName}
+                </p>
               )}
-            />
+            </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
