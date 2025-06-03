@@ -31,11 +31,11 @@ const baseRequirements: DocumentRequirement[] = [
   { id: "voided_check", name: "Voided Check", required: true, category: "financials" },
   
   // Property Ownership
-  { id: "property_ownership", name: "HUD or Other Documentation of Property Ownership", required: true, category: "property" },
+  { id: "property_ownership", name: "HUD (or Other Documentation of Property Ownership)", required: true, category: "property" },
   { id: "current_leases", name: "All Current Leases", required: true, category: "property" },
   
   // Appraisal
-  { id: "appraisal", name: "Appraisal (Ordered through AMC)", required: true, category: "appraisal" },
+  { id: "appraisal", name: "Appraisal", required: true, category: "appraisal" },
   
   // Insurance
   { id: "insurance_policy", name: "Insurance Policy", required: true, category: "insurance" },
@@ -48,17 +48,16 @@ const baseRequirements: DocumentRequirement[] = [
   
   // Payoff (if applicable)
   { id: "lender_contact", name: "Current Lender Contact Info", required: false, category: "payoff" },
-  { id: "payoff_statement", name: "Payoff Statement and VOM", required: false, category: "payoff" },
+  { id: "payoff_statement", name: "Payoff Statement", required: false, category: "payoff" },
 ];
 
 // Kiavi-specific requirements
 const kiaviRequirements: DocumentRequirement[] = [
   ...baseRequirements,
-  { id: "kiavi_auth_form", name: "Kiavi Borrowing Authorization Form (from Kiavi Portal)", required: true, category: "lender_specific", funderSpecific: true },
-  { id: "kiavi_disclosure", name: "Kiavi Disclosure Form (from Kiavi Portal)", required: true, category: "lender_specific", funderSpecific: true },
+  { id: "kiavi_auth_form", name: "Borrowing Authorization", required: true, category: "lender_specific", funderSpecific: true },
+  { id: "kiavi_disclosure", name: "Disclosure Form", required: true, category: "lender_specific", funderSpecific: true },
   { id: "kiavi_liquidity", name: "Proof of Liquidity/Down Payment", required: true, category: "lender_specific", funderSpecific: true },
   { id: "kiavi_reserves", name: "Proof of Reserves (6 months PITI)", required: true, category: "lender_specific", funderSpecific: true },
-  { id: "kiavi_background", name: "Kiavi Background Check Authorization (from Kiavi Portal)", required: true, category: "lender_specific", funderSpecific: true },
 ];
 
 // Visio-specific requirements
