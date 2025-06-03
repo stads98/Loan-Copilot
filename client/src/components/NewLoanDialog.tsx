@@ -64,6 +64,26 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Calculate LTV when loan amount or estimated value changes
+  const calculateLTV = (estimatedValue: string, loanAmount: string) => {
+    const value = parseFloat(estimatedValue.replace(/[,$]/g, ''));
+    const amount = parseFloat(loanAmount.replace(/[,$]/g, ''));
+    if (value && amount && value > 0) {
+      const ltv = Math.round((amount / value) * 100);
+      form.setValue("loanToValue", ltv.toString());
+    }
+  };
+
+  // Calculate loan amount when LTV or estimated value changes
+  const calculateLoanAmount = (estimatedValue: string, ltv: string) => {
+    const value = parseFloat(estimatedValue.replace(/[,$]/g, ''));
+    const ltvPercent = parseFloat(ltv.replace(/[%]/g, ''));
+    if (value && ltvPercent && value > 0 && ltvPercent > 0) {
+      const amount = Math.round(value * (ltvPercent / 100));
+      form.setValue("loanAmount", amount.toString());
+    }
+  };
+
   const form = useForm<LoanFormData>({
     resolver: zodResolver(loanFormSchema),
     defaultValues: {
@@ -281,7 +301,14 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
                   <FormItem>
                     <FormLabel>Estimated Value</FormLabel>
                     <FormControl>
-                      <Input placeholder="500000" {...field} />
+                      <Input 
+                        placeholder="500000" 
+                        {...field} 
+                        onChange={(e) => {
+                          field.onChange(e);
+                          calculateLTV(e.target.value, form.getValues("loanAmount"));
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -297,7 +324,14 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
                   <FormItem>
                     <FormLabel>Loan Amount</FormLabel>
                     <FormControl>
-                      <Input placeholder="400000" {...field} />
+                      <Input 
+                        placeholder="400000" 
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          calculateLTV(form.getValues("estimatedValue"), e.target.value);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
