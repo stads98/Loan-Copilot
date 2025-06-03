@@ -499,6 +499,40 @@ export default function DocumentManager({
                 "Sync Google Drive"
               )}
             </Button>
+            <Button 
+              onClick={async () => {
+                try {
+                  const response = await fetch('/api/auth/google/disconnect', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                  });
+                  
+                  if (response.ok) {
+                    toast({
+                      title: "Google Drive Disconnected",
+                      description: "Click 'Connect Google Drive' to re-authenticate with full permissions.",
+                    });
+                    // Refresh the page to update connection status
+                    window.location.reload();
+                  } else {
+                    throw new Error('Disconnect failed');
+                  }
+                } catch (error) {
+                  toast({
+                    title: "Error",
+                    description: "Failed to disconnect Google Drive.",
+                    variant: "destructive"
+                  });
+                }
+              }}
+              variant="outline"
+              size="sm"
+              className="text-orange-600 hover:text-orange-700 border-orange-300 hover:border-orange-400"
+            >
+              Reconnect Google Drive
+            </Button>
             <Button
               onClick={() => setShowResetConfirmation(true)}
               disabled={isResetting}

@@ -34,9 +34,10 @@ export default function GoogleDriveFolderSelector({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFolder, setSelectedFolder] = useState<GoogleDriveFolder | null>(null);
   const [newFolderName, setNewFolderName] = useState("");
+  const [requiresAuth, setRequiresAuth] = useState(false);
   const { toast } = useToast();
 
-  const { isConnected, connect, checkStatus } = useGoogleDrive();
+  const { isConnected, connect, disconnect, checkStatus } = useGoogleDrive();
 
   const loadFolders = async () => {
     setLoading(true);

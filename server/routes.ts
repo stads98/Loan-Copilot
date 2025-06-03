@@ -3863,6 +3863,21 @@ Would you like me to draft an email to request any specific documents or informa
     }
   });
 
+  // Google Drive disconnect endpoint
+  app.post('/api/auth/google/disconnect', isAuthenticated, async (req, res) => {
+    try {
+      // Clear Google tokens from session
+      if (req.session) {
+        delete req.session.googleTokens;
+      }
+      
+      res.json({ success: true, message: 'Google Drive disconnected successfully' });
+    } catch (error) {
+      console.error('Error disconnecting Google Drive:', error);
+      res.status(500).json({ error: 'Failed to disconnect Google Drive' });
+    }
+  });
+
   const httpServer = createServer(app);
   
   return httpServer;
