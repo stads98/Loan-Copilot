@@ -1606,6 +1606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Now scan filtered messages for PDF attachments
       const downloadedPDFs = [];
       let totalPDFs = 0;
+      const downloadedInThisScan = new Set(); // Track files downloaded in this scan
 
       for (const message of filteredMessages) {
         try {
