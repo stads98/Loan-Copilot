@@ -1719,11 +1719,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   
                   const isFromRelevantContact = relevantContacts.some(contact => messageFrom.includes(contact));
                   
-                  // 2. OR mentions this specific property (12333 Colony Preserve)
-                  const mentionsProperty = (
-                    (filename.includes('12333') && filename.includes('colony preserve')) ||
-                    (subject.includes('12333') && subject.includes('colony preserve'))
-                  );
+                  // 2. OR mentions this specific property (12333 Colony Preserve with variations)
+                  const mentionsProperty = (() => {
+                    const hasStreetNumber = filename.includes('12333') || subject.includes('12333');
+                    if (!hasStreetNumber) return false;
+                    
+                    // Check for various street name formats
+                    const streetVariations = [
+                      'colony preserve dr',
+                      'colony preserve drive', 
+                      'colony preserve ct',
+                      'colony preserve court',
+                      'colony preserve st',
+                      'colony preserve street',
+                      'colony preserve blvd',
+                      'colony preserve boulevard',
+                      'colony preserve ave',
+                      'colony preserve avenue',
+                      'colony preserve way',
+                      'colony preserve ln',
+                      'colony preserve lane'
+                    ];
+                    
+                    return streetVariations.some(variation => 
+                      filename.includes(variation) || subject.includes(variation)
+                    );
+                  })();
                   
                   // 3. OR mentions loan number
                   const mentionsLoanNumber = (
