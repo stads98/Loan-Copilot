@@ -1426,10 +1426,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dateQuery = eightWeeksAgo.toISOString().split('T')[0].replace(/-/g, '/');
       
       // Get ALL contact emails from the loan
+      console.log('=== EMAIL SCAN DEBUG ===');
+      console.log('Loan ID:', loanId);
       console.log('Loan contacts found:', loan.contacts?.length || 0);
       console.log('All loan contacts:', JSON.stringify(loan.contacts, null, 2));
       
       const contactEmails = loan.contacts?.map((c: any) => c.email).filter(Boolean) || [];
+      console.log('Extracted contact emails:', contactEmails);
       
       console.log('Searching for emails from these contacts:', contactEmails);
       console.log('Contact roles:', loan.contacts?.map((c: any) => `${c.name} (${c.role}) - ${c.email}`));
@@ -1860,52 +1863,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allMessages = [];
       
       if (listResponse.data.messages) {
-        // Track processed threads to avoid duplicates
-        const processedThreads = new Set();
+        // Track processed threads to avoid duplicates - show only one message per conversation
+        const processedThreads = new Map();
         
-        // Get details for each message and scan full conversation threads
+        // Get details for each message
         for (const message of listResponse.data.messages) {
           try {
-            // If we haven't processed this thread yet, get the full thread
+            // If we haven't processed this thread yet, get the latest message from the thread
             if (!processedThreads.has(message.threadId)) {
-              processedThreads.add(message.threadId);
-              
-              // Get the full thread to capture all messages in the conversation
-              const threadResponse = await gmail.users.threads.get({
+              const msgResponse = await gmail.users.messages.get({
                 auth: gmailAuth,
                 userId: 'me',
-                id: message.threadId!,
+                id: message.id!,
                 format: 'metadata',
                 metadataHeaders: ['From', 'Subject', 'Date', 'To', 'Cc']
               });
-              
-              // Process all messages in the thread
-              for (const threadMessage of threadResponse.data.messages || []) {
-                const headers = threadMessage.payload?.headers || [];
-                const fromHeader = headers.find(h => h.name === 'From');
-                const subjectHeader = headers.find(h => h.name === 'Subject');
-                const dateHeader = headers.find(h => h.name === 'Date');
-                const toHeader = headers.find(h => h.name === 'To');
-                const ccHeader = headers.find(h => h.name === 'Cc');
 
-                allMessages.push({
-                  id: threadMessage.id,
-                  threadId: threadMessage.threadId,
-                  snippet: threadMessage.snippet,
-                  subject: subjectHeader?.value || '',
-                  from: fromHeader?.value || '',
-                  to: toHeader?.value || '',
-                  cc: ccHeader?.value || '',
-                  date: dateHeader?.value || '',
-                  unread: threadMessage.labelIds?.includes('UNREAD') || false,
-                  hasAttachments: threadMessage.payload?.parts?.some(part => 
-                    part.filename && part.filename.length > 0
-                  ) || false
-                });
-              }
+              const headers = msgResponse.data.payload?.headers || [];
+              const fromHeader = headers.find(h => h.name === 'From');
+              const subjectHeader = headers.find(h => h.name === 'Subject');
+              const dateHeader = headers.find(h => h.name === 'Date');
+              const toHeader = headers.find(h => h.name === 'To');
+              const ccHeader = headers.find(h => h.name === 'Cc');
+
+              const messageData = {
+                id: message.id,
+                threadId: message.threadId,
+                snippet: msgResponse.data.snippet,
+                subject: subjectHeader?.value || '',
+                from: fromHeader?.value || '',
+                to: toHeader?.value || '',
+                cc: ccHeader?.value || '',
+                date: dateHeader?.value || '',
+                unread: msgResponse.data.labelIds?.includes('UNREAD') || false,
+                hasAttachments: msgResponse.data.payload?.parts?.some(part => 
+                  part.filename && part.filename.length > 0
+                ) || false
+              };
+
+              processedThreads.set(message.threadId, messageData);
+              allMessages.push(messageData);
             }
           } catch (msgError) {
-            console.error('Error fetching thread details:', msgError);
+            console.error('Error fetching message details:', msgError);
           }
         }
       }
