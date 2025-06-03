@@ -4024,10 +4024,25 @@ Would you like me to draft an email to request any specific documents or informa
         return res.json({ uploadedCount: 0, message: 'No documents to upload' });
       }
 
-      // Get Google Drive tokens
-      const tokens = await storage.getUserToken(userId, 'google_drive');
+      // Get Google Drive tokens with fallback authentication
+      let tokens = await storage.getUserToken(userId, 'drive');
+      
       if (!tokens) {
-        return res.status(401).json({ error: 'Google Drive not connected' });
+        // Try to restore from session if database doesn't have tokens
+        const sessionTokens = (req.session as any)?.googleTokens;
+        if (sessionTokens && sessionTokens.access_token) {
+          // Save session tokens to database for persistence
+          tokens = await storage.createUserToken({
+            userId: userId,
+            service: 'drive',
+            accessToken: sessionTokens.access_token,
+            refreshToken: sessionTokens.refresh_token,
+            expiryDate: sessionTokens.expiry_date ? new Date(sessionTokens.expiry_date) : null,
+            scope: 'https://www.googleapis.com/auth/drive'
+          });
+        } else {
+          return res.status(401).json({ error: 'Google Drive not connected' });
+        }
       }
 
       // Clear the folder first
