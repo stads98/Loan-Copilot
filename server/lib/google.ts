@@ -354,7 +354,7 @@ export async function uploadFileToGoogleDrive(
       },
       media: {
         mimeType: mimeType,
-        body: require('stream').Readable.from(fileBuffer)
+        body: fileBuffer
       },
       fields: 'id'
     });
