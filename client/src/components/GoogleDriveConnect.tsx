@@ -33,25 +33,9 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
             const loanResponse = await fetch(`/api/loans/${loanId}`);
             const loanData = await loanResponse.json();
             if (loanData.loan?.driveFolder) {
-              // Fetch actual folder name from Google Drive API
-              try {
-                const folderResponse = await fetch(`/api/drive/folder/${loanData.loan.driveFolder}/name`);
-                if (folderResponse.ok) {
-                  const folderData = await folderResponse.json();
-                  console.log('Folder data received:', folderData);
-                  if (folderData.name && folderData.name.trim()) {
-                    setCurrentFolderName(folderData.name);
-                  } else {
-                    setCurrentFolderName('Google Drive Folder');
-                  }
-                } else {
-                  console.log('Folder API response not ok:', folderResponse.status);
-                  setCurrentFolderName('Google Drive Folder');
-                }
-              } catch (folderError) {
-                console.error('Error fetching folder name:', folderError);
-                setCurrentFolderName('Google Drive Folder');
-              }
+              // Use descriptive loan-based folder name for display
+              const folderName = `${loanData.loan.borrowerName || 'Borrower'} - ${loanData.loan.propertyAddress || loanData.loan.loanNumber}`;
+              setCurrentFolderName(folderName);
             }
           } catch (error) {
             console.error('Error fetching loan folder info:', error);

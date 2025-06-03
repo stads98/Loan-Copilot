@@ -1244,58 +1244,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let documentsCreated = 0;
       let documentsUploaded = 0;
       
-      // Step 1: Sync FROM Google Drive TO Database
+      // Step 1: Sync FROM Google Drive TO Database - ensure exact matching
+      const driveFileIds = new Set(files.map(f => f.id));
+      const existingDocs = await storage.getDocumentsByLoanId(loanId);
+      
+      // Remove database documents that no longer exist in Google Drive
+      for (const existingDoc of existingDocs) {
+        if (existingDoc.fileId && !driveFileIds.has(existingDoc.fileId)) {
+          console.log(`Removing document ${existingDoc.name} - no longer exists in Google Drive`);
+          await storage.deleteDocument(existingDoc.id);
+        }
+      }
+      
+      // Add or update documents from Google Drive
       for (const file of files) {
         try {
-          // Check if document already exists
-          const existingDocs = await storage.getDocumentsByLoanId(loanId);
           const existingDoc = existingDocs.find(doc => doc.fileId === file.id);
           
           if (existingDoc) {
-            // Update existing document
+            // Update existing document with latest Google Drive metadata
             await storage.updateDocument(existingDoc.id, {
               name: file.name,
               fileType: file.mimeType,
-              fileSize: file.size ? parseInt(file.size) : null
+              fileSize: file.size ? parseInt(file.size) : null,
+              driveFileId: file.id,
+              lastModified: file.modifiedTime ? new Date(file.modifiedTime) : null
             });
             documentsUpdated++;
-            
-            // Check if local file exists, if not download it for bidirectional consistency
-            const fs = await import('fs').then(m => m.promises);
-            const path = await import('path');
-            const uploadsDir = path.join(process.cwd(), 'uploads');
-            const localFilePath = path.join(uploadsDir, existingDoc.fileId);
-            
-            try {
-              await fs.access(localFilePath);
-              // File exists locally, no action needed
-            } catch {
-              // File missing locally, download from Google Drive to restore consistency
-              console.log(`Downloading missing local file: ${file.name}`);
-              try {
-                const { google } = await import('googleapis');
-                const oauth2Client = new google.auth.OAuth2();
-                oauth2Client.setCredentials(googleTokens);
-                const drive = google.drive({ version: 'v3', auth: oauth2Client });
-                
-                const response = await drive.files.get({
-                  fileId: file.id,
-                  alt: 'media'
-                });
-                
-                if (response.data) {
-                  // Save the binary file data directly
-                  await fs.writeFile(localFilePath, response.data as any);
-                  console.log(`Successfully restored local file: ${file.name}`);
-                } else {
-                  console.log(`Could not download content for ${file.name}, file may be empty`);
-                }
-              } catch (downloadError) {
-                console.error(`Failed to download ${file.name} from Google Drive:`, downloadError);
-              }
-            }
+            console.log(`Updated document: ${file.name}`);
           } else {
-            // Create new document
+            // Create new document for Google Drive file
             await storage.createDocument({
               name: file.name,
               fileId: file.id,
