@@ -13,9 +13,36 @@ interface GoogleDriveConnectProps {
 
 export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: GoogleDriveConnectProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState(isConnected);
   const { toast } = useToast();
   
   const [showFolderBrowser, setShowFolderBrowser] = useState(false);
+
+  // Poll for connection status changes
+  useEffect(() => {
+    const checkConnectionStatus = async () => {
+      try {
+        const response = await fetch('/api/auth/google/status');
+        const data = await response.json();
+        setConnectionStatus(data.connected);
+      } catch (error) {
+        console.error('Error checking connection status:', error);
+      }
+    };
+
+    // Check immediately
+    checkConnectionStatus();
+
+    // Poll every 2 seconds for real-time updates
+    const interval = setInterval(checkConnectionStatus, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Update local state when prop changes
+  useEffect(() => {
+    setConnectionStatus(isConnected);
+  }, [isConnected]);
 
   const handleConnectDrive = async () => {
     try {
@@ -62,8 +89,9 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
           </div>
           <div className="mt-5 sm:mt-0">
             <Button 
-              onClick={isConnected ? async () => {
+              onClick={connectionStatus ? async () => {
                 try {
+                  setIsLoading(true);
                   const response = await fetch('/api/auth/google/disconnect', {
                     method: 'POST',
                     headers: {
@@ -72,27 +100,39 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
                   });
                   
                   if (response.ok) {
-                    window.location.reload();
+                    setConnectionStatus(false);
+                    onConnect();
+                    toast({
+                      title: "Disconnected",
+                      description: "Google services have been disconnected"
+                    });
                   }
                 } catch (error) {
                   console.error('Error disconnecting Google services:', error);
+                  toast({
+                    title: "Error",
+                    description: "Failed to disconnect Google services",
+                    variant: "destructive"
+                  });
+                } finally {
+                  setIsLoading(false);
                 }
               } : handleConnectDrive}
               disabled={isLoading}
-              className={`inline-flex items-center ${isConnected ? 'text-orange-600 hover:text-orange-700 border-orange-300 hover:border-orange-400' : ''}`}
-              variant={isConnected ? "outline" : "default"}
+              className={`inline-flex items-center ${connectionStatus ? 'text-orange-600 hover:text-orange-700 border-orange-300 hover:border-orange-400' : ''}`}
+              variant={connectionStatus ? "outline" : "default"}
             >
               <svg viewBox="0 0 24 24" className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg">
                 <path d="M4.433 22l-4.433-7.667 4.527-7.833h9.005l4.433 7.667-4.527 7.833h-9.005z" fill="#4285f4"/>
                 <path d="M23.071 14.333l-4.433 7.667-4.527-7.833h-9.006l4.433-7.667 4.527 7.833h9.006z" fill="#4285f4"/>
                 <path d="M8.96 14.333h9.006l-4.527-7.833h-9.005l4.527 7.833z" fill="#4285f4"/>
               </svg>
-              {isConnected ? "Disconnect" : "Connect Google"}
+              {connectionStatus ? "Disconnect" : "Connect Google"}
             </Button>
           </div>
         </div>
         
-        {!isConnected ? (
+        {!connectionStatus ? (
           <div className="mt-6 border border-gray-300 border-dashed rounded-lg p-6 flex flex-col items-center justify-center">
             <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-primary-100 text-primary-600 sm:mx-0 sm:h-10 sm:w-10">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
