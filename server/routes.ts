@@ -129,9 +129,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Google OAuth routes
-  app.get("/api/auth/google", (req, res) => {
+  app.get("/api/auth/google", async (req, res) => {
     try {
-      const { google } = require('googleapis');
+      const { google } = await import('googleapis');
       const OAuth2 = google.auth.OAuth2;
       
       if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
