@@ -2691,6 +2691,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   size: attachment.size,
                   category: category
                 });
+                
+                // Trigger auto-sync after PDF download
+                await triggerAutoSync(loanId, "download", attachment.filename);
               }
             } catch (downloadError) {
               console.error(`Failed to download PDF ${attachment.filename}:`, downloadError);
