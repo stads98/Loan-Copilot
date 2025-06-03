@@ -34,6 +34,86 @@ export async function getDriveFolderName(folderId: string): Promise<string | nul
   }
 }
 
+// Check if a file exists in Google Drive using OAuth
+export async function checkFileExistsInDrive(fileId: string, googleTokens: any): Promise<boolean> {
+  try {
+    const { google } = await import('googleapis');
+    
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({
+      access_token: googleTokens.access_token,
+      refresh_token: googleTokens.refresh_token,
+    });
+
+    const drive = google.drive({ version: 'v3', auth: oauth2Client });
+    
+    const response = await drive.files.get({
+      fileId: fileId,
+      fields: 'id,name,trashed'
+    });
+
+    // File exists and is not trashed
+    return !response.data.trashed;
+  } catch (error: any) {
+    // If file not found or access denied, return false
+    if (error.code === 404 || error.code === 403) {
+      return false;
+    }
+    console.error('Error checking file existence:', error);
+    return false;
+  }
+}
+
+// Upload file to Google Drive using OAuth
+export async function uploadFileToGoogleDriveOAuth(
+  fileName: string,
+  fileBuffer: Buffer,
+  mimeType: string,
+  folderId: string,
+  googleTokens: any
+): Promise<string> {
+  const { google } = await import('googleapis');
+  
+  const oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({
+    access_token: googleTokens.access_token,
+    refresh_token: googleTokens.refresh_token,
+  });
+
+  const drive = google.drive({ version: 'v3', auth: oauth2Client });
+  
+  const response = await drive.files.create({
+    requestBody: {
+      name: fileName,
+      parents: [folderId],
+    },
+    media: {
+      mimeType: mimeType,
+      body: fileBuffer,
+    },
+    fields: 'id',
+  });
+
+  return response.data.id!;
+}
+
+// Delete file from Google Drive using OAuth
+export async function deleteFileFromGoogleDriveOAuth(fileId: string, googleTokens: any): Promise<void> {
+  const { google } = await import('googleapis');
+  
+  const oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({
+    access_token: googleTokens.access_token,
+    refresh_token: googleTokens.refresh_token,
+  });
+
+  const drive = google.drive({ version: 'v3', auth: oauth2Client });
+  
+  await drive.files.delete({
+    fileId: fileId,
+  });
+}
+
 export async function authenticateGoogle(req: Request, res: Response): Promise<void> {
   // In a real implementation, this would redirect to Google's OAuth consent screen
   // For demo purposes, we'll simulate successful authentication

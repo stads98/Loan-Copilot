@@ -1042,6 +1042,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Document not found" });
       }
 
+      // RESTORE TO GOOGLE DRIVE: Document management is source of truth
+      if (document.fileId && document.fileId.length > 10 && !document.fileId.includes('.')) {
+        try {
+          console.log(`Document restored locally - checking if file needs to be restored to Google Drive: ${document.name}`);
+          
+          // Get loan info to find Google Drive folder
+          const loan = await storage.getLoan(document.loanId);
+          if (loan && loan.googleDriveFolderId) {
+            // Check if user has Google Drive tokens (from Gmail auth)
+            let googleTokens = (req.session as any)?.gmailTokens;
+            
+            if (!googleTokens && req.user) {
+              // Try to restore Gmail tokens from database (which include Drive permissions)
+              const gmailToken = await storage.getUserToken((req.user as any).id, 'gmail');
+              if (gmailToken) {
+                googleTokens = {
+                  access_token: gmailToken.accessToken,
+                  refresh_token: gmailToken.refreshToken,
+                  expiry_date: gmailToken.expiryDate?.getTime()
+                };
+                (req.session as any).gmailTokens = googleTokens;
+              }
+            }
+
+            if (googleTokens && document.fileId) {
+              // Check if file exists in Google Drive using OAuth
+              const { checkFileExistsInDrive } = await import("./lib/google");
+              const fileExists = await checkFileExistsInDrive(document.fileId, googleTokens);
+              
+              if (!fileExists) {
+                console.log(`File not in Google Drive - need to re-upload: ${document.name}`);
+                
+                // If it's a local file, upload it back to Google Drive
+                if (document.source === 'upload' || document.fileId.includes('.') || document.fileId.startsWith('email-attachment-')) {
+                  try {
+                    const fs = await import('fs').then(m => m.promises);
+                    const path = await import('path');
+                    const filePath = path.join(process.cwd(), 'uploads', document.fileId);
+                    
+                    if (await fs.access(filePath).then(() => true).catch(() => false)) {
+                      const fileBuffer = await fs.readFile(filePath);
+                      const { uploadFileToGoogleDriveOAuth } = await import("./lib/google");
+                      
+                      const driveFileId = await uploadFileToGoogleDriveOAuth(
+                        document.name,
+                        fileBuffer,
+                        document.fileType || 'application/pdf',
+                        loan.googleDriveFolderId,
+                        googleTokens
+                      );
+                      
+                      // Update document with new Google Drive file ID
+                      await storage.updateDocument(id, { fileId: driveFileId });
+                      console.log(`Successfully re-uploaded ${document.name} to Google Drive: ${driveFileId}`);
+                    }
+                  } catch (uploadError) {
+                    console.error(`Failed to re-upload ${document.name} to Google Drive:`, uploadError);
+                  }
+                }
+              } else {
+                console.log(`File already exists in Google Drive: ${document.name}`);
+              }
+            }
+          }
+        } catch (driveError) {
+          console.error(`Error checking/restoring file to Google Drive:`, driveError);
+        }
+      }
+
       // Trigger auto-sync after document restoration
       await triggerAutoSync(document.loanId, "restore", document.name);
 
@@ -1738,23 +1807,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Document not found" });
       }
 
-      // Delete from local database first
+      // Delete from local database first (soft delete)
       const success = await storage.softDeleteDocument(id);
       if (!success) {
         return res.status(404).json({ message: "Document not found" });
       }
 
-      // If this document is stored in Google Drive, also delete it from there
+      // CRITICAL: Remove from Google Drive to prevent re-import during sync
+      // Document management is source of truth - Google Drive must follow
       if (document.fileId && /^[a-zA-Z0-9_-]{25,50}$/.test(document.fileId) && !document.fileId.includes('.')) {
         try {
-          console.log(`Attempting to delete Google Drive file: ${document.fileId}`);
-          const { deleteFileFromGoogleDrive } = await import("./lib/google");
+          console.log(`Document soft deleted locally - removing from Google Drive: ${document.fileId}`);
           
-          // Try to delete using service account
-          await deleteFileFromGoogleDrive(document.fileId);
-          console.log(`Successfully deleted ${document.name} from Google Drive`);
+          // Try OAuth deletion first if tokens are available
+          let googleTokens = (req.session as any)?.gmailTokens;
+          
+          if (!googleTokens && req.user) {
+            // Try to restore Gmail tokens from database (which include Drive permissions)
+            const gmailToken = await storage.getUserToken((req.user as any).id, 'gmail');
+            if (gmailToken) {
+              googleTokens = {
+                access_token: gmailToken.accessToken,
+                refresh_token: gmailToken.refreshToken,
+                expiry_date: gmailToken.expiryDate?.getTime()
+              };
+              (req.session as any).gmailTokens = googleTokens;
+            }
+          }
+
+          if (googleTokens) {
+            try {
+              const { deleteFileFromGoogleDriveOAuth } = await import("./lib/google");
+              await deleteFileFromGoogleDriveOAuth(document.fileId, googleTokens);
+              console.log(`Successfully deleted ${document.name} from Google Drive via OAuth`);
+            } catch (oauthError) {
+              console.error(`OAuth deletion failed, trying service account:`, oauthError);
+              // Fallback to service account
+              const { deleteFileFromGoogleDrive } = await import("./lib/google");
+              await deleteFileFromGoogleDrive(document.fileId);
+              console.log(`Successfully deleted ${document.name} from Google Drive via service account`);
+            }
+          } else {
+            // Use service account as fallback
+            const { deleteFileFromGoogleDrive } = await import("./lib/google");
+            await deleteFileFromGoogleDrive(document.fileId);
+            console.log(`Successfully deleted ${document.name} from Google Drive via service account`);
+          }
         } catch (driveError) {
           console.error(`Failed to delete ${document.name} from Google Drive:`, driveError);
+          console.log(`Document management system remains authoritative - local deletion completed`);
           // Continue with local deletion even if Google Drive deletion fails
         }
       }
