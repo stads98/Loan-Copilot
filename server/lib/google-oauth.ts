@@ -15,6 +15,9 @@ export function getGoogleAuthUrl(): string {
     'https://www.googleapis.com/auth/drive.appdata',
     'https://www.googleapis.com/auth/drive.appfolder',
     'https://www.googleapis.com/auth/drive.resource',
+    'https://www.googleapis.com/auth/drive.metadata',
+    'https://www.googleapis.com/auth/drive.metadata.readonly',
+    'https://www.googleapis.com/auth/drive.readonly',
     'https://www.googleapis.com/auth/gmail.readonly',
     'https://www.googleapis.com/auth/gmail.modify'
   ];
