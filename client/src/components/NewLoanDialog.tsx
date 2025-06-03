@@ -32,6 +32,7 @@ import {
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
+import GoogleDriveFolderSelector from "@/components/GoogleDriveFolderSelector";
 
 const loanFormSchema = z.object({
   loanNumber: z.string().min(1, "Loan number is required"),
@@ -46,7 +47,7 @@ const loanFormSchema = z.object({
   loanPurpose: z.string().min(1, "Loan purpose is required"),
   funder: z.string().min(1, "Funder is required"),
   targetCloseDate: z.string().optional(),
-  googleDriveLink: z.string().optional(),
+  googleDriveFolderId: z.string().optional(),
 });
 
 type LoanFormData = z.infer<typeof loanFormSchema>;
@@ -58,6 +59,8 @@ interface NewLoanDialogProps {
 export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedFolderId, setSelectedFolderId] = useState("");
+  const [selectedFolderName, setSelectedFolderName] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -76,7 +79,7 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
       loanPurpose: "",
       funder: "",
       targetCloseDate: "",
-      googleDriveLink: "",
+      googleDriveFolderId: "",
     },
   });
 
@@ -86,25 +89,8 @@ export default function NewLoanDialog({ onLoanCreated }: NewLoanDialogProps) {
     console.log('Form data being submitted:', data);
 
     try {
-      // Extract Google Drive folder ID if provided
-      let folderId = "";
-      if (data.googleDriveLink) {
-        try {
-          if (/^[a-zA-Z0-9_-]{25,}$/.test(data.googleDriveLink.trim())) {
-            folderId = data.googleDriveLink.trim();
-          } else {
-            const url = new URL(data.googleDriveLink);
-            const pathParts = url.pathname.split('/');
-            const folderIndex = pathParts.indexOf('folders');
-            
-            if (folderIndex !== -1 && pathParts[folderIndex + 1]) {
-              folderId = pathParts[folderIndex + 1];
-            }
-          }
-        } catch (error) {
-          console.warn("Invalid Google Drive link provided, continuing without it");
-        }
-      }
+      // Use selected Google Drive folder ID
+      const folderId = selectedFolderId;
 
       // Calculate LTV if both values provided
       let calculatedLTV = null;

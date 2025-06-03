@@ -280,6 +280,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google Drive folder management routes
+  app.get('/api/drive/folders', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Check for Google Drive authentication
+      let googleTokens = (req.session as any)?.googleTokens;
+      
+      if (!googleTokens) {
+        // Try to restore from database
+        const driveToken = await storage.getUserToken(userId, 'drive');
+        if (driveToken && driveToken.accessToken) {
+          googleTokens = {
+            access_token: driveToken.accessToken,
+            refresh_token: driveToken.refreshToken,
+            expiry_date: driveToken.expiryDate?.getTime()
+          };
+          (req.session as any).googleTokens = googleTokens;
+        } else {
+          return res.status(401).json({ error: 'Google Drive not connected' });
+        }
+      }
+
+      // Use OAuth tokens to list folders
+      const { listGoogleDriveFilesOAuth } = await import("./lib/google-oauth");
+      const files = await listGoogleDriveFilesOAuth('root', googleTokens);
+      
+      // Filter to only show folders
+      const folderList = files
+        .filter((item: any) => item.mimeType === 'application/vnd.google-apps.folder')
+        .map((folder: any) => ({
+          id: folder.id,
+          name: folder.name,
+          modifiedTime: folder.modifiedTime
+        }));
+
+      res.json({ folders: folderList });
+    } catch (error) {
+      console.error('Error listing Google Drive folders:', error);
+      res.status(500).json({ error: 'Failed to list folders' });
+    }
+  });
+
+  app.post('/api/drive/folders', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { name } = req.body;
+      if (!name || typeof name !== 'string') {
+        return res.status(400).json({ error: 'Folder name is required' });
+      }
+
+      // Check for Google Drive authentication
+      let googleTokens = (req.session as any)?.googleTokens;
+      
+      if (!googleTokens) {
+        // Try to restore from database
+        const driveToken = await storage.getUserToken(userId, 'drive');
+        if (driveToken && driveToken.accessToken) {
+          googleTokens = {
+            access_token: driveToken.accessToken,
+            refresh_token: driveToken.refreshToken,
+            expiry_date: driveToken.expiryDate?.getTime()
+          };
+          (req.session as any).googleTokens = googleTokens;
+        } else {
+          return res.status(401).json({ error: 'Google Drive not connected' });
+        }
+      }
+
+      // Use OAuth tokens to create folder
+      const { getAuthenticatedDriveClient } = await import("./lib/google-oauth");
+      const driveClient = getAuthenticatedDriveClient(googleTokens);
+      
+      const folderMetadata = {
+        name: name.trim(),
+        mimeType: 'application/vnd.google-apps.folder'
+      };
+
+      const response = await driveClient.files.create({
+        requestBody: folderMetadata,
+        fields: 'id,name,modifiedTime'
+      });
+
+      const folder = {
+        id: response.data.id,
+        name: response.data.name,
+        modifiedTime: response.data.modifiedTime
+      };
+
+      res.json({ folder });
+    } catch (error) {
+      console.error('Error creating Google Drive folder:', error);
+      res.status(500).json({ error: 'Failed to create folder' });
+    }
+  });
+
   // Lenders
   app.get("/api/lenders", async (req, res) => {
     const lenders = await storage.getLenders();
