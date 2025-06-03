@@ -645,15 +645,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const [key, group] of documentGroups) {
         if (group.length > 1) {
           // Sort by upload date, keep the first one
-          group.sort((a, b) => new Date(a.uploadedAt || 0).getTime() - new Date(b.uploadedAt || 0).getTime());
+          group.sort((a: any, b: any) => new Date(a.uploadedAt || 0).getTime() - new Date(b.uploadedAt || 0).getTime());
           
-          console.log(`Found duplicate group for ${key}:`, group.map(d => `${d.name} (${d.uploadedAt})`));
+          // Only remove duplicates if they have the EXACT same name AND file size
+          // This prevents false positives like "Policy Declaration (1).pdf" vs "Policy Declaration.pdf"
+          const exactMatches = group.filter((doc: any, index: number) => {
+            if (index === 0) return true; // Keep first document
+            const firstDoc = group[0];
+            return doc.name === firstDoc.name && doc.fileSize === firstDoc.fileSize;
+          });
           
-          // Delete all but the first
-          for (let i = 1; i < group.length; i++) {
-            console.log(`Removing duplicate: ${group[i].name} (ID: ${group[i].id})`);
-            await storage.deleteDocument(group[i].id);
-            duplicatesRemoved++;
+          if (exactMatches.length > 1) {
+            console.log(`Found exact duplicate group for ${key}:`, exactMatches.map((d: any) => `${d.name} (${d.uploadedAt})`));
+            
+            // Delete all but the first exact match
+            for (let i = 1; i < exactMatches.length; i++) {
+              console.log(`Removing exact duplicate: ${exactMatches[i].name} (ID: ${exactMatches[i].id})`);
+              await storage.deleteDocument(exactMatches[i].id);
+              duplicatesRemoved++;
+            }
           }
         }
       }
