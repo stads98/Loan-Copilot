@@ -800,7 +800,11 @@ export default function DocumentManager({
                                       <SelectValue placeholder="Assign uploaded document..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {documents.map((doc) => (
+                                      {documents.filter(doc => {
+                                        // Filter out documents that are already assigned to any requirement
+                                        const allAssignedDocIds = Object.values(assignedDocuments).flat();
+                                        return !allAssignedDocIds.includes(doc.id.toString());
+                                      }).map((doc) => (
                                         <SelectItem key={doc.id} value={doc.id.toString()}>
                                           {doc.name}
                                         </SelectItem>
