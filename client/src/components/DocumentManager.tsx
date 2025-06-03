@@ -99,7 +99,29 @@ export default function DocumentManager({
   const scanAllEmails = async () => {
     setIsScanningEmails(true);
     try {
-      const response = await apiRequest("POST", `/api/loans/${loanId}/scan-all-emails`);
+      // Get visible email IDs from Gmail Inbox
+      const gmailResponse = await apiRequest("GET", "/api/gmail/messages");
+      const visibleMessages = gmailResponse.messages || [];
+      
+      if (visibleMessages.length === 0) {
+        toast({
+          title: "No Emails Found",
+          description: "No relevant emails found in Gmail inbox. Please check Gmail connection.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Extract message IDs from visible emails
+      const messageIds = visibleMessages.map((msg: any) => msg.id);
+      
+      console.log(`Scanning ${messageIds.length} visible emails for PDFs...`);
+      
+      // Scan only the visible emails
+      const response = await apiRequest("POST", `/api/loans/${loanId}/scan-visible-emails`, {
+        messageIds: messageIds
+      });
+      
       toast({
         title: "Email Scan Complete",
         description: response.message,
@@ -109,6 +131,7 @@ export default function DocumentManager({
       queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId] });
     } catch (error) {
+      console.error('Email scan error:', error);
       toast({
         title: "Scan Failed",
         description: "Failed to scan emails for PDFs. Please ensure Gmail is connected.",

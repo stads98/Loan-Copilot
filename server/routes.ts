@@ -1345,84 +1345,180 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      console.log(`COMPLETE SYNC: Making Google Drive an exact mirror of local documents for loan: ${loanId}`);
+      console.log(`Syncing documents from Google Drive folder: ${folderId} for loan: ${loanId}`);
       
-      // Get local documents (these are the source of truth)
-      const localDocuments = await storage.getDocumentsByLoanId(loanId);
-      const activeLocalDocs = localDocuments.filter(doc => !doc.deleted);
-      
-      console.log(`Found ${activeLocalDocs.length} active local documents to mirror to Google Drive`);
-      
-      // Get current Google Drive files and imports
+      // Get files from Google Drive folder
       const { getDriveFiles } = await import("./lib/google");
       const { uploadFileToGoogleDriveOAuth } = await import("./lib/google-oauth");
       const googleTokens = (req.session as any)?.googleTokens;
-      const currentDriveFiles = await getDriveFiles(folderId, googleTokens?.access_token) || [];
+      const files = await getDriveFiles(folderId, googleTokens?.access_token) || [];
       
-      console.log(`Found ${currentDriveFiles.length} existing files in Google Drive folder`);
+      console.log(`Found ${files.length} files to sync`);
       
-      // STEP 1: Clear Google Drive folder completely (simplified approach)
-      console.log("STEP 1: Clearing Google Drive folder to ensure exact mirror...");
-      let deletedCount = 0;
+      // CRITICAL: LOCAL DOCUMENT MANAGEMENT IS PRIMARY SOURCE
+      // Implement comprehensive protection against document deletion
+      const { logProtectedOperation } = await import("./lib/sync-protection");
       
-      // For now, we'll track what gets uploaded instead of deleting
-      // This ensures no data loss during the sync process
-      console.log("Proceeding to upload local documents to create mirror...");
+      // Update existing documents or create new ones
+      let documentsUpdated = 0;
+      let documentsCreated = 0;
+      let documentsUploaded = 0;
       
-      // STEP 2: Upload all local documents to Google Drive
-      console.log("STEP 2: Uploading all local documents to Google Drive...");
-      let uploadedCount = 0;
+      // LOCAL DOCUMENT MANAGEMENT IS PRIMARY SOURCE - NEVER DELETE LOCAL FILES
+      // Step 1: Only add new files from Google Drive, preserve ALL local documents
+      const driveFileIds = new Set(files.map(f => f.id));
+      const existingDocs = await storage.getDocumentsByLoanId(loanId);
       
-      for (const localDoc of activeLocalDocs) {
+      // COMPREHENSIVE PROTECTION: Zero tolerance for local document deletion
+      console.log(`🛡️ EMERGENCY PROTECTION ACTIVE: All ${existingDocs.length} local documents are PERMANENTLY PROTECTED`);
+      console.log(`🛡️ Local document management is the ONLY authoritative source - Google Drive cannot delete local files`);
+      logProtectedOperation("Manual Google Drive Sync", existingDocs.length);
+      
+      // Add or update documents from Google Drive
+      for (const file of files) {
         try {
-          // Only upload documents that have local file content
+          const existingDoc = existingDocs.find(doc => doc.fileId === file.id);
+          
+          if (existingDoc) {
+            // Update existing document with latest Google Drive metadata
+            await storage.updateDocument(existingDoc.id, {
+              name: file.name,
+              fileType: file.mimeType,
+              fileSize: file.size ? parseInt(file.size) : null,
+              driveFileId: file.id,
+              lastModified: file.modifiedTime ? new Date(file.modifiedTime) : null
+            });
+            documentsUpdated++;
+            console.log(`Updated document: ${file.name}`);
+          } else {
+            // Create new document for Google Drive file
+            await storage.createDocument({
+              name: file.name,
+              fileId: file.id,
+              fileType: file.mimeType,
+              fileSize: file.size ? parseInt(file.size) : null,
+              category: "imported",
+              loanId: loanId
+            });
+            documentsCreated++;
+          }
+        } catch (error) {
+          console.error(`Error processing file ${file.name}:`, error);
+        }
+      }
+
+      // Step 2: Sync FROM Database TO Google Drive (prevent duplicates)
+      console.log("Starting bi-directional sync - uploading local documents to Google Drive...");
+      try {
+        const allLocalDocs = await storage.getDocumentsByLoanId(loanId);
+        const driveFileNames = new Set(files.map(f => f.name));
+        
+        console.log(`Found ${allLocalDocs.length} local documents to check for upload`);
+        
+        for (const localDoc of allLocalDocs) {
+          // Skip deleted documents - they should not sync to Google Drive
+          if (localDoc.deleted) {
+            console.log(`Skipping deleted document: ${localDoc.name}`);
+            continue;
+          }
+          
+          // Check if a file with the same name already exists in Drive
+          if (driveFileNames.has(localDoc.name)) {
+            console.log(`Skipping ${localDoc.name} - already in Google Drive`);
+            continue;
+          }
+          
+          // Only upload documents that have local file content (uploaded files or email attachments)
+          // Google Drive IDs are long strings without extensions, local files have extensions or email-attachment prefix
           if (localDoc.fileId && (localDoc.fileId.includes('.') || localDoc.fileId.startsWith('email-attachment-'))) {
-            const fs = await import('fs').then(m => m.promises);
-            const path = await import('path');
-            const filePath = path.join(process.cwd(), 'uploads', localDoc.fileId);
-            
+            // This is a local file (has extension in fileId or is an email attachment)
             try {
+              const fs = await import('fs').then(m => m.promises);
+              const path = await import('path');
+              const filePath = path.join(process.cwd(), 'uploads', localDoc.fileId);
+              
+              console.log(`Checking if file exists at: ${filePath}`);
               if (await fs.access(filePath).then(() => true).catch(() => false)) {
                 console.log(`Uploading ${localDoc.name} to Google Drive...`);
                 const fileBuffer = await fs.readFile(filePath);
                 
-                const driveFileId = await uploadFileToGoogleDriveOAuth(
-                  localDoc.name,
-                  fileBuffer,
-                  localDoc.fileType || 'application/octet-stream',
-                  folderId,
-                  googleTokens
-                );
-                
-                // Update document record with new Google Drive file ID
-                await storage.updateDocument(localDoc.id, {
-                  fileId: driveFileId,
-                  source: "synced_to_drive"
-                });
-                
-                uploadedCount++;
-                console.log(`Successfully uploaded ${localDoc.name} to Google Drive: ${driveFileId}`);
+                // Try OAuth upload first if tokens are available
+                const googleTokens = (req.session as any)?.googleTokens;
+                if (googleTokens) {
+                  try {
+                    const driveFileId = await uploadFileToGoogleDriveOAuth(
+                      localDoc.name,
+                      fileBuffer,
+                      `application/${localDoc.fileType}`,
+                      folderId,
+                      googleTokens
+                    );
+                    
+                    // Update document record with Google Drive file ID
+                    await storage.updateDocument(localDoc.id, {
+                      fileId: driveFileId,
+                      source: "synced_to_drive"
+                    });
+                    
+                    documentsUploaded++;
+                    console.log(`Successfully uploaded ${localDoc.name} to Google Drive with OAuth: ${driveFileId}`);
+                  } catch (oauthError) {
+                    console.error(`OAuth upload failed for ${localDoc.name}, trying service account:`, oauthError);
+                    
+                    // Fallback to service account upload
+                    try {
+                      const { uploadFileToGoogleDrive } = await import("./lib/google");
+                      const driveFileId = await uploadFileToGoogleDrive(
+                        localDoc.name,
+                        fileBuffer,
+                        `application/${localDoc.fileType}`,
+                        folderId
+                      );
+                      
+                      await storage.updateDocument(localDoc.id, {
+                        fileId: driveFileId,
+                        source: "synced_to_drive"
+                      });
+                      
+                      documentsUploaded++;
+                      console.log(`Successfully uploaded ${localDoc.name} with service account: ${driveFileId}`);
+                    } catch (serviceError) {
+                      console.error(`Both OAuth and service account upload failed for ${localDoc.name}:`, serviceError);
+                    }
+                  }
+                } else {
+                  console.log(`No OAuth tokens available, skipping upload for ${localDoc.name}`);
+                }
               } else {
                 console.log(`Local file not found for ${localDoc.name} at ${filePath}`);
               }
             } catch (uploadError) {
               console.error(`Failed to upload ${localDoc.name} to Google Drive:`, uploadError);
+              // Don't fail the entire sync if one upload fails
             }
           } else {
-            console.log(`Skipping ${localDoc.name} - not a local file (Google Drive document)`);
+            console.log(`Skipping ${localDoc.name} - no local file to upload`);
           }
-        } catch (error) {
-          console.error(`Error processing ${localDoc.name}:`, error);
         }
+        
+        console.log(`Bi-directional sync completed: ${documentsUploaded} documents uploaded to Google Drive`);
+      } catch (syncError) {
+        console.error("Error during bi-directional sync:", syncError);
+        // Don't fail the entire sync if upload portion fails
       }
       
-      console.log(`COMPLETE SYNC FINISHED: Google Drive now mirrors ${uploadedCount} local documents`);
-      
+      const syncMessage = documentsUploaded > 0 
+        ? `Bi-directional sync completed: ${documentsCreated} new from Drive, ${documentsUpdated} updated from Drive, ${documentsUploaded} uploaded to Drive`
+        : `Sync from Drive completed: ${documentsCreated} new documents, ${documentsUpdated} updated. Upload to Drive requires folder write permissions.`;
+
       res.json({
         success: true,
-        message: `Complete sync finished: ${uploadedCount} local documents uploaded to Google Drive`,
-        documentsUploaded: uploadedCount,
-        syncType: "complete_mirror"
+        message: syncMessage,
+        documentsCreated,
+        documentsUpdated,
+        documentsUploaded,
+        totalFiles: files.length,
+        syncDirection: documentsUploaded > 0 ? "bidirectional" : "download_only"
       });
       
     } catch (error) {
@@ -2104,6 +2200,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get Gmail messages with loan-specific filtering
+  app.get("/api/gmail/messages", isAuthenticated, async (req, res) => {
+    try {
+      if (!(req.session as any)?.gmailTokens) {
+        return res.status(401).json({ message: "Gmail authentication required" });
+      }
+
+      const { google } = await import('googleapis');
+      const { createGmailAuth } = await import("./lib/gmail");
+      const gmail = google.gmail('v1');
+      
+      const gmailAuth = createGmailAuth(
+        (req.session as any).gmailTokens.access_token,
+        (req.session as any).gmailTokens.refresh_token
+      );
+
+      const maxResults = parseInt(req.query.maxResults as string) || 50;
+      const loanId = req.query.loanId ? parseInt(req.query.loanId as string) : null;
+
+      // Get loan details for filtering if loanId provided
+      let loan = null;
+      if (loanId) {
+        loan = await storage.getLoanWithDetails(loanId);
+      }
+
+      // Get list of messages with PDF attachments
+      const listResponse = await gmail.users.messages.list({
+        auth: gmailAuth,
+        userId: 'me',
+        maxResults: maxResults * 3, // Get more to filter down
+        q: 'has:attachment filename:pdf'
+      });
+
+      const messages = [];
+      
+      if (listResponse.data.messages) {
+        // Filter messages based on loan details
+        for (const message of listResponse.data.messages) {
+          try {
+            const msgResponse = await gmail.users.messages.get({
+              auth: gmailAuth,
+              userId: 'me',
+              id: message.id!,
+              format: 'metadata',
+              metadataHeaders: ['From', 'Subject', 'Date', 'To', 'Cc']
+            });
+
+            const headers = msgResponse.data.payload?.headers || [];
+            const subject = headers.find(h => h.name === 'Subject')?.value?.toLowerCase() || '';
+            const from = headers.find(h => h.name === 'From')?.value?.toLowerCase() || '';
+            const to = headers.find(h => h.name === 'To')?.value?.toLowerCase() || '';
+            const cc = headers.find(h => h.name === 'Cc')?.value?.toLowerCase() || '';
+            const date = headers.find(h => h.name === 'Date')?.value || '';
+            
+            let isRelevant = false;
+
+            if (loan) {
+              // Check property address (street address only)
+              if (loan.loan?.propertyAddress) {
+                const streetAddress = loan.loan.propertyAddress.split(',')[0].trim().toLowerCase();
+                if (subject.includes(streetAddress) || from.includes(streetAddress) || to.includes(streetAddress)) {
+                  isRelevant = true;
+                }
+              }
+
+              // Check contact emails from the current loan
+              if (!isRelevant && loan.contacts && loan.contacts.length > 0) {
+                const contactEmails = loan.contacts
+                  .map((c: any) => c.email)
+                  .filter(Boolean)
+                  .map((email: any) => email.toLowerCase());
+                
+                for (const email of contactEmails) {
+                  if (from.includes(email) || to.includes(email) || cc.includes(email)) {
+                    isRelevant = true;
+                    break;
+                  }
+                }
+              }
+            }
+
+            // If no loan context, show all emails with PDF attachments
+            if (!loan) {
+              isRelevant = true;
+            }
+
+            if (isRelevant) {
+              // Check for attachments
+              const hasAttachments = msgResponse.data.payload?.parts?.some(part => 
+                part.filename && part.filename.length > 0
+              ) || false;
+
+              messages.push({
+                id: message.id,
+                threadId: message.threadId,
+                snippet: msgResponse.data.snippet || '',
+                subject: headers.find(h => h.name === 'Subject')?.value || '',
+                from: headers.find(h => h.name === 'From')?.value || '',
+                date: date,
+                unread: msgResponse.data.labelIds?.includes('UNREAD') || false,
+                hasAttachments: hasAttachments
+              });
+
+              // Stop when we have enough relevant messages
+              if (messages.length >= maxResults) {
+                break;
+              }
+            }
+          } catch (msgError) {
+            console.error(`Error getting message ${message.id}:`, msgError);
+            // Continue with other messages
+          }
+        }
+      }
+
+      res.json({ messages });
+    } catch (error) {
+      console.error("Error fetching Gmail messages:", error);
+      res.status(500).json({ message: "Error fetching messages" });
+    }
+  });
+
   // Disconnect Gmail
   app.post("/api/gmail/disconnect", isAuthenticated, async (req, res) => {
     try {
@@ -2123,16 +2341,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Optimized scan all emails - uses pre-filtered emails from Gmail Inbox for faster processing
-  app.post("/api/loans/:loanId/scan-all-emails", isAuthenticated, async (req, res) => {
+  // Scan emails visible in Gmail Inbox and download PDFs
+  app.post("/api/loans/:loanId/scan-visible-emails", isAuthenticated, async (req, res) => {
     try {
       if (!(req.session as any)?.gmailTokens) {
         return res.status(401).json({ message: "Gmail authentication required" });
       }
 
       const loanId = parseInt(req.params.loanId);
-      console.log('=== OPTIMIZED EMAIL SCAN START ===');
-      console.log('Using pre-filtered emails from Gmail Inbox for faster processing');
+      const { messageIds } = req.body; // Get the message IDs from the request body
+      
+      if (!messageIds || !Array.isArray(messageIds) || messageIds.length === 0) {
+        return res.status(400).json({ message: "No email message IDs provided" });
+      }
+
+      console.log(`=== SCANNING ${messageIds.length} VISIBLE EMAILS ===`);
       
       const loan = await storage.getLoanWithDetails(loanId);
       if (!loan) {
@@ -2148,494 +2371,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (req.session as any).gmailTokens.refresh_token
       );
 
-      console.log('Getting pre-filtered emails from Gmail Inbox API...');
-      
-      // OPTIMIZATION: Use the exact same filtering logic as Gmail Inbox to get pre-filtered emails
-      // This avoids scanning thousands of emails and only processes relevant ones
-      const processedThreads = new Map();
-      const allMessages = [];
-      const maxResults = 100; // Reasonable limit for performance
-      
-      // Get emails using same date filter as Gmail Inbox
-      const eightWeeksAgo = new Date();
-      eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
-      const afterDate = Math.floor(eightWeeksAgo.getTime() / 1000);
-      
-      const listResponse = await gmail.users.messages.list({
-        auth: gmailAuth,
-        userId: 'me',
-        q: `after:${afterDate}`,
-        maxResults: 500
-      });
-
-      if (!listResponse.data.messages) {
-        return res.json({ 
-          success: true, 
-          message: "No emails found",
-          totalScanned: 0,
-          pdfsFound: 0,
-          downloaded: []
-        });
-      }
-
-      console.log(`Processing ${listResponse.data.messages.length} recent emails with same filtering as Gmail Inbox...`);
-
-      // Process emails using exact same filtering logic as Gmail Inbox
-      for (const message of listResponse.data.messages.slice(0, maxResults)) {
-        if (!processedThreads.has(message.threadId)) {
-          try {
-            const msgResponse = await gmail.users.messages.get({
-              auth: gmailAuth,
-              userId: 'me',
-              id: message.id!,
-              format: 'metadata',
-              metadataHeaders: ['From', 'To', 'Cc', 'Subject', 'Date']
-            });
-
-            const headers = msgResponse.data.payload?.headers || [];
-            const subject = headers.find(h => h.name === 'Subject')?.value || '';
-            const from = headers.find(h => h.name === 'From')?.value || '';
-            const to = headers.find(h => h.name === 'To')?.value || '';
-            const cc = headers.find(h => h.name === 'Cc')?.value || '';
-
-            // Apply loan-specific filtering (same as Gmail Inbox)
-            const subjectLower = subject.toLowerCase();
-            const fromLower = from.toLowerCase();
-            const toLower = to.toLowerCase();
-            const ccLower = cc.toLowerCase();
-            
-            let isRelevant = false;
-            
-            // Check if from/to any of the loan contacts
-            const contactEmails = loan.contacts?.map((c: any) => c.email?.toLowerCase()).filter(Boolean) || [];
-            const isFromLoanContact = contactEmails.some(email => 
-              fromLower.includes(email) || toLower.includes(email) || ccLower.includes(email)
-            );
-            
-            if (isFromLoanContact) {
-              isRelevant = true;
-            }
-            
-            // Check loan number
-            if (!isRelevant && loan.loan?.loanNumber && subjectLower.includes(loan.loan.loanNumber.toLowerCase())) {
-              isRelevant = true;
-            }
-            
-            // Check property address - just street number + street name
-            if (!isRelevant && loan.property?.address) {
-              const streetAddress = loan.property.address.split(',')[0].trim().toLowerCase();
-              if (subjectLower.includes(streetAddress)) {
-                isRelevant = true;
-              }
-            }
-
-            if (isRelevant) {
-              const messageData = {
-                id: message.id,
-                threadId: message.threadId,
-                subject,
-                from,
-                to,
-                cc,
-                snippet: msgResponse.data.snippet || '',
-                date: headers.find(h => h.name === 'Date')?.value || '',
-                hasAttachments: msgResponse.data.payload?.parts?.some(part => 
-                  part.filename && part.filename.length > 0
-                ) || false
-              };
-
-              processedThreads.set(message.threadId, messageData);
-              allMessages.push(messageData);
-            }
-          } catch (msgError) {
-            console.error('Error fetching message details:', msgError);
-          }
-        }
-      }
-
-      console.log(`Found ${allMessages.length} pre-filtered relevant emails`);
-      
-      // Filter to only emails with attachments for PDF scanning
-      const emailsWithAttachments = allMessages.filter(msg => msg.hasAttachments);
-      console.log(`Found ${emailsWithAttachments.length} relevant emails with attachments`);
-
-      // Now scan the pre-filtered emails for PDF attachments
-      const downloadedPDFs = [];
+      // Process only the specific message IDs provided from the visible Gmail Inbox
+      const downloadedPDFs: any[] = [];
       let totalPDFs = 0;
-      const existingDocuments = await storage.getAllDocumentsByLoanId(loanId);
 
-      for (const message of emailsWithAttachments) {
+      for (const messageId of messageIds) {
         try {
           // Get full message with attachments
           const msgResponse = await gmail.users.messages.get({
             auth: gmailAuth,
             userId: 'me',
-            id: message.id!,
+            id: messageId,
             format: 'full'
-          });
-
-          const parts = msgResponse.data.payload?.parts || [];
-          const attachments = [];
-
-          const extractAttachments = (parts: any[]) => {
-            for (const part of parts) {
-              if (part.filename && part.body?.attachmentId) {
-                attachments.push({
-                  filename: part.filename,
-                  mimeType: part.mimeType,
-                  attachmentId: part.body.attachmentId,
-                  size: part.body.size
-                });
-              }
-              if (part.parts) {
-                extractAttachments(part.parts);
-              }
-            }
-          };
-
-          extractAttachments(parts);
-
-          // Filter for PDFs only
-          const pdfAttachments = attachments.filter(att => att.mimeType?.includes('pdf'));
-          totalPDFs += pdfAttachments.length;
-
-          // Download each PDF
-          for (const attachment of pdfAttachments) {
-            try {
-              // Enhanced duplicate detection - check by name, size, and source
-              const sourceKey = `gmail:${message.from}`;
-              const isDuplicate = existingDocuments.some(doc => 
-                doc.name === attachment.filename && 
-                doc.fileSize === attachment.size &&
-                doc.source === sourceKey &&
-                !doc.deleted // Only check non-deleted documents
-              );
-
-              if (isDuplicate) {
-                console.log(`Skipping duplicate document: ${attachment.filename} from ${message.from}`);
-                continue;
-              }
-
-              // Download attachment data
-              const attachmentResponse = await gmail.users.messages.attachments.get({
-                auth: gmailAuth,
-                userId: 'me',
-                messageId: message.id!,
-                id: attachment.attachmentId
-              });
-
-              if (attachmentResponse.data?.data) {
-                // Decode and save to documents
-                let base64Data = attachmentResponse.data.data;
-                base64Data = base64Data.replace(/-/g, '+').replace(/_/g, '/');
-                while (base64Data.length % 4) {
-                  base64Data += '=';
-                }
-                const fileBuffer = Buffer.from(base64Data, 'base64');
-
-                // Create unique filename to avoid conflicts
-                const fileId = `email-attachment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.pdf`;
-                const pathModule = await import('path');
-                const filePath = pathModule.join(process.cwd(), 'uploads', fileId);
-
-                // Save to uploads directory
-                const { promises: fs } = await import('fs');
-                await fs.writeFile(filePath, fileBuffer);
-
-                // Determine document category
-                let category = 'other';
-                const lowerFilename = attachment.filename.toLowerCase();
-                if (lowerFilename.includes('insurance') || lowerFilename.includes('policy')) {
-                  category = 'insurance';
-                } else if (lowerFilename.includes('appraisal')) {
-                  category = 'property';
-                } else if (lowerFilename.includes('income') || lowerFilename.includes('bank') || lowerFilename.includes('statement')) {
-                  category = 'borrower';
-                } else if (lowerFilename.includes('title')) {
-                  category = 'title';
-                }
-
-                // Create document record
-                await storage.createDocument({
-                  name: attachment.filename,
-                  fileId: fileId, // Local file ID
-                  fileType: attachment.mimeType || 'application/pdf',
-                  fileSize: attachment.size,
-                  source: sourceKey, // Track source for duplicate detection
-                  category: category,
-                  loanId: loanId
-                });
-
-                downloadedPDFs.push({
-                  filename: attachment.filename,
-                  emailSubject: message.subject,
-                  size: attachment.size,
-                  category: category
-                });
-
-                console.log(`Downloaded PDF: ${attachment.filename} from ${message.from}`);
-              }
-            } catch (downloadError) {
-              console.error(`Failed to download PDF ${attachment.filename}:`, downloadError);
-            }
-          }
-        } catch (error) {
-          console.error(`Error scanning message ${message.id} for attachments:`, error);
-        }
-      }
-
-      res.json({
-        success: true,
-        message: `Optimized scan complete! Found ${downloadedPDFs.length} PDFs across ${emailsWithAttachments.length} pre-filtered emails.`,
-        totalScanned: emailsWithAttachments.length,
-        pdfsFound: totalPDFs,
-        downloaded: downloadedPDFs
-      });
-
-    } catch (error) {
-      console.error('Error in optimized email scan:', error);
-      res.status(500).json({ message: "Error scanning emails for PDFs" });
-    }
-  });
-
-  // Get individual Gmail message with full content and attachments
-  app.get("/api/gmail/messages/:messageId", isAuthenticated, async (req, res) => {
-    try {
-      if (!(req.session as any)?.gmailTokens) {
-        return res.status(401).json({ message: "Gmail authentication required" });
-      }
-
-      const { google } = await import('googleapis');
-      const { createGmailAuth } = await import("./lib/gmail");
-      const gmail = google.gmail('v1');
-      
-      const gmailAuth = createGmailAuth(
-        (req.session as any).gmailTokens.access_token,
-        (req.session as any).gmailTokens.refresh_token
-      );
-
-      const messageId = req.params.messageId;
-
-      // Get full message content
-      const msgResponse = await gmail.users.messages.get({
-        auth: gmailAuth,
-        userId: 'me',
-        id: messageId,
-        format: 'full'
-      });
-
-      const msg = msgResponse.data;
-      let content = '';
-      const attachments = [];
-
-      // Extract content and attachments from payload
-      function processPayload(payload: any) {
-          const streetNumber = streetMatch[1];
-          const streetName = streetMatch[2];
-          
-          // Create variations for street types and directions
-          const streetVariations = [streetAddress];
-          
-          // Add common abbreviations
-          const abbreviations = {
-            'street': 'st', 'drive': 'dr', 'avenue': 'ave', 'road': 'rd',
-            'boulevard': 'blvd', 'court': 'ct', 'lane': 'ln', 'place': 'pl',
-            'circle': 'cir', 'parkway': 'pkwy', 'way': 'way'
-          };
-          
-          // Add directional variations
-          const directions = {
-            'north': 'n', 'northeast': 'ne', 'northwest': 'nw',
-            'south': 's', 'southeast': 'se', 'southwest': 'sw',
-            'east': 'e', 'west': 'w'
-          };
-          
-          Object.entries(abbreviations).forEach(([full, abbrev]) => {
-            if (streetName.toLowerCase().includes(full)) {
-              streetVariations.push(`${streetNumber} ${streetName.toLowerCase().replace(full, abbrev)}`);
-            }
-            if (streetName.toLowerCase().includes(abbrev)) {
-              streetVariations.push(`${streetNumber} ${streetName.toLowerCase().replace(abbrev, full)}`);
-            }
-          });
-          
-          Object.entries(directions).forEach(([full, abbrev]) => {
-            if (streetAddress.toLowerCase().includes(full)) {
-              streetVariations.push(streetAddress.toLowerCase().replace(full, abbrev));
-            }
-            if (streetAddress.toLowerCase().includes(abbrev)) {
-              streetVariations.push(streetAddress.toLowerCase().replace(abbrev, full));
-            }
-          });
-          
-          // Search subject lines for any street variation
-          const streetSearches = streetVariations.map(variation => `subject:"${variation}"`).join(' OR ');
-          searchTerms.push(`(${streetSearches}) after:${dateQuery}`);
-        }
-      }
-      
-      // Add loan number search (subject line only)
-      if (loan.loan?.loanNumber) {
-        searchTerms.push(`subject:"${loan.loan.loanNumber}" after:${dateQuery}`);
-      }
-      
-      const searchQuery = `(${searchTerms.join(' OR ')})`;
-      console.log('Gmail search query:', searchQuery);
-      
-      const listResponse = await gmail.users.messages.list({
-        auth: gmailAuth,
-        userId: 'me',
-        maxResults: 1000,
-        q: searchQuery
-      });
-      
-      console.log(`Gmail search returned ${listResponse.data.messages?.length || 0} messages`);
-
-      if (!listResponse.data.messages) {
-        return res.json({ 
-          success: true, 
-          message: "No emails found in inbox",
-          totalScanned: 0,
-          pdfsFound: 0,
-          downloaded: []
-        });
-      }
-
-      // Filter messages for this specific loan
-      const filteredMessages = [];
-      for (const message of listResponse.data.messages) {
-        try {
-          const msgResponse = await gmail.users.messages.get({
-            auth: gmailAuth,
-            userId: 'me',
-            id: message.id!,
-            format: 'metadata',
-            metadataHeaders: ['From', 'Subject', 'Date', 'To', 'Cc']
           });
 
           const headers = msgResponse.data.payload?.headers || [];
-          const subject = headers.find(h => h.name === 'Subject')?.value?.toLowerCase() || '';
-          const from = headers.find(h => h.name === 'From')?.value?.toLowerCase() || '';
-          const to = headers.find(h => h.name === 'To')?.value?.toLowerCase() || '';
-          const cc = headers.find(h => h.name === 'Cc')?.value?.toLowerCase() || '';
-
-          // Use same filtering logic as regular Gmail messages
-          let isRelevant = false;
-
-          // Check property address with enhanced matching
-          if (loan.property?.address) {
-            const fullAddress = loan.property.address.toLowerCase();
-            const streetOnly = fullAddress.split(',')[0].trim().toLowerCase();
-            
-            const addressVariations = [fullAddress, streetOnly];
-            
-            const streetMatch = streetOnly.match(/^(\d+)\s+(.+?)(\s+(st|street|dr|drive|ave|avenue|rd|road|ln|lane|blvd|boulevard|way|ct|court|pl|place))?$/i);
-            if (streetMatch) {
-              const streetNumber = streetMatch[1];
-              const streetName = streetMatch[2];
-              
-              addressVariations.push(streetName);
-              addressVariations.push(`${streetNumber} ${streetName}`);
-              
-              const streetWithAbbrev = streetOnly
-                .replace(/\bdrive\b/gi, 'dr')
-                .replace(/\bstreet\b/gi, 'st')
-                .replace(/\bavenue\b/gi, 'ave')
-                .replace(/\broad\b/gi, 'rd')
-                .replace(/\bboulevard\b/gi, 'blvd');
-                
-              if (streetWithAbbrev !== streetOnly) {
-                addressVariations.push(streetWithAbbrev);
-              }
-            }
-            
-            for (const variation of addressVariations) {
-              if (subject.includes(variation)) {
-                isRelevant = true;
-                break;
-              }
-            }
-          }
-
-          // Check loan number
-          if (!isRelevant && loan.loan?.loanNumber && subject.includes(loan.loan.loanNumber.toLowerCase())) {
-            isRelevant = true;
-          }
-
-          // Check borrower name
-          if (!isRelevant && loan.loan?.borrowerName) {
-            const borrowerName = loan.loan.borrowerName.toLowerCase();
-            if (subject.includes(borrowerName) || from.includes(borrowerName) || to.includes(borrowerName)) {
-              isRelevant = true;
-            }
-          }
-
-          // Check for Samuel's email specifically (from your Gmail inbox)
-          if (!isRelevant && (from.includes('sam2345@live.com') || to.includes('sam2345@live.com'))) {
-            isRelevant = true;
-          }
-
-          // Check contact emails
-          if (!isRelevant && loan.contacts && loan.contacts.length > 0) {
-            const contactEmails = loan.contacts
-              .map((c: any) => c.email)
-              .filter(Boolean)
-              .map((email: any) => email.toLowerCase());
-            
-            for (const email of contactEmails) {
-              if (from.includes(email) || to.includes(email) || cc.includes(email)) {
-                isRelevant = true;
-                break;
-              }
-            }
-          }
-
-          // Check for other key emails from your inbox
-          const keyEmails = [
-            'kellie.rossi@lendinghome.com',
-            'kristian@newpathtitle.com', 
-            'luma@planlifeusa.com',
-            'noah.dlott@kiavi.com'
-          ];
-          
-          if (!isRelevant) {
-            for (const email of keyEmails) {
-              if (from.includes(email) || to.includes(email)) {
-                isRelevant = true;
-                break;
-              }
-            }
-          }
-
-          if (isRelevant) {
-            filteredMessages.push({
-              id: message.id,
-              subject: headers.find(h => h.name === 'Subject')?.value || '',
-              from: headers.find(h => h.name === 'From')?.value || ''
-            });
-          }
-        } catch (error) {
-          console.error(`Error processing message ${message.id}:`, error);
-        }
-      }
-
-      // Now scan filtered messages for PDF attachments
-      const downloadedPDFs = [];
-      let totalPDFs = 0;
-      const downloadedInThisScan = new Set(); // Track files downloaded in this scan
-
-      for (const message of filteredMessages) {
-        try {
-          // Get full message with attachments
-          const msgResponse = await gmail.users.messages.get({
-            auth: gmailAuth,
-            userId: 'me',
-            id: message.id!,
-            format: 'full'
-          });
+          const subject = headers.find(h => h.name === 'Subject')?.value || '';
+          const from = headers.find(h => h.name === 'From')?.value || '';
 
           const parts = msgResponse.data.payload?.parts || [];
-          const attachments = [];
+          const attachments: any[] = [];
 
           const extractAttachments = (parts: any[]) => {
             for (const part of parts) {
@@ -2655,46 +2410,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           extractAttachments(parts);
 
-          // Filter for PDFs only
-          const pdfAttachments = attachments.filter(att => att.mimeType?.includes('pdf'));
-          totalPDFs += pdfAttachments.length;
-
-          // Check for existing documents to avoid duplicates
-          const existingDocuments = await storage.getAllDocumentsByLoanId(loanId);
-
-          // Download each PDF
-          for (const attachment of pdfAttachments) {
-            try {
-              // Enhanced duplicate detection - check by name, size, and source
-              const sourceKey = `gmail:${message.from}`;
-              const isDuplicate = existingDocuments.some(doc => 
-                doc.name === attachment.filename && 
-                doc.fileSize === attachment.size &&
-                doc.source === sourceKey &&
-                !doc.deleted // Only check non-deleted documents
-              );
-
-              if (isDuplicate) {
-                console.log(`Skipping duplicate document: ${attachment.filename} from ${message.from}`);
-                continue;
-              }
+          // Process PDF attachments
+          for (const attachment of attachments) {
+            if (attachment.mimeType === 'application/pdf' || attachment.filename.toLowerCase().endsWith('.pdf')) {
+              totalPDFs++;
               
-              // Mark as downloaded in this scan for internal tracking
-              const attachmentKey = `${attachment.filename}_${attachment.size}`;
-              downloadedInThisScan.add(attachmentKey);
+              try {
+                // Download the attachment
+                const attachmentResponse = await gmail.users.messages.attachments.get({
+                  auth: gmailAuth,
+                  userId: 'me',
+                  messageId: messageId,
+                  id: attachment.attachmentId
+                });
 
-              // Download attachment data
-              const attachmentResponse = await gmail.users.messages.attachments.get({
-                auth: gmailAuth,
-                userId: 'me',
-                messageId: message.id!,
-                id: attachment.attachmentId
-              });
+                if (!attachmentResponse.data.data) {
+                  console.error(`No data for attachment ${attachment.filename}`);
+                  continue;
+                }
 
-              if (attachmentResponse.data?.data) {
-                // Decode and save to documents
                 let base64Data = attachmentResponse.data.data;
-                base64Data = base64Data.replace(/-/g, '+').replace(/_/g, '/');
+                // Ensure proper base64 padding
                 while (base64Data.length % 4) {
                   base64Data += '=';
                 }
@@ -2713,125 +2449,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 
                 const data = fileBuffer;
 
-                // Check if document is relevant to this specific loan
-                const isRelevantDocument = (() => {
-                  const filename = attachment.filename.toLowerCase();
-                  const subject = message.subject.toLowerCase();
-                  const messageFrom = message.from.toLowerCase();
-                  
-                  // Allow documents that match ANY of these criteria:
-                  
-                  // 1. From one of our relevant contacts
-                  const relevantContacts = loan.contacts?.map((c: any) => c.email?.toLowerCase()).filter(Boolean) || [];
-                  const isFromRelevantContact = relevantContacts.some(contact => messageFrom.includes(contact));
-                  
-                  // Debug logging for 3keatonsmith111@gmail.com
-                  if (messageFrom.includes('3keatonsmith111') || messageFrom.includes('keatonsmith111')) {
-                    console.log(`Keaton Smith email debug:
-                      - Message from: ${messageFrom}
-                      - Relevant contacts: ${JSON.stringify(relevantContacts)}
-                      - Is from relevant contact: ${isFromRelevantContact}
-                      - Filename: ${filename}
-                      - Subject: ${subject}
-                      - Will process: ${isFromRelevantContact ? 'YES' : 'NO'}`);
-                  }
-                  
-                  // 2. OR mentions this specific property address in subject line
-                  const mentionsProperty = (() => {
-                    if (!loan.loan?.propertyAddress) return false;
-                    
-                    const propertyAddress = loan.loan.propertyAddress.toLowerCase();
-                    const streetMatch = propertyAddress.match(/^(\d+)\s+(.+?)(?:,|$)/);
-                    
-                    if (!streetMatch) return false;
-                    
-                    const streetNumber = streetMatch[1];
-                    const streetName = streetMatch[2];
-                    
-                    // Check if subject includes the street number
-                    if (!subject.includes(streetNumber)) return false;
-                    
-                    // Create variations for street types and directions
-                    const streetVariations = [streetName];
-                    
-                    // Add common abbreviations
-                    const abbreviations = {
-                      'street': 'st', 'drive': 'dr', 'avenue': 'ave', 'road': 'rd',
-                      'boulevard': 'blvd', 'court': 'ct', 'lane': 'ln', 'place': 'pl',
-                      'circle': 'cir', 'parkway': 'pkwy', 'way': 'way'
-                    };
-                    
-                    // Add directional variations
-                    const directions = {
-                      'north': 'n', 'northeast': 'ne', 'northwest': 'nw',
-                      'south': 's', 'southeast': 'se', 'southwest': 'sw',
-                      'east': 'e', 'west': 'w'
-                    };
-                    
-                    Object.entries(abbreviations).forEach(([full, abbrev]) => {
-                      if (streetName.includes(full)) {
-                        streetVariations.push(streetName.replace(full, abbrev));
-                      }
-                      if (streetName.includes(abbrev)) {
-                        streetVariations.push(streetName.replace(abbrev, full));
-                      }
-                    });
-                    
-                    Object.entries(directions).forEach(([full, abbrev]) => {
-                      if (streetName.includes(full)) {
-                        streetVariations.push(streetName.replace(full, abbrev));
-                      }
-                      if (streetName.includes(abbrev)) {
-                        streetVariations.push(streetName.replace(abbrev, full));
-                      }
-                    });
-                    
-                    // Check if subject includes any street variation
-                    return streetVariations.some(variation => subject.includes(variation));
-                  })();
-                  
-                  // 3. OR mentions loan number in subject line only
-                  const mentionsLoanNumber = loan.loan?.loanNumber && subject.includes(loan.loan.loanNumber.toLowerCase());
-                  
-                  // 4. OR mentions borrower name
-                  const mentionsBorrower = loan.loan?.borrowerName && (
-                    filename.includes(loan.loan.borrowerName.toLowerCase()) ||
-                    subject.includes(loan.loan.borrowerName.toLowerCase()) ||
-                    messageFrom.includes(loan.loan.borrowerName.toLowerCase())
-                  );
-                  
-                  // If from a relevant contact (like title company), always allow
-                  if (isFromRelevantContact) {
-                    console.log(`Document allowed - from relevant contact: ${filename}`);
-                    return true;
-                  }
-                  
-                  // Otherwise, require property/loan/borrower mention
-                  return mentionsProperty || mentionsLoanNumber || mentionsBorrower;
-                })();
-
-                if (!isRelevantDocument) {
-                  console.log(`Skipping irrelevant document: ${attachment.filename} from ${message.from}`);
-                  continue;
-                }
-
-                // Determine category based on document type, not sender
+                // Determine category
                 let category = 'other';
                 const filename = attachment.filename.toLowerCase();
-                
-                if (filename.includes('insurance') || filename.includes('policy') || filename.includes('binder')) {
-                  category = 'insurance';
-                } else if (filename.includes('title') || filename.includes('deed') || filename.includes('survey')) {
+                if (filename.includes('title') || filename.includes('deed')) {
                   category = 'title';
-                } else if (filename.includes('appraisal') || filename.includes('valuation')) {
-                  category = 'property';
+                } else if (filename.includes('insurance') || filename.includes('policy')) {
+                  category = 'insurance';
                 } else if (filename.includes('license') || filename.includes('llc') || filename.includes('id')) {
                   category = 'borrower';
                 } else if (filename.includes('loan') || filename.includes('application')) {
                   category = 'loan';
                 }
 
-                // Upload to Google Drive for backup and organization
+                // Upload to Google Drive and create document record
                 try {
                   const { uploadFileToGoogleDrive } = await import('./lib/google');
                   const loanData = await storage.getLoanWithDetails(loanId);
@@ -2849,26 +2480,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     console.log(`Successfully uploaded ${attachment.filename} to Google Drive with ID: ${driveFileId}`);
                     
                     // Create document record with Google Drive file ID
-                    const document = await storage.createDocument({
+                    await storage.createDocument({
                       name: attachment.filename,
-                      fileId: driveFileId, // Use Google Drive file ID instead of local
+                      fileId: driveFileId,
                       loanId: loanId,
                       fileType: attachment.mimeType,
                       fileSize: attachment.size,
                       category: category,
-                      source: `gmail:${message.from}`,
+                      source: `gmail:${from}`,
                       status: 'processed'
                     });
                   } else {
                     // Fallback: create local document record if no Drive folder
-                    const document = await storage.createDocument({
+                    await storage.createDocument({
                       name: attachment.filename,
                       fileId: fileId,
                       loanId: loanId,
                       fileType: attachment.mimeType,
                       fileSize: attachment.size,
                       category: category,
-                      source: `gmail:${message.from}`,
+                      source: `gmail:${from}`,
                       status: 'processed'
                     });
                   }
@@ -2876,1438 +2507,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   console.error(`Failed to upload ${attachment.filename} to Google Drive:`, driveError);
                   
                   // Create local document record as fallback
-                  const document = await storage.createDocument({
+                  await storage.createDocument({
                     name: attachment.filename,
                     fileId: fileId,
                     loanId: loanId,
                     fileType: attachment.mimeType,
                     fileSize: attachment.size,
                     category: category,
-                    source: `gmail:${message.from}`,
+                    source: `gmail:${from}`,
                     status: 'processed'
                   });
                 }
 
                 downloadedPDFs.push({
                   filename: attachment.filename,
-                  emailSubject: message.subject,
+                  emailSubject: subject,
                   size: attachment.size,
                   category: category
                 });
                 
                 // Trigger auto-sync after PDF download
                 await triggerAutoSync(loanId, "download", attachment.filename);
+              } catch (downloadError) {
+                console.error(`Failed to download PDF ${attachment.filename}:`, downloadError);
               }
-            } catch (downloadError) {
-              console.error(`Failed to download PDF ${attachment.filename}:`, downloadError);
             }
           }
         } catch (error) {
-          console.error(`Error scanning message ${message.id} for attachments:`, error);
+          console.error(`Error scanning message ${messageId} for attachments:`, error);
         }
       }
 
       res.json({
         success: true,
-        message: `Scan complete! Found ${downloadedPDFs.length} PDFs across ${filteredMessages.length} relevant emails.`,
-        totalScanned: filteredMessages.length,
+        message: `Scan complete! Found ${downloadedPDFs.length} PDFs across ${messageIds.length} emails.`,
+        totalScanned: messageIds.length,
         pdfsFound: totalPDFs,
         downloaded: downloadedPDFs
       });
 
     } catch (error) {
-      console.error('Error scanning emails for PDFs:', error);
-      res.status(500).json({ message: "Error scanning emails for PDFs" });
+      console.error('Error scanning visible emails for PDFs:', error);
+      res.status(500).json({ message: "Error scanning visible emails for PDFs" });
     }
   });
 
-  // Send Gmail email with attachments
-  app.post("/api/gmail/send", isAuthenticated, upload.any(), async (req, res) => {
-    try {
-      if (!(req.session as any)?.gmailTokens) {
-        return res.status(401).json({ message: "Gmail authentication required" });
-      }
-
-      const { to, cc, subject, body } = req.body;
-      const files = req.files as Express.Multer.File[];
-
-      // Parse recipients
-      const toEmails = JSON.parse(to);
-      const ccEmails = cc ? JSON.parse(cc) : [];
-
-      // Process attachments
-      const attachments = files ? files.map(file => ({
-        filename: file.originalname,
-        mimeType: file.mimetype,
-        data: file.buffer
-      })) : [];
-
-      const { createGmailAuth, sendGmailEmail } = await import("./lib/gmail");
-      const gmailAuth = createGmailAuth(
-        (req.session as any).gmailTokens.access_token,
-        (req.session as any).gmailTokens.refresh_token
-      );
-
-      const emailData = {
-        to: toEmails,
-        cc: ccEmails.length > 0 ? ccEmails : undefined,
-        subject,
-        body,
-        attachments
-      };
-
-      const success = await sendGmailEmail(gmailAuth, emailData);
-
-      if (success) {
-        res.json({ 
-          success: true, 
-          message: `Email sent to ${toEmails.length} recipient(s)${ccEmails.length > 0 ? ` with ${ccEmails.length} CC` : ''}${attachments.length > 0 ? ` and ${attachments.length} attachment(s)` : ''}` 
-        });
-      } else {
-        res.status(500).json({ message: "Failed to send email" });
-      }
-    } catch (error) {
-      console.error("Error sending Gmail:", error);
-      res.status(500).json({ message: "Error sending email" });
-    }
-  });
-
-  // Get Gmail messages
-  app.get("/api/gmail/messages", isAuthenticated, async (req, res) => {
-    try {
-      if (!(req.session as any)?.gmailTokens) {
-        return res.status(401).json({ message: "Gmail authentication required" });
-      }
-
-      const { google } = await import('googleapis');
-      const { createGmailAuth } = await import("./lib/gmail");
-      const gmail = google.gmail('v1');
-      
-      const gmailAuth = createGmailAuth(
-        (req.session as any).gmailTokens.access_token,
-        (req.session as any).gmailTokens.refresh_token
-      );
-
-      const maxResults = parseInt(req.query.maxResults as string) || 50;
-      const loanId = req.query.loanId ? parseInt(req.query.loanId as string) : null;
-
-      // Comprehensive search going back 8 weeks to catch all loan-related emails
-      const eightWeeksAgo = new Date();
-      eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
-      const dateQuery = eightWeeksAgo.toISOString().split('T')[0].replace(/-/g, '/');
-      
-      // Get loan data first if loanId is provided to build comprehensive search
-      let searchQuery = `has:attachment after:${dateQuery}`;
-      
-      if (loanId) {
-        const loan = await storage.getLoanWithDetails(loanId);
-        if (loan) {
-          // Search more broadly - include ALL contact emails and loan-related terms
-          const contactEmails = loan.contacts?.map((c: any) => c.email).filter(Boolean) || [];
-          
-          console.log('Searching for emails from these contacts:', contactEmails);
-          console.log('Contact roles:', loan.contacts?.map((c: any) => `${c.name} (${c.role}) - ${c.email}`));
-          
-          // Build a comprehensive search that includes contact emails and attachments
-          let searchTerms = [`has:attachment after:${dateQuery}`];
-          
-          // Add searches for ALL contact emails (borrower, title agents, insurance agents, etc.)
-          if (contactEmails.length > 0) {
-            contactEmails.forEach((email: string) => {
-              if (email) {
-                searchTerms.push(`(from:${email} OR to:${email} OR cc:${email}) after:${dateQuery}`);
-              }
-            });
-          }
-          
-          // Add property-specific searches 
-          if (loan.loan?.borrowerName && loan.loan?.propertyAddress) {
-            // Extract the street address (first part before the comma)
-            const streetAddress = loan.loan.propertyAddress.split(',')[0].trim();
-            // Search for borrower name AND street address combination
-            searchTerms.push(`(subject:("${loan.loan.borrowerName}" "${streetAddress}") OR ("${loan.loan.borrowerName}" AND "${streetAddress}" AND (subject:"loan" OR subject:"application" OR subject:"closing" OR subject:"refinance"))) after:${dateQuery}`);
-            
-            // Add broader search for just the street address from common loan domains
-            const commonLoanDomains = ['adlercapital.us', 'adlercapital.info', 'adlercapital.com'];
-            commonLoanDomains.forEach(domain => {
-              searchTerms.push(`(from:${domain} AND "${streetAddress}") after:${dateQuery}`);
-            });
-            
-            // Search for street address with attachment requirement
-            searchTerms.push(`("${streetAddress}" AND has:attachment) after:${dateQuery}`);
-          }
-          if (loan.loan?.loanNumber) {
-            searchTerms.push(`"${loan.loan.loanNumber}" after:${dateQuery}`);
-          }
-          
-          searchQuery = `(${searchTerms.join(' OR ')})`;
-        }
-      }
-      
-      console.log('Gmail search query:', searchQuery);
-      console.log('Enhanced search now includes adlercapital.info domain and attachment filtering');
-      const listResponse = await gmail.users.messages.list({
-        auth: gmailAuth,
-        userId: 'me',
-        maxResults: 1000, // Increased to 1000 to catch more historical emails
-        q: searchQuery
-      });
-      
-      console.log(`Gmail search returned ${listResponse.data.messages?.length || 0} messages`);
-
-      const allMessages = [];
-      
-      if (listResponse.data.messages) {
-        // Track processed threads to avoid duplicates - show only one message per conversation
-        const processedThreads = new Map();
-        
-        // Get details for each message
-        for (const message of listResponse.data.messages) {
-          try {
-            // If we haven't processed this thread yet, get the latest message from the thread
-            if (!processedThreads.has(message.threadId)) {
-              const msgResponse = await gmail.users.messages.get({
-                auth: gmailAuth,
-                userId: 'me',
-                id: message.id!,
-                format: 'metadata',
-                metadataHeaders: ['From', 'Subject', 'Date', 'To', 'Cc']
-              });
-
-              const headers = msgResponse.data.payload?.headers || [];
-              const fromHeader = headers.find(h => h.name === 'From');
-              const subjectHeader = headers.find(h => h.name === 'Subject');
-              const dateHeader = headers.find(h => h.name === 'Date');
-              const toHeader = headers.find(h => h.name === 'To');
-              const ccHeader = headers.find(h => h.name === 'Cc');
-
-              const messageData = {
-                id: message.id,
-                threadId: message.threadId,
-                snippet: msgResponse.data.snippet,
-                subject: subjectHeader?.value || '',
-                from: fromHeader?.value || '',
-                to: toHeader?.value || '',
-                cc: ccHeader?.value || '',
-                date: dateHeader?.value || '',
-                unread: msgResponse.data.labelIds?.includes('UNREAD') || false,
-                hasAttachments: msgResponse.data.payload?.parts?.some(part => 
-                  part.filename && part.filename.length > 0
-                ) || false
-              };
-
-              processedThreads.set(message.threadId, messageData);
-              allMessages.push(messageData);
-            }
-          } catch (msgError) {
-            console.error('Error fetching message details:', msgError);
-          }
-        }
-      }
-
-      let messages = allMessages;
-
-      // Filter messages if loanId is provided
-      if (loanId && allMessages.length > 0) {
-        const loan = await storage.getLoanWithDetails(loanId);
-        if (loan) {
-          const filteredMessages = allMessages.filter(message => {
-            const subject = message.subject.toLowerCase();
-            const from = message.from.toLowerCase();
-            const to = message.to.toLowerCase();
-            const cc = message.cc.toLowerCase();
-            
-            // First priority: Check if from/to any of the loan contacts
-            const contactEmails = loan.contacts?.map((c: any) => c.email?.toLowerCase()).filter(Boolean) || [];
-            const isFromLoanContact = contactEmails.some(email => 
-              from.includes(email) || to.includes(email) || cc.includes(email)
-            );
-            
-            if (isFromLoanContact) {
-              return true; // Always include emails from loan contacts
-            }
-            
-            // Second priority: Check loan number
-            if (loan.loan?.loanNumber && (subject.includes(loan.loan.loanNumber) || message.snippet?.toLowerCase().includes(loan.loan.loanNumber.toLowerCase()))) {
-              return true;
-            }
-            
-            // Third priority: Check property address - just street number + street name
-            if (loan.property?.address) {
-              const streetAddress = loan.property.address.split(',')[0].trim().toLowerCase();
-              
-              // Include if street address is mentioned in subject (e.g., "32 run st")
-              if (subject.includes(streetAddress)) {
-                return true;
-              }
-            }
-            
-            // Exclude everything else - especially emails that only mention borrower name in passing
-            return false;
-          });
-          
-          messages = filteredMessages.slice(0, maxResults);
-        }
-      } else {
-        // If no loan filtering, just limit to maxResults
-        messages = allMessages.slice(0, maxResults);
-      }
-
-      res.json({ messages });
-    } catch (error) {
-      console.error("Error fetching Gmail messages:", error);
-      res.status(500).json({ message: "Error fetching messages" });
-    }
-  });
-
-  // Get individual Gmail message with full content and attachments
-  app.get("/api/gmail/messages/:messageId", isAuthenticated, async (req, res) => {
-    try {
-      if (!(req.session as any)?.gmailTokens) {
-        return res.status(401).json({ message: "Gmail authentication required" });
-      }
-
-      const { google } = await import('googleapis');
-      const { createGmailAuth } = await import("./lib/gmail");
-      const gmail = google.gmail('v1');
-      
-      const gmailAuth = createGmailAuth(
-        (req.session as any).gmailTokens.access_token,
-        (req.session as any).gmailTokens.refresh_token
-      );
-
-      const messageId = req.params.messageId;
-
-      // Get full message content
-      const msgResponse = await gmail.users.messages.get({
-        auth: gmailAuth,
-        userId: 'me',
-        id: messageId,
-        format: 'full'
-      });
-
-      const msg = msgResponse.data;
-      let content = '';
-      const attachments = [];
-
-      // Extract content and attachments from payload
-      function processPayload(payload: any) {
-        if (payload.mimeType === 'text/plain' && payload.body?.data) {
-          content = Buffer.from(payload.body.data, 'base64').toString('utf-8');
-        } else if (payload.mimeType === 'text/html' && payload.body?.data && !content) {
-          // Convert HTML to plain text if no plain text available
-          const html = Buffer.from(payload.body.data, 'base64').toString('utf-8');
-          content = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-        }
-
-        // Check for attachments
-        if (payload.filename && payload.filename.length > 0 && payload.body?.attachmentId) {
-          attachments.push({
-            filename: payload.filename,
-            mimeType: payload.mimeType,
-            size: payload.body.size,
-            attachmentId: payload.body.attachmentId
-          });
-        }
-
-        // Process parts recursively
-        if (payload.parts) {
-          payload.parts.forEach(processPayload);
-        }
-      }
-
-      if (msg.payload) {
-        processPayload(msg.payload);
-      }
-
-      res.json({ 
-        content: content || msg.snippet || 'No content available',
-        attachments: attachments
-      });
-    } catch (error) {
-      console.error("Error fetching Gmail message content:", error);
-      res.status(500).json({ message: "Error fetching message content" });
-    }
-  });
-
-  // Gmail attachment download route
-  app.get("/api/gmail/messages/:messageId/attachments/:attachmentId", isAuthenticated, async (req, res) => {
-    try {
-      if (!(req.session as any)?.gmailTokens) {
-        return res.status(401).json({ message: "Gmail authentication required" });
-      }
-
-      const { google } = await import('googleapis');
-      const { createGmailAuth } = await import("./lib/gmail");
-      const gmail = google.gmail('v1');
-      
-      const gmailAuth = createGmailAuth(
-        (req.session as any).gmailTokens.access_token,
-        (req.session as any).gmailTokens.refresh_token
-      );
-
-      const messageId = req.params.messageId;
-      const attachmentId = req.params.attachmentId;
-
-      console.log('Downloading attachment:', { messageId, attachmentId });
-
-      // Get attachment data
-      const attachmentResponse = await gmail.users.messages.attachments.get({
-        auth: gmailAuth,
-        userId: 'me',
-        messageId: messageId,
-        id: attachmentId
-      });
-
-      console.log('Gmail API attachment response:', {
-        hasData: !!attachmentResponse.data,
-        dataKeys: attachmentResponse.data ? Object.keys(attachmentResponse.data) : [],
-        size: attachmentResponse.data?.size,
-        hasAttachmentData: !!attachmentResponse.data?.data
-      });
-
-      if (!attachmentResponse.data?.data) {
-        console.error('No attachment data returned from Gmail API');
-        return res.status(404).json({ message: "Attachment data not found" });
-      }
-
-      res.json({ 
-        data: attachmentResponse.data.data // This is base64 encoded
-      });
-    } catch (error) {
-      console.error('Error downloading Gmail attachment:', error);
-      res.status(500).json({ message: "Error downloading attachment", error: error.message });
-    }
-  });
-
-  // Save PDF attachment to documents route
-  app.post("/api/loans/:loanId/documents/from-email", isAuthenticated, async (req, res) => {
-    try {
-      const loanId = parseInt(req.params.loanId);
-      const { attachmentData, filename, mimeType, size, emailSubject, emailFrom } = req.body;
-
-      // Decode base64 attachment data
-      let fileBuffer;
-      try {
-        // Gmail uses URL-safe base64, convert to standard base64
-        let base64Data = attachmentData;
-        base64Data = base64Data.replace(/-/g, '+').replace(/_/g, '/');
-        while (base64Data.length % 4) {
-          base64Data += '=';
-        }
-        fileBuffer = Buffer.from(base64Data, 'base64');
-      } catch (decodeError) {
-        console.error('Failed to decode attachment data:', decodeError);
-        return res.status(400).json({ message: "Invalid attachment data" });
-      }
-
-      // Get the loan details to find the Drive folder
-      const loan = await storage.getLoan(loanId);
-      if (!loan) {
-        return res.status(404).json({ message: "Loan not found" });
-      }
-
-      let driveFileId = null;
-
-      // Check if user has Google Drive authentication
-      if ((req.session as any)?.googleAuthenticated || (req.session as any)?.googleTokens) {
-        try {
-          // Try to restore Google Drive tokens if not in session
-          if (!(req.session as any)?.googleAuthenticated && req.user?.id) {
-            const driveToken = await storage.getUserToken(req.user.id, 'drive');
-            if (driveToken && driveToken.accessToken) {
-              (req.session as any).googleTokens = {
-                access_token: driveToken.accessToken,
-                refresh_token: driveToken.refreshToken,
-                expiry_date: driveToken.expiryDate?.getTime()
-              };
-              (req.session as any).googleAuthenticated = true;
-            }
-          }
-
-          if ((req.session as any)?.googleAuthenticated) {
-            const { google } = await import('googleapis');
-            
-            // Create auth from session tokens
-            const oauth2Client = new google.auth.OAuth2();
-            oauth2Client.setCredentials((req.session as any).googleTokens);
-            const drive = google.drive({ version: 'v3', auth: oauth2Client });
-            const { Readable } = await import('stream');
-
-            // Upload to Google Drive
-            const driveResponse = await drive.files.create({
-              requestBody: {
-                name: filename,
-                parents: loan.driveFolder ? [loan.driveFolder] : undefined,
-              },
-              media: {
-                mimeType: mimeType,
-                body: Readable.from(fileBuffer)
-              }
-            });
-
-            driveFileId = driveResponse.data.id;
-            console.log('Successfully uploaded email attachment to Google Drive:', driveFileId);
-          }
-        } catch (driveError) {
-          console.error('Failed to upload to Google Drive:', driveError);
-          // Continue without Drive upload - we'll still save locally
-        }
-      }
-
-      // If Drive upload failed, save locally
-      if (!driveFileId) {
-        const { promises: fs } = await import('fs');
-        // Get file extension from original filename or mime type
-        const extension = filename.includes('.') ? filename.split('.').pop() : 
-                         (mimeType.includes('pdf') ? 'pdf' : 
-                          mimeType.includes('image') ? 'png' : 'file');
-        const fileId = `email-attachment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${extension}`;
-        const filePath = path.join(uploadsDir, fileId);
-        await fs.writeFile(filePath, fileBuffer);
-        driveFileId = fileId;
-      }
-      
-      // Determine document category based on filename
-      let category = 'other';
-      const lowerFilename = filename.toLowerCase();
-      if (lowerFilename.includes('insurance') || lowerFilename.includes('policy')) {
-        category = 'insurance';
-      } else if (lowerFilename.includes('appraisal')) {
-        category = 'property';
-      } else if (lowerFilename.includes('income') || lowerFilename.includes('bank') || lowerFilename.includes('statement')) {
-        category = 'borrower';
-      } else if (lowerFilename.includes('title')) {
-        category = 'title';
-      }
-
-      // Create document record
-      const document = await storage.createDocument({
-        name: filename,
-        fileId: driveFileId,
-        loanId: loanId,
-        fileType: mimeType,
-        fileSize: size,
-        category: category,
-        source: 'gmail',
-        status: 'processed'
-      });
-
-      res.json({ 
-        success: true,
-        document: document,
-        message: `PDF attachment saved to loan documents${driveFileId.length > 20 ? ' and uploaded to Google Drive' : ''}`
-      });
-    } catch (error) {
-      console.error('Error saving email attachment to documents:', error);
-      res.status(500).json({ message: "Error saving attachment to documents" });
-    }
-  });
-
-  // Send to analyst
-  app.post("/api/loans/:id/send-to-analyst", isAuthenticated, async (req, res) => {
-    try {
-      const loanId = parseInt(req.params.id);
-      const { documentIds, analystIds, customMessage, emailContent } = req.body;
-
-      if (!req.session?.gmailTokens) {
-        return res.status(401).json({ 
-          message: "Gmail authentication required",
-          requiresAuth: true 
-        });
-      }
-
-      // Get loan details
-      const loan = await storage.getLoan(loanId);
-      if (!loan) {
-        return res.status(404).json({ message: "Loan not found" });
-      }
-
-      // Get selected documents
-      const documents = await Promise.all(
-        documentIds.map((id: number) => storage.getDocument(id))
-      );
-
-      // Get selected analysts
-      const analysts = await Promise.all(
-        analystIds.map((id: number) => storage.getContact(id))
-      );
-
-      const analystEmails = analysts
-        .map(analyst => analyst?.email)
-        .filter(Boolean) as string[];
-
-      if (analystEmails.length === 0) {
-        return res.status(400).json({ message: "No valid analyst email addresses found" });
-      }
-
-      // Download document attachments from Google Drive
-      const { downloadDriveFile } = await import("./lib/google");
-      const attachments = [];
-
-      for (const doc of documents) {
-        if (doc) {
-          try {
-            const fileBuffer = await downloadDriveFile(doc.fileId);
-            attachments.push({
-              filename: doc.name,
-              mimeType: doc.fileType || 'application/octet-stream',
-              data: fileBuffer
-            });
-          } catch (error) {
-            console.error(`Error downloading document ${doc.name}:`, error);
-          }
-        }
-      }
-
-      // Send email via Gmail
-      const { createGmailAuth, sendGmailEmail } = await import("./lib/gmail");
-      const gmailAuth = createGmailAuth(
-        req.session.gmailTokens.access_token,
-        req.session.gmailTokens.refresh_token
-      );
-
-      const emailData = {
-        to: analystEmails,
-        subject: `${loan.propertyAddress} (Loan #${loan.loanNumber}) - Documents Attached`,
-        body: emailContent,
-        attachments
-      };
-
-      const emailSent = await sendGmailEmail(gmailAuth, emailData);
-
-      if (emailSent) {
-        res.json({ 
-          success: true,
-          message: `Email sent successfully to ${analystEmails.length} analyst(s) with ${attachments.length} attachment(s)`
-        });
-      } else {
-        res.status(500).json({ message: "Failed to send email" });
-      }
-    } catch (error) {
-      console.error("Error sending to analyst:", error);
-      res.status(500).json({ message: "Error sending email to analyst" });
-    }
-  });
-
-  // Google Drive folder contents route for folder browser
-  app.get("/api/drive/folders/:folderId/contents", isAuthenticated, async (req, res) => {
-    try {
-      const folderId = req.params.folderId;
-      
-      // Use the service account to access Google Drive folders with recursive scanning
-      try {
-        console.log(`Scanning folder ${folderId} recursively for all files...`);
-        const { files, folders } = await scanFolderRecursively(folderId);
-        
-        // Combine files and folders for display
-        const allItems = [
-          ...folders.map(folder => ({
-            id: folder.id,
-            name: folder.name,
-            type: 'folder' as const,
-            mimeType: folder.mimeType,
-            size: undefined
-          })),
-          ...files.map(file => ({
-            id: file.id,
-            name: file.name,
-            type: 'file' as const,
-            mimeType: file.mimeType,
-            size: file.size ? parseInt(file.size) : undefined
-          }))
-        ];
-        
-        console.log(`Successfully retrieved ${files.length} files and ${folders.length} folders from Google Drive folder ${folderId}`);
-        return res.json({ 
-          items: allItems,
-          totalFiles: files.length,
-          totalFolders: folders.length
-        });
-        
-      } catch (driveError: any) {
-        console.error('Google Drive access failed:', driveError.message);
-        return res.status(500).json({ 
-          message: "Failed to access Google Drive folder. Please make sure the Google service account has access to this folder.", 
-          error: driveError.message 
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching folder contents:', error);
-      res.status(500).json({ 
-        message: "Error fetching folder contents",
-        error: (error as Error).message 
-      });
-    }
-  });
-
-  // Set up a demo loan route
-  app.post("/api/demo-loan", isAuthenticated, async (req, res) => {
-    try {
-      const user = req.user as any;
-      
-      // Create a property
-      const property = await storage.createProperty({
-        address: "321 NW 43rd St",
-        city: "Oakland Park",
-        state: "FL",
-        zipCode: "33309",
-        propertyType: "Residential"
-      });
-
-      // Create a loan
-      const loan = await storage.createLoan({
-        borrowerName: "John Smith",
-        loanAmount: "324,500",
-        loanType: "DSCR",
-        loanPurpose: "Purchase",
-        status: "in_progress",
-        targetCloseDate: "2023-08-15",
-        propertyId: property.id,
-        lenderId: 1, // Kiavi
-        processorId: user.id,
-        completionPercentage: 65
-      });
-
-      // Create contacts
-      await storage.createContact({
-        name: "John Smith",
-        email: "john.smith@example.com",
-        phone: "555-123-4567",
-        role: "borrower",
-        loanId: loan.id
-      });
-
-      await storage.createContact({
-        name: "Sunrise Title Co.",
-        email: "info@sunrisetitle.com",
-        phone: "555-987-6543",
-        company: "Sunrise Title",
-        role: "title",
-        loanId: loan.id
-      });
-
-      await storage.createContact({
-        name: "AllState Insurance",
-        email: "agent@allstate.com",
-        phone: "555-456-7890",
-        company: "AllState",
-        role: "insurance",
-        loanId: loan.id
-      });
-
-      // Create documents
-      await storage.createDocument({
-        name: "DriverLicense.pdf",
-        fileId: "driver-license-123",
-        fileType: "pdf",
-        fileSize: 1200,
-        category: "borrower",
-        loanId: loan.id
-      });
-
-      await storage.createDocument({
-        name: "BankStatement-Jan.pdf",
-        fileId: "bank-statement-123",
-        fileType: "pdf",
-        fileSize: 3400,
-        category: "borrower",
-        loanId: loan.id
-      });
-
-      await storage.createDocument({
-        name: "PurchaseContract.pdf",
-        fileId: "purchase-contract-123",
-        fileType: "pdf",
-        fileSize: 5700,
-        category: "property",
-        loanId: loan.id
-      });
-
-      await storage.createDocument({
-        name: "CreditReport.pdf",
-        fileId: "credit-report-123",
-        fileType: "pdf",
-        fileSize: 2100,
-        category: "borrower",
-        loanId: loan.id
-      });
-
-      // Create tasks
-      await storage.createTask({
-        description: "Contact AllState for insurance binder",
-        dueDate: "2023-08-05",
-        priority: "high",
-        completed: false,
-        loanId: loan.id
-      });
-
-      await storage.createTask({
-        description: "Request title commitment from Sunrise Title",
-        dueDate: "2023-08-07",
-        priority: "medium",
-        completed: false,
-        loanId: loan.id
-      });
-
-      await storage.createTask({
-        description: "Send DSCR certification form to borrower",
-        dueDate: "2023-08-06",
-        priority: "medium",
-        completed: false,
-        loanId: loan.id
-      });
-
-      await storage.createTask({
-        description: "Verify borrower ID and documentation",
-        dueDate: "2023-08-02",
-        priority: "medium",
-        completed: true,
-        loanId: loan.id
-      });
-
-      // Initial AI analysis message - using hardcoded version for demo
-      const analysisMessage = "I've analyzed the documents for your Kiavi DSCR Purchase loan for 321 NW 43rd St. Here's what I found:\n\nDocuments Present:\n- Driver's License\n- Bank Statement (January)\n- Purchase Contract\n- Credit Report\n\nDocuments Missing:\n- Insurance Quote or Binder\n- Title Commitment\n- Entity Documents (if applicable)\n- DSCR Certification Form\n\nNext Steps:\n1. Contact insurance agent to request binder (high priority)\n2. Reach out to title company for preliminary title report\n3. Have borrower complete the DSCR certification form";
-      
-      await storage.createMessage({
-        content: analysisMessage,
-        role: "assistant",
-        loanId: loan.id
-      });
-
-      res.status(201).json({ success: true, loanId: loan.id });
-    } catch (error) {
-      res.status(500).json({ message: "Error creating demo loan" });
-    }
-  });
-  
-  // Comprehensive folder scanning and loan creation
-  app.post("/api/loans/scan-folder", isAuthenticated, async (req, res) => {
-    try {
-      const { folderId, loanData } = req.body;
-      const user = req.user as any;
-      
-      if (!folderId) {
-        return res.status(400).json({ success: false, message: "Folder ID is required" });
-      }
-      
-      console.log(`Starting comprehensive scan of folder: ${folderId}`);
-      
-      // Step 1: Recursively scan the entire folder structure
-      const { files, folders } = await scanFolderRecursively(folderId);
-      console.log(`Found ${files.length} files and ${folders.length} folders`);
-      
-      if (files.length === 0) {
-        console.log("No documents found in folder, creating loan without documents");
-        // Create loan without documents - just use the loan data provided
-        
-        // Step 4: Create property from loan data
-        const property = await storage.createProperty({
-          address: loanData?.propertyAddress || "Address from loan data",
-          city: loanData?.city || "City", 
-          state: loanData?.state || "State",
-          zipCode: loanData?.zipCode || "00000",
-          propertyType: loanData?.propertyType || "single_family"
-        });
-        
-        // Step 5: Create loan
-        const loan = await storage.createLoan({
-          loanNumber: loanData?.loanNumber || "",
-          borrowerName: loanData?.borrowerName || "Borrower Name",
-          borrowerEntityName: loanData?.borrowerEntityName || loanData?.borrowerName || "Borrower Name",
-          propertyAddress: loanData?.propertyAddress || "Property Address",
-          propertyType: loanData?.propertyType || "single_family",
-          estimatedValue: loanData?.estimatedValue || null,
-          loanAmount: loanData?.loanAmount || "0",
-          loanToValue: loanData?.loanToValue || null,
-          loanType: loanData?.loanType || "DSCR",
-          loanPurpose: loanData?.loanPurpose || "Purchase",
-          funder: loanData?.funder || "Kiavi",
-          status: "in_progress",
-          targetCloseDate: loanData?.targetCloseDate || null,
-          driveFolder: folderId,
-          googleDriveFolderId: folderId,
-          propertyId: property.id,
-          lenderId: 1, // Kiavi
-          processorId: user.id,
-          completionPercentage: 0
-        });
-        
-        // Step 6: Create initial message
-        await storage.createMessage({
-          content: `Loan created successfully! The Google Drive folder is connected but currently empty. You can now start uploading documents to the folder and they will be automatically processed.
-          
-Loan Details:
-- Loan Number: ${loan.loanNumber}
-- Borrower: ${loan.borrowerName}
-- Property: ${loan.propertyAddress}
-- Loan Type: ${loan.loanType}
-- Loan Purpose: ${loan.loanPurpose}
-
-Ready to start document collection and processing.`,
-          role: "assistant",
-          loanId: loan.id
-        });
-        
-        return res.status(201).json({ 
-          success: true, 
-          loanId: loan.id,
-          documentsProcessed: 0,
-          missingDocuments: 0,
-          foldersScanned: 1,
-          message: "Loan created successfully with empty Google Drive folder"
-        });
-      }
-      
-      // Step 2: Download and process each document
-      const processedDocuments = [];
-      for (const file of files) {
-        try {
-          console.log(`Processing file: ${file.name}`);
-          
-          // Download file content
-          let content = await downloadDriveFile(file.id);
-          
-          // If content is unreadable, mark for OCR (simplified OCR simulation)
-          if (!content || typeof content !== 'string' || content.includes('Could not read') || content.length < 10) {
-            console.log(`File ${file.name} needs OCR processing`);
-            content = `OCR Content: Document ${file.name} - scanned image content would be processed here`;
-          }
-          
-          processedDocuments.push({
-            id: file.id,
-            name: file.name,
-            mimeType: file.mimeType,
-            size: file.size,
-            modifiedTime: file.modifiedTime,
-            text: content
-          });
-        } catch (error) {
-          console.error(`Error processing file ${file.name}:`, error);
-          processedDocuments.push({
-            id: file.id,
-            name: file.name,
-            mimeType: file.mimeType,
-            size: file.size,
-            modifiedTime: file.modifiedTime,
-            text: `Error reading file: ${error}`
-          });
-        }
-      }
-      
-      // Step 3: Analyze documents with OpenAI
-      let analysisResult;
-      try {
-        console.log(`Analyzing ${processedDocuments.length} documents with OpenAI...`);
-        analysisResult = await analyzeDriveDocuments(processedDocuments);
-        console.log("Document analysis completed successfully");
-      } catch (analyzeError) {
-        console.error("Error during document analysis:", analyzeError);
-        return res.status(500).json({ 
-          success: false, 
-          message: "Failed to analyze documents with AI",
-          error: analyzeError.message 
-        });
-      }
-      
-      // Step 4: Create property
-      const property = await storage.createProperty({
-        address: analysisResult.address || loanData?.propertyAddress || "Address from documents",
-        city: analysisResult.city || loanData?.city || "City from documents", 
-        state: analysisResult.state || loanData?.state || "State from documents",
-        zipCode: analysisResult.zipCode || loanData?.zipCode || "00000",
-        propertyType: analysisResult.propertyType || "Residential"
-      });
-      
-      // Step 5: Create loan
-      const loan = await storage.createLoan({
-        borrowerName: analysisResult.borrowerName || loanData?.borrowerName || "Borrower from documents",
-        propertyAddress: property.address,
-        propertyType: property.propertyType,
-        loanType: analysisResult.loanType || "DSCR",
-        loanPurpose: analysisResult.loanPurpose || "Purchase", 
-        funder: loanData?.lender || "Kiavi",
-        status: "In Progress",
-        targetCloseDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        driveFolder: folderId,
-        propertyId: property.id,
-        lenderId: 1, // Default to first lender
-        processorId: user.id,
-        completionPercentage: 25
-      });
-      
-      // Step 6: Save all documents to database
-      const savedDocuments = [];
-      for (const doc of processedDocuments) {
-        // Determine document category
-        let category = "other";
-        const fileName = doc.name.toLowerCase();
-        if (fileName.includes("license") || fileName.includes("id") || fileName.includes("passport")) {
-          category = "borrower";
-        } else if (fileName.includes("title") || fileName.includes("deed")) {
-          category = "title";
-        } else if (fileName.includes("insurance") || fileName.includes("policy")) {
-          category = "insurance";
-        } else if (fileName.includes("lender") || fileName.includes("loan")) {
-          category = "current lender";
-        }
-        
-        const document = await storage.createDocument({
-          loanId: loan.id,
-          name: doc.name,
-          fileId: doc.id,
-          fileType: doc.mimeType.split('/')[1] || "unknown",
-          fileSize: parseInt(doc.size || "0", 10),
-          category,
-          status: "processed"
-        });
-        
-        savedDocuments.push(document);
-      }
-      
-      // Step 7: Create tasks for missing documents
-      const missingDocuments = analysisResult.missingDocuments || [];
-      for (const missingDoc of missingDocuments) {
-        await storage.createTask({
-          description: `Obtain missing document: ${missingDoc}`,
-          status: "pending",
-          priority: "high",
-          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          loanId: loan.id
-        });
-      }
-      
-      // Step 8: Create contacts from analysis
-      const contacts = Array.isArray(analysisResult.contacts) ? analysisResult.contacts : [];
-      for (const contact of contacts) {
-        try {
-          await storage.createContact({
-            name: contact.name || "Unknown Contact",
-            email: contact.email || null,
-            phone: contact.phone || null,
-            company: contact.company || null,
-            role: contact.role || "Other",
-            loanId: loan.id
-          });
-        } catch (contactError) {
-          console.warn("Error creating contact:", contactError);
-        }
-      }
-      
-      // Step 9: Create initial AI message
-      await storage.createMessage({
-        content: `I've completed a comprehensive scan of your Google Drive folder and found ${files.length} documents across ${folders.length} folders.
-
-**Documents Processed:**
-${savedDocuments.map(doc => `- ${doc.name} (${doc.category})`).join('\n')}
-
-**Analysis Results:**
-- Borrower: ${analysisResult.borrowerName}
-- Property: ${analysisResult.address}, ${analysisResult.city}, ${analysisResult.state}
-- Loan Type: ${analysisResult.loanType}
-- Loan Purpose: ${analysisResult.loanPurpose}
-
-${missingDocuments.length > 0 ? `**Missing Documents:** 
-${missingDocuments.map(doc => `- ${doc}`).join('\n')}
-
-I've created tasks to obtain these missing documents.` : '**All required documents appear to be present.**'}
-
-The loan file is now ready for processing.`,
-        role: "assistant",
-        loanId: loan.id
-      });
-      
-      res.status(201).json({ 
-        success: true, 
-        loanId: loan.id,
-        documentsProcessed: savedDocuments.length,
-        missingDocuments: missingDocuments.length,
-        foldersScanned: folders.length + 1,
-        message: "Loan created successfully with comprehensive document analysis"
-      });
-      
-    } catch (error) {
-      console.error("Error in comprehensive folder scan:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Error processing folder and documents",
-        error: error.message 
-      });
-    }
-  });
-
-  // Create loan from Google Drive folder
-  app.post("/api/loans/from-drive", isAuthenticated, async (req, res) => {
-    try {
-      const { driveFolderId } = req.body;
-      
-      if (!driveFolderId) {
-        return res.status(400).json({ success: false, message: "Drive folder ID is required" });
-      }
-      
-      console.log("Processing Google Drive folder:", driveFolderId);
-      
-      // Get files from Google Drive folder with authentication
-      // Pass the Google access token from session if available
-      const googleTokens = (req.session as any)?.googleTokens;
-      const accessToken = googleTokens?.access_token;
-      
-      const files = await getDriveFiles(driveFolderId, accessToken);
-      
-      if (!files || files.length === 0) {
-        return res.status(400).json({ success: false, message: "No files found in the specified Google Drive folder" });
-      }
-      
-      console.log(`Found ${files.length} files in the Google Drive folder`);
-      
-      
-      // Extract real text content from the files
-      // For each file in the Google Drive folder, we'll extract whatever information we can
-      const processedDocuments = files.map(file => {
-        // Use the file name to determine what kind of document this might be
-        const filename = file.name.toLowerCase();
-        
-        // Extract the actual content from the file name and metadata
-        // In a production app, we would download the actual file content
-        let extractedText = `File: ${file.name}\n`;
-        
-        // Add file metadata
-        if (file.modifiedTime) {
-          extractedText += `Modified: ${file.modifiedTime}\n`;
-        }
-        
-        // Try to extract meaningful information from the filename
-        const nameWithoutExt = filename.replace(/\.[^/.]+$/, "");
-        const words = nameWithoutExt.split(/[_\s-]+/);
-        
-        // Add possible content based on file type patterns
-        if (filename.includes("license") || filename.includes("id") || filename.includes("passport")) {
-          extractedText += `Document Type: Identification\n`;
-          // Try to extract a name from the filename
-          const possibleName = words.slice(0, 2).join(" ").replace(/[^a-z\s]/gi, "");
-          if (possibleName.length > 3) {
-            extractedText += `Name: ${possibleName}\n`;
-          }
-        } else if (filename.includes("bank") || filename.includes("statement")) {
-          extractedText += `Document Type: Financial Statement\n`;
-          // Try to extract account info or date from the filename
-          const dateMatch = filename.match(/\d{1,2}[-_\.]\d{1,2}[-_\.]\d{2,4}/);
-          if (dateMatch) {
-            extractedText += `Statement Date: ${dateMatch[0]}\n`;
-          }
-        } else if (filename.includes("tax") || filename.includes("return")) {
-          extractedText += `Document Type: Tax Document\n`;
-          // Try to extract year from the filename
-          const yearMatch = filename.match(/20\d{2}/);
-          if (yearMatch) {
-            extractedText += `Tax Year: ${yearMatch[0]}\n`;
-          }
-        } else if (filename.includes("llc") || filename.includes("entity") || filename.includes("incorporation")) {
-          extractedText += `Document Type: Entity Document\n`;
-          // Try to extract entity name from the filename
-          const entityWords = words.slice(0, words.findIndex(w => w.includes("llc") || w.includes("inc")) + 1);
-          if (entityWords.length > 0) {
-            extractedText += `Entity Name: ${entityWords.join(" ")}\n`;
-          }
-        } else if (filename.includes("property") || filename.includes("appraisal") || filename.includes("survey")) {
-          extractedText += `Document Type: Property Document\n`;
-          // Try to extract address from the filename
-          const addressWords = words.filter(w => /\d/.test(w) || /(st|ave|rd|ln|dr|blvd|way)/.test(w));
-          if (addressWords.length > 0) {
-            extractedText += `Property Info: ${addressWords.join(" ")}\n`;
-          }
-        } else if (filename.includes("insurance") || filename.includes("policy") || filename.includes("binder")) {
-          extractedText += `Document Type: Insurance Document\n`;
-          // Try to extract insurance type from the filename
-          if (filename.includes("hazard")) extractedText += `Insurance Type: Hazard\n`;
-          if (filename.includes("liability")) extractedText += `Insurance Type: Liability\n`;
-          if (filename.includes("flood")) extractedText += `Insurance Type: Flood\n`;
-        } else if (filename.includes("title") || filename.includes("deed") || filename.includes("escrow")) {
-          extractedText += `Document Type: Title/Deed Document\n`;
-        } else if (filename.includes("loan") || filename.includes("mortgage") || filename.includes("note")) {
-          extractedText += `Document Type: Loan Document\n`;
-          // Try to extract loan amount from the filename
-          const amountMatch = filename.match(/\$?(\d+)[k]?/);
-          if (amountMatch) {
-            const amount = amountMatch[1].includes("k") ? 
-              parseInt(amountMatch[1].replace("k", "")) * 1000 : 
-              parseInt(amountMatch[1]);
-            extractedText += `Possible Amount: $${amount.toLocaleString()}\n`;
-          }
-        } else {
-          // For other document types, just describe what we can
-          extractedText += `Document Type: Other\n`;
-          extractedText += `Words identified: ${words.join(", ")}\n`;
-        }
-
-        return {
-          id: file.id,
-          name: file.name,
-          mimeType: file.mimeType,
-          size: file.size,
-          modifiedTime: file.modifiedTime,
-          text: extractedText
-        };
-      });
-      
-      // Use OpenAI for document analysis with improved error handling
-      let analysisResult;
-      try {
-        console.log(`Analyzing ${processedDocuments.length} documents with OpenAI...`);
-        // Verify OpenAI API key is available
-        if (!process.env.OPENAI_API_KEY) {
-          throw new Error("OpenAI API key not configured");
-        }
-        
-        analysisResult = await analyzeDriveDocuments(processedDocuments);
-        console.log("Document analysis completed successfully with OpenAI");
-      } catch (analyzeError) {
-        console.error("Error during document analysis:", analyzeError);
-        console.log("Using document text extraction fallback");
-        
-        // Create an analysis result based on file content extraction
-        // This will work even when OpenAI is unavailable
-        const filePatterns = processedDocuments.map(doc => doc.name.toLowerCase());
-        
-        // Look for file patterns to determine the loan type and purpose
-        const isDSCR = filePatterns.some(name => name.includes('dscr') || name.includes('debt service'));
-        const isRefinance = filePatterns.some(name => name.includes('refinance') || name.includes('refi'));
-        
-        // Try to extract loan amount from file names
-        let loanAmount = "TBD";
-        for (const doc of processedDocuments) {
-          const amountMatch = doc.name.match(/\$?(\d[\d,]*(\.\d+)?)[k]?/i);
-          if (amountMatch) {
-            loanAmount = amountMatch[0];
-            break;
-          }
-        }
-        
-        analysisResult = {
-          borrowerName: filePatterns.some(name => name.includes('llc')) ? 
-            "Property Investment LLC" : "Property Investor",
-          loanAmount: loanAmount,
-          loanType: isDSCR ? "DSCR" : "Fix & Flip",
-          loanPurpose: isRefinance ? "Refinance" : "Purchase",
-          address: "Property Address from Files",
-          city: "Property City",
-          state: "CA",
-          zipCode: "90210",
-          propertyType: "Single Family Residence",
-          contacts: [],
-          missingDocuments: ["Insurance Binder", "Title Commitment", "DSCR Certification Form"],
-          documentCategories: {}
-        };
-        
-        // Extract some basic info from file names
-        for (const doc of processedDocuments) {
-          const name = doc.name.toLowerCase();
-          if (name.includes("license") || name.includes("id")) {
-            // Try to extract borrower name from ID documents
-            const nameMatch = doc.text.match(/Name:\s*([^\n]+)/);
-            if (nameMatch && nameMatch[1]) {
-              analysisResult.borrowerName = nameMatch[1].trim();
-            }
-          } else if (name.includes("property") || name.includes("address")) {
-            // Try to extract address from property documents
-            const addressMatch = doc.text.match(/Address:\s*([^\n]+)/);
-            if (addressMatch && addressMatch[1]) {
-              analysisResult.address = addressMatch[1].trim();
-            }
-          }
-        }
-      }
-      
-      // 1. Create property based on analysis
-      const property = await storage.createProperty({
-        address: analysisResult.address,
-        city: analysisResult.city,
-        state: analysisResult.state,
-        zipCode: analysisResult.zipCode,
-        propertyType: analysisResult.propertyType
-      });
-
-      // 2. Create loan based on analysis
-      const loan = await storage.createLoan({
-        borrowerName: analysisResult.borrowerName,
-        loanAmount: analysisResult.loanAmount,
-        loanType: analysisResult.loanType,
-        loanPurpose: analysisResult.loanPurpose,
-        status: "in_progress",
-        targetCloseDate: "2025-07-15", // Default date if not extracted
-        driveFolder: driveFolderId,
-        propertyId: property.id,
-        lenderId: 1, // Default lender ID
-        processorId: (req.user as any).id,
-        completionPercentage: 25 // Start at 25% completion
-      });
-
-      // 3. Create contacts based on analysis
-      for (const contact of analysisResult.contacts) {
-        await storage.createContact({
-          name: contact.name,
-          email: contact.email || `${contact.name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
-          phone: contact.phone || "(555) 123-4567",
-          company: contact.company,
-          role: contact.role,
-          loanId: loan.id
-        });
-      }
-
-      // 4. Create tasks for missing documents
-      for (const missingDoc of analysisResult.missingDocuments) {
-        let taskDescription = `Obtain ${missingDoc}`;
-        let priority = "medium";
-        
-        // Set higher priority for insurance and title documents
-        if (missingDoc.toLowerCase().includes("insurance") || 
-            missingDoc.toLowerCase().includes("binder")) {
-          taskDescription = `Request insurance binder/policy for ${property.address}`;
-          priority = "high";
-        } else if (missingDoc.toLowerCase().includes("title")) {
-          taskDescription = `Request title commitment from title company`;
-          priority = "high";
-        }
-        
-        await storage.createTask({
-          description: taskDescription,
-          dueDate: "2025-06-30", // Default due date
-          priority,
-          completed: false,
-          loanId: loan.id
-        });
-      }
-      
-      // Add a default task if no missing documents were found
-      if (analysisResult.missingDocuments.length === 0) {
-        await storage.createTask({
-          description: "Review all documents for completeness",
-          dueDate: "2025-06-15",
-          priority: "medium",
-          completed: false,
-          loanId: loan.id
-        });
-      }
-
-      // 5. Create documents based on the files with categories from analysis
-      for (const file of files) {
-        // Use the category from analysis or determine based on filename
-        let category = analysisResult.documentCategories[file.id] || "other";
-        
-        // If no category from analysis, determine from filename
-        if (category === "other") {
-          const fileName = file.name.toLowerCase();
-          if (fileName.includes("deed") || fileName.includes("property") || fileName.includes("appraisal")) {
-            category = "property";
-          } else if (fileName.includes("llc") || fileName.includes("license") || fileName.includes("id")) {
-            category = "borrower";
-          } else if (fileName.includes("insurance") || fileName.includes("policy")) {
-            category = "insurance";
-          } else if (fileName.includes("title") || fileName.includes("survey")) {
-            category = "title";
-          }
-        }
-        
-        await storage.createDocument({
-          name: file.name,
-          fileId: file.id,
-          fileType: file.mimeType,
-          fileSize: file.size ? parseInt(file.size, 10) : 0,
-          category,
-          loanId: loan.id
-        });
-      }
-
-      // 6. Create initial message with analysis summary
-      await storage.createMessage({
-        content: `I've analyzed the documents from your Google Drive folder and created this loan file. I found ${files.length} documents in the folder with ID: ${driveFolderId}. 
-
-Based on these documents, I've identified a ${analysisResult.loanType} ${analysisResult.loanPurpose.toLowerCase()} loan for ${analysisResult.borrowerName} for the property at ${analysisResult.address}, ${analysisResult.city}, ${analysisResult.state}.
-
-Documents identified:
-${files.map(f => `- ${f.name}`).join('\n')}
-
-${analysisResult.missingDocuments.length > 0 ? `Missing documents that need to be collected:
-${analysisResult.missingDocuments.map(doc => `- ${doc}`).join('\n')}
-
-I've added tasks for obtaining the missing documents.` : 'All required documents appear to be present.'}
-
-Would you like me to draft an email to request any specific documents or information?`,
-        role: "assistant",
-        loanId: loan.id
-      });
-
-      // 7. Return success
-      res.status(201).json({ 
-        success: true, 
-        loanId: loan.id,
-        message: "Loan created successfully from Google Drive documents"
-      });
-      
-    } catch (error) {
-      console.error("Error creating loan from Drive:", error);
-      res.status(500).json({ message: "Error processing Google Drive documents" });
-    }
-  });
-
-  // Google Drive specific disconnect endpoint
-  app.post('/api/auth/google-drive/disconnect', isAuthenticated, async (req, res) => {
-    try {
-      const userId = (req.user as any)?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-
-      // Delete Google Drive tokens from database
-      await storage.deleteUserToken(userId, 'google_drive');
-      
-      console.log(`Google Drive disconnected for user: ${userId}`);
-      res.json({ success: true, message: 'Google Drive disconnected successfully' });
-    } catch (error) {
-      console.error('Error disconnecting Google Drive:', error);
-      res.status(500).json({ error: 'Failed to disconnect Google Drive' });
-    }
-  });
-
-  // Gmail specific disconnect endpoint  
-  app.post('/api/auth/gmail/disconnect', isAuthenticated, async (req, res) => {
-    try {
-      const userId = (req.user as any)?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-
-      // Delete Gmail tokens from database
-      await storage.deleteUserToken(userId, 'gmail');
-      
-      console.log(`Gmail disconnected for user: ${userId}`);
-      res.json({ success: true, message: 'Gmail disconnected successfully' });
-    } catch (error) {
-      console.error('Error disconnecting Gmail:', error);
-      res.status(500).json({ error: 'Failed to disconnect Gmail' });
-    }
-  });
-
-  // Legacy endpoint that disconnects both (for backward compatibility)
-  app.post('/api/auth/google/disconnect', isAuthenticated, async (req, res) => {
-    try {
-      const userId = (req.user as any)?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-
-      // Delete both Google Drive and Gmail tokens from database
-      await storage.deleteUserToken(userId, 'google_drive');
-      await storage.deleteUserToken(userId, 'gmail');
-      
-      console.log(`Google Drive and Gmail disconnected for user: ${userId}`);
-      res.json({ success: true, message: 'Google Drive and Gmail disconnected successfully' });
-    } catch (error) {
-      console.error('Error disconnecting Google services:', error);
-      res.status(500).json({ error: 'Failed to disconnect Google services' });
-    }
-  });
-
+  // Create HTTP server  
   const httpServer = createServer(app);
   
   return httpServer;
