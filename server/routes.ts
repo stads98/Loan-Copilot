@@ -186,7 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: 'Google credentials not configured' });
       }
       
-      const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
+      const redirectUri = 'https://0007b75f-d504-4d28-927e-2b1824d99bb5-00-2pydj6ryedxd2.picard.replit.dev/api/auth/google/callback';
       console.log('Using redirect URI:', redirectUri);
       
       const oauth2Client = new OAuth2(
@@ -2059,7 +2059,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/gmail/auth-url", isAuthenticated, async (req, res) => {
     try {
       const { getGmailAuthUrl } = await import("./lib/gmail.js");
-      const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
+      const redirectUri = 'https://0007b75f-d504-4d28-927e-2b1824d99bb5-00-2pydj6ryedxd2.picard.replit.dev/api/auth/google/callback';
       const authUrl = getGmailAuthUrl(process.env.GOOGLE_CLIENT_ID!, redirectUri);
       res.json({ authUrl });
     } catch (error) {
