@@ -123,18 +123,28 @@ export default function DocumentManager({
     setIsSyncing(true);
     try {
       const response = await apiRequest("POST", `/api/loans/${loanId}/sync-drive`, {});
-      if (!response.ok) {
-        throw new Error('Sync failed');
+      
+      // Handle both success and informational responses
+      if (response.success !== false) {
+        queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+        
+        const successMessage = response.message || 
+          (response.documentsCreated > 0 || response.documentsUpdated > 0 || response.documentsUploaded > 0)
+            ? `Sync completed: ${response.documentsCreated || 0} new, ${response.documentsUpdated || 0} updated, ${response.documentsUploaded || 0} uploaded`
+            : "Google Drive sync completed successfully";
+            
+        toast({
+          title: "Sync Complete",
+          description: successMessage
+        });
+      } else {
+        throw new Error(response.message || 'Sync failed');
       }
-      queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+    } catch (error: any) {
+      console.error("Sync error:", error);
       toast({
-        title: "Success",
-        description: "Documents synced from Google Drive successfully."
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to sync documents from Google Drive.",
+        title: "Sync Error", 
+        description: error.message || "Failed to sync documents from Google Drive.",
         variant: "destructive"
       });
     } finally {
