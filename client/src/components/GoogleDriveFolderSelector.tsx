@@ -197,7 +197,7 @@ export default function GoogleDriveFolderSelector({
                   Your Google Drive connection has expired. Please reconnect to access your loan folders.
                 </p>
                 <Button 
-                  onClick={() => window.open('/api/auth/google', '_blank')} 
+                  onClick={() => window.location.href = '/api/auth/google'} 
                   className="w-full"
                 >
                   Reconnect Google Drive
