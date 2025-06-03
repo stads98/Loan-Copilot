@@ -1477,9 +1477,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { name, category } = req.body;
       
+      // Generate a unique file ID for uploads stored in memory
+      const fileExtension = req.file.originalname.split('.').pop() || 'file';
+      const uniqueFileId = `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExtension}`;
+      
+      // Save file to uploads directory
+      const { promises: fs } = await import('fs');
+      const path = await import('path');
+      const uploadsDir = path.join(process.cwd(), 'uploads');
+      
+      // Ensure uploads directory exists
+      try {
+        await fs.access(uploadsDir);
+      } catch {
+        await fs.mkdir(uploadsDir, { recursive: true });
+      }
+      
+      const filePath = path.join(uploadsDir, uniqueFileId);
+      await fs.writeFile(filePath, req.file.buffer);
+      
       const documentData = insertDocumentSchema.parse({
-        name: name || req.file.originalname,
-        fileId: req.file.filename, // Store the actual filename from multer
+        name: name || req.file.originalname.split('.').slice(0, -1).join('.'),
+        fileId: uniqueFileId,
         fileType: req.file.mimetype.split('/')[1],
         fileSize: req.file.size,
         category: category || 'other',

@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Folder, FolderPlus, Search, Plus } from "lucide-react";
+import { Loader2, Folder, FolderPlus, Search, Plus, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useGoogleDrive } from "@/contexts/GoogleDriveContext";
 
 interface GoogleDriveFolder {
   id: string;
@@ -35,17 +36,13 @@ export default function GoogleDriveFolderSelector({
   const [newFolderName, setNewFolderName] = useState("");
   const { toast } = useToast();
 
-  const [requiresAuth, setRequiresAuth] = useState(false);
+  const { isConnected, connect, checkStatus } = useGoogleDrive();
 
   const loadFolders = async () => {
     setLoading(true);
     try {
-      // First check if Google Drive is connected
-      const statusResponse = await fetch('/api/auth/google/status');
-      const statusData = await statusResponse.json();
-      
-      if (!statusData.connected) {
-        setRequiresAuth(true);
+      // Use the global Google Drive context for connection status
+      if (!isConnected) {
         setLoading(false);
         return;
       }
@@ -54,7 +51,6 @@ export default function GoogleDriveFolderSelector({
       if (response.ok) {
         const data = await response.json();
         setFolders(data.folders || []);
-        setRequiresAuth(false);
       } else {
         const errorData = await response.json();
         if (errorData.requiresReauth) {
