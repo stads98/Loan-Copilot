@@ -506,3 +506,105 @@ export async function deleteFileFromGoogleDrive(fileId: string): Promise<void> {
     throw new Error(`Could not delete file from Google Drive: ${error}`);
   }
 }
+
+// Clear all files from a Google Drive folder
+export async function clearDriveFolder(folderId: string, accessToken: string, refreshToken: string) {
+  try {
+    const { google } = await import('googleapis');
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET
+    );
+    
+    oauth2Client.setCredentials({
+      access_token: accessToken,
+      refresh_token: refreshToken
+    });
+    
+    const drive = google.drive({ version: 'v3', auth: oauth2Client });
+    
+    // List all files in the folder
+    const response = await drive.files.list({
+      q: `'${folderId}' in parents and trashed=false`,
+      fields: 'files(id, name)'
+    });
+    
+    const files = response.data.files || [];
+    
+    // Delete each file
+    for (const file of files) {
+      if (file.id) {
+        await drive.files.delete({
+          fileId: file.id
+        });
+      }
+    }
+    
+    console.log(`Cleared ${files.length} files from Google Drive folder: ${folderId}`);
+    
+  } catch (error) {
+    console.error('Error clearing Google Drive folder:', error);
+    throw new Error(`Could not clear Google Drive folder: ${error}`);
+  }
+}
+
+// Upload documents to Google Drive folder
+export async function uploadDocumentsToDrive(documents: any[], folderId: string, accessToken: string, refreshToken: string) {
+  try {
+    const { google } = await import('googleapis');
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET
+    );
+    
+    oauth2Client.setCredentials({
+      access_token: accessToken,
+      refresh_token: refreshToken
+    });
+    
+    const drive = google.drive({ version: 'v3', auth: oauth2Client });
+    
+    let successCount = 0;
+    let failedCount = 0;
+    
+    for (const document of documents) {
+      try {
+        const fs = await import('fs');
+        const path = await import('path');
+        
+        // Read the file from local storage
+        const filePath = path.join(process.cwd(), 'uploads', document.filename);
+        const fileContent = fs.readFileSync(filePath);
+        
+        // Upload to Google Drive
+        await drive.files.create({
+          requestBody: {
+            name: document.originalName || document.filename,
+            parents: [folderId]
+          },
+          media: {
+            mimeType: document.mimeType || 'application/octet-stream',
+            body: fileContent
+          }
+        });
+        
+        successCount++;
+        
+      } catch (fileError) {
+        console.error(`Error uploading document ${document.filename}:`, fileError);
+        failedCount++;
+      }
+    }
+    
+    console.log(`Upload complete: ${successCount} successful, ${failedCount} failed`);
+    
+    return {
+      successCount,
+      failedCount
+    };
+    
+  } catch (error) {
+    console.error('Error uploading documents to Google Drive:', error);
+    throw new Error(`Could not upload documents to Google Drive: ${error}`);
+  }
+}

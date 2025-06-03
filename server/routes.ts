@@ -4032,10 +4032,10 @@ Would you like me to draft an email to request any specific documents or informa
 
       // Clear the folder first
       const { clearDriveFolder, uploadDocumentsToDrive } = await import('./lib/google');
-      await clearDriveFolder(folderId, tokens.access_token, tokens.refresh_token);
+      await clearDriveFolder(folderId, tokens.accessToken, tokens.refreshToken || '');
 
       // Upload all documents
-      const uploadResult = await uploadDocumentsToDrive(documents, folderId, tokens.access_token, tokens.refresh_token);
+      const uploadResult = await uploadDocumentsToDrive(documents, folderId, tokens.accessToken, tokens.refreshToken || '');
       
       res.json({ 
         uploadedCount: uploadResult.successCount,
