@@ -1649,19 +1649,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Download each PDF
           for (const attachment of pdfAttachments) {
             try {
-              // Create a unique key for this attachment
-              const attachmentKey = `${attachment.filename.toLowerCase()}_${attachment.size}`;
+              // More robust duplicate detection
+              const cleanAttachmentName = attachment.filename.toLowerCase().replace(/\s+/g, ' ').trim();
               
-              // Check for duplicates in existing documents and current scan
-              const isDuplicate = existingDocuments.some(doc => {
-                const cleanExistingName = doc.name.split(' (from ')[0].toLowerCase();
-                const cleanAttachmentName = attachment.filename.toLowerCase();
-                const sizeDiff = doc.fileSize ? Math.abs(doc.fileSize - attachment.size) : attachment.size;
+              // Check for duplicates in existing documents
+              const isDuplicateExisting = existingDocuments.some(doc => {
+                const cleanExistingName = doc.name.split(' (from ')[0].toLowerCase().replace(/\s+/g, ' ').trim();
+                const sizeMatch = !doc.fileSize || Math.abs(doc.fileSize - attachment.size) < 5000; // 5KB tolerance
                 
-                return cleanExistingName === cleanAttachmentName && sizeDiff < 1000; // 1KB tolerance
-              }) || downloadedInThisScan.has(attachmentKey);
+                return cleanExistingName === cleanAttachmentName && sizeMatch;
+              });
+              
+              // Check for duplicates in current scan
+              const attachmentKey = `${cleanAttachmentName}_${Math.floor(attachment.size / 1000)}kb`; // Round to nearest KB
+              const isDuplicateInScan = downloadedInThisScan.has(attachmentKey);
 
-              if (isDuplicate) {
+              if (isDuplicateExisting || isDuplicateInScan) {
                 console.log(`Skipping duplicate: ${attachment.filename}`);
                 continue;
               }
