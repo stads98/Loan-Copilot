@@ -1700,6 +1700,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const filePath = path.join(uploadsDir, fileId);
                 await fs.writeFile(filePath, fileBuffer);
 
+                // Check if document is relevant to this property
+                const isRelevantDocument = (() => {
+                  const filename = attachment.filename.toLowerCase();
+                  const subject = message.subject.toLowerCase();
+                  
+                  // Skip documents for other properties
+                  if (filename.includes('flamingo') || subject.includes('flamingo')) return false;
+                  if (filename.includes('741 ') || subject.includes('741 ')) return false;
+                  if (filename.includes('gl dec') || subject.includes('gl dec')) return false;
+                  
+                  // Skip if it's clearly for a different address/property
+                  const otherAddresses = ['nw 16', 'northwest', 'miami fl 33142', 'hibiscus dr', 'punta gorda'];
+                  if (otherAddresses.some(addr => filename.includes(addr) || subject.includes(addr))) return false;
+                  
+                  // Allow documents from key contacts
+                  const keyContacts = ['sam2345@live.com', 'kristian@newpathtitle.com', 'luma@planlifeusa.com'];
+                  const messageFrom = message.from.toLowerCase();
+                  if (keyContacts.some(contact => messageFrom.includes(contact))) return true;
+                  
+                  // Allow documents that mention this property
+                  if (filename.includes('colony preserve') || subject.includes('colony preserve')) return true;
+                  if (filename.includes('12333') || subject.includes('12333')) return true;
+                  if (filename.includes('boynton beach') || subject.includes('boynton beach')) return true;
+                  
+                  // Allow loan-related documents
+                  if (filename.includes('34991748') || subject.includes('34991748')) return true;
+                  if (filename.includes('samuel anicette') || subject.includes('samuel anicette')) return true;
+                  if (filename.includes('anicette') || subject.includes('anicette')) return true;
+                  
+                  return false;
+                })();
+
+                if (!isRelevantDocument) {
+                  console.log(`Skipping irrelevant document: ${attachment.filename} from ${message.from}`);
+                  continue;
+                }
+
                 // Determine category
                 let category = 'other';
                 const lowerFilename = attachment.filename.toLowerCase();
