@@ -371,3 +371,35 @@ export async function uploadFileToGoogleDrive(
     throw new Error(`Could not upload file to Google Drive: ${error}`);
   }
 }
+
+// Function to delete file from Google Drive
+export async function deleteFileFromGoogleDrive(fileId: string): Promise<void> {
+  try {
+    const { google } = await import('googleapis');
+    const serviceAccount = await import('../keys/service-account.json');
+    
+    const jwtClient = new google.auth.JWT(
+      serviceAccount.client_email,
+      null,
+      serviceAccount.private_key,
+      [
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/drive'
+      ]
+    );
+    
+    await jwtClient.authorize();
+    const drive = google.drive({ version: 'v3', auth: jwtClient });
+    
+    // Delete the file
+    await drive.files.delete({
+      fileId: fileId
+    });
+    
+    console.log(`File deleted from Google Drive: ${fileId}`);
+    
+  } catch (error) {
+    console.error('Error deleting file from Google Drive:', error);
+    throw new Error(`Could not delete file from Google Drive: ${error}`);
+  }
+}

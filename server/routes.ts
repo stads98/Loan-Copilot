@@ -1565,9 +1565,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid document ID" });
       }
 
+      // Get the document before deleting to check if it needs to be removed from Google Drive
+      const document = await storage.getDocument(id);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Delete from local database first
       const success = await storage.softDeleteDocument(id);
       if (!success) {
         return res.status(404).json({ message: "Document not found" });
+      }
+
+      // If this document is stored in Google Drive, also delete it from there
+      if (document.fileId && /^[a-zA-Z0-9_-]{25,50}$/.test(document.fileId) && !document.fileId.includes('.')) {
+        try {
+          console.log(`Attempting to delete Google Drive file: ${document.fileId}`);
+          const { deleteFileFromGoogleDrive } = await import("./lib/google");
+          
+          // Try to delete using service account
+          await deleteFileFromGoogleDrive(document.fileId);
+          console.log(`Successfully deleted ${document.name} from Google Drive`);
+        } catch (driveError) {
+          console.error(`Failed to delete ${document.name} from Google Drive:`, driveError);
+          // Continue with local deletion even if Google Drive deletion fails
+        }
       }
 
       res.json({ success: true });
