@@ -2430,6 +2430,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Extract content and attachments from payload
       function processPayload(payload: any) {
+        if (payload.parts) {
+          for (const part of payload.parts) {
+            processPayload(part);
+          }
+        } else if (payload.body?.data) {
+          if (payload.mimeType?.startsWith('text/')) {
+            const decoded = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+            content += decoded + '\n';
+          }
+        }
+
+        if (payload.filename && payload.body?.attachmentId) {
+          attachments.push({
+            filename: payload.filename,
+            mimeType: payload.mimeType,
+            attachmentId: payload.body.attachmentId,
+            size: payload.body.size
+          });
+        }
+      }
+
+      // Process the message payload to extract content and attachments
+      if (msg.payload) {
+        processPayload(msg.payload);
+      }
+
+      // Extract headers for metadata
+      const headers = msg.payload?.headers || [];
+      const subject = headers.find(h => h.name === 'Subject')?.value || '';
+      const from = headers.find(h => h.name === 'From')?.value || '';
+      const date = headers.find(h => h.name === 'Date')?.value || '';
+
+      res.json({
+        id: messageId,
+        subject,
+        from,
+        date,
+        content: content.trim(),
+        attachments
+      });
+
+    } catch (error) {
+      console.error('Error fetching Gmail message:', error);
+      res.status(500).json({ message: "Error fetching message" });
+    }
+  });
+
+  // Auto-process emails for a specific loan
+  app.post("/api/gmail/auto-process/:loanId", isAuthenticated, async (req, res) => {
+    try {
+      if (!(req.session as any)?.gmailTokens) {
+        return res.status(401).json({ message: "Gmail authentication required" });
+      }
+
+      const loanId = parseInt(req.params.loanId);
+      const loan = await storage.getLoanWithDetails(loanId);
+      
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      const { google } = await import('googleapis');
+      const { createGmailAuth } = await import("./lib/gmail");
+      const gmail = google.gmail('v1');
+      
+      const gmailAuth = createGmailAuth(
+        (req.session as any).gmailTokens.access_token,
+        (req.session as any).gmailTokens.refresh_token
+      );
+
+      // Build search query based on loan information
+      const searchTerms = [];
+      const dateQuery = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0].replace(/-/g, '/');
+
+      // Add property address search
+      if (loan.property?.address) {
+        const streetAddress = loan.property.address.toLowerCase();
+        const streetMatch = streetAddress.match(/^(\d+)\s+(.+?)(\s+(st|street|dr|drive|ave|avenue|rd|road|ln|lane|blvd|boulevard|way|ct|court|pl|place))?$/i);
+        
+        if (streetMatch) {
           const streetNumber = streetMatch[1];
           const streetName = streetMatch[2];
           
