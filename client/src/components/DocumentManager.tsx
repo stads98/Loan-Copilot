@@ -571,11 +571,7 @@ export default function DocumentManager({
                                     </span>
                                   )}
                                 </div>
-                                {doc.source?.startsWith("gmail:") && (
-                                  <div className="text-xs text-gray-400 mt-1">
-                                    via email
-                                  </div>
-                                )}
+
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
