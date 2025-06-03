@@ -1773,15 +1773,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
       const dateQuery = eightWeeksAgo.toISOString().split('T')[0].replace(/-/g, '/');
       
-      // Search for all emails with attachments going back 8 weeks - cast a wide net
-      const searchQuery = `has:attachment after:${dateQuery}`;
+      // Search more broadly - include specific contact emails and loan-related terms
+      const contactEmails = loan.contacts?.map((c: any) => c.email).filter(Boolean) || [];
+      const borrowerEmail = loan.contacts?.find((c: any) => c.role === 'borrower')?.email;
       
+      // Build a comprehensive search that includes contact emails and attachments
+      let searchTerms = [`has:attachment after:${dateQuery}`];
+      
+      // Add searches for specific contact emails
+      if (contactEmails.length > 0) {
+        contactEmails.forEach(email => {
+          searchTerms.push(`(from:${email} OR to:${email} OR cc:${email}) after:${dateQuery}`);
+        });
+      }
+      
+      // Add borrower name and loan number searches
+      if (loan.loan?.borrowerName) {
+        searchTerms.push(`"${loan.loan.borrowerName}" after:${dateQuery}`);
+      }
+      if (loan.loan?.loanNumber) {
+        searchTerms.push(`"${loan.loan.loanNumber}" after:${dateQuery}`);
+      }
+      
+      const searchQuery = `(${searchTerms.join(' OR ')})`;
+      
+      console.log('Gmail search query:', searchQuery);
       const listResponse = await gmail.users.messages.list({
         auth: gmailAuth,
         userId: 'me',
         maxResults: 1000, // Increased to 1000 to catch more historical emails
         q: searchQuery
       });
+      
+      console.log(`Gmail search returned ${listResponse.data.messages?.length || 0} messages`);
 
       const allMessages = [];
       
