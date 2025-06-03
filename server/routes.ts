@@ -875,14 +875,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Step 2: Sync FROM Database TO Google Drive (prevent duplicates)
+      console.log("Starting bi-directional sync - uploading local documents to Google Drive...");
       try {
         const allLocalDocs = await storage.getDocumentsByLoanId(loanId);
         const driveFileNames = new Set(files.map(f => f.name));
+        
+        console.log(`Found ${allLocalDocs.length} local documents to check for upload`);
         
         for (const localDoc of allLocalDocs) {
           // Skip if document is already in Google Drive or doesn't have local file content
           if (localDoc.fileId && localDoc.fileId.length > 10 && !localDoc.fileId.includes('.')) {
             // This is already a Google Drive document
+            console.log(`Skipping ${localDoc.name} - already in Google Drive`);
             continue;
           }
           
@@ -900,7 +904,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const path = await import('path');
               const filePath = path.join(process.cwd(), 'uploads', localDoc.fileId);
               
+              console.log(`Checking if file exists at: ${filePath}`);
               if (await fs.access(filePath).then(() => true).catch(() => false)) {
+                console.log(`Uploading ${localDoc.name} to Google Drive...`);
                 const fileBuffer = await fs.readFile(filePath);
                 const { uploadFileToGoogleDrive } = await import("./lib/google");
                 
@@ -918,24 +924,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 });
                 
                 documentsUploaded++;
-                console.log(`Uploaded ${localDoc.name} to Google Drive`);
+                console.log(`Successfully uploaded ${localDoc.name} to Google Drive with ID: ${driveFileId}`);
+              } else {
+                console.log(`Local file not found for ${localDoc.name} at ${filePath}`);
               }
             } catch (uploadError) {
-              console.error(`Error uploading ${localDoc.name} to Google Drive:`, uploadError);
+              console.error(`Failed to upload ${localDoc.name} to Google Drive:`, uploadError);
+              // Don't fail the entire sync if one upload fails
             }
+          } else {
+            console.log(`Skipping ${localDoc.name} - no local file to upload`);
           }
         }
+        
+        console.log(`Bi-directional sync completed: ${documentsUploaded} documents uploaded to Google Drive`);
       } catch (syncError) {
         console.error("Error during bi-directional sync:", syncError);
+        // Don't fail the entire sync if upload portion fails
       }
       
+      const syncMessage = documentsUploaded > 0 
+        ? `Bi-directional sync completed: ${documentsCreated} new from Drive, ${documentsUpdated} updated from Drive, ${documentsUploaded} uploaded to Drive`
+        : `Sync from Drive completed: ${documentsCreated} new documents, ${documentsUpdated} updated. Upload to Drive requires folder write permissions.`;
+
       res.json({
         success: true,
-        message: `Bi-directional sync completed: ${documentsCreated} new from Drive, ${documentsUpdated} updated from Drive, ${documentsUploaded} uploaded to Drive`,
+        message: syncMessage,
         documentsCreated,
         documentsUpdated,
         documentsUploaded,
-        totalFiles: files.length
+        totalFiles: files.length,
+        syncDirection: documentsUploaded > 0 ? "bidirectional" : "download_only"
       });
       
     } catch (error) {

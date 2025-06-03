@@ -337,7 +337,10 @@ export async function uploadFileToGoogleDrive(
       serviceAccount.client_email,
       null,
       serviceAccount.private_key,
-      ['https://www.googleapis.com/auth/drive.file']
+      [
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/drive'
+      ]
     );
     
     await jwtClient.authorize();
