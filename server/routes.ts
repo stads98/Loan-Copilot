@@ -1713,15 +1713,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   category = 'title';
                 }
 
-                // Create document record
+                // Create document record with clean filename
                 const document = await storage.createDocument({
-                  name: `${attachment.filename} (from ${message.from})`,
+                  name: attachment.filename,
                   fileId: fileId,
                   loanId: loanId,
                   fileType: attachment.mimeType,
                   fileSize: attachment.size,
                   category: category,
-                  source: 'gmail',
+                  source: `gmail:${message.from}`,
                   status: 'processed'
                 });
 

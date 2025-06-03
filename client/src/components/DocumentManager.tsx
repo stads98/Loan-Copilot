@@ -547,7 +547,7 @@ export default function DocumentManager({
                               <div>
                                 <p className="font-medium">{doc.name}</p>
                                 <div className="flex items-center gap-2 text-sm text-gray-500">
-                                  {doc.source === "gmail" && (
+                                  {doc.source?.startsWith("gmail:") && (
                                     <Badge className="bg-blue-100 text-blue-800 border-blue-300 text-xs">
                                       Auto-downloaded
                                     </Badge>
@@ -571,6 +571,11 @@ export default function DocumentManager({
                                     </span>
                                   )}
                                 </div>
+                                {doc.source?.startsWith("gmail:") && (
+                                  <div className="text-xs text-gray-400 mt-1">
+                                    from {doc.source.replace("gmail:", "").replace(/[<>]/g, "")}
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
