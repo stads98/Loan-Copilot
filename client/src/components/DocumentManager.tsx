@@ -717,115 +717,198 @@ export default function DocumentManager({
                     All required documents have been completed!
                   </p>
                 ) : (
-                  <div className="space-y-4">
-                    {missingDocuments.map((req, index) => (
-                      <div key={index} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-3">
-                            <File className="w-4 h-4 text-gray-400" />
-                            <span className="font-medium">{req.name}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {req.category}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => markRequirementComplete(req.name)}
-                              className="text-green-600 hover:text-green-700"
-                            >
-                              <Check className="w-4 h-4 mr-1" />
-                              Mark Complete
-                            </Button>
-                            {req.category === "custom" && (
-                              <Button 
-                                size="sm" 
-                                variant="ghost"
-                                onClick={() => removeCustomDocument(req.name)}
-                                className="text-red-600 hover:text-red-700"
-                                title="Remove custom document"
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 mt-2">
-                          <Select onValueChange={(value) => assignDocumentToRequirement(req.name, value)}>
-                            <SelectTrigger className="w-[300px]">
-                              <SelectValue placeholder="Assign uploaded document..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {documents.map((doc) => (
-                                <SelectItem key={doc.id} value={doc.id.toString()}>
-                                  {doc.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => setShowInlineUpload(showInlineUpload === req.name ? null : req.name)}
-                          >
-                            <Plus className="w-4 h-4 mr-1" />
-                            {showInlineUpload === req.name ? 'Cancel Upload' : 'Upload New'}
-                          </Button>
-                        </div>
-                        
-                        {assignedDocuments[req.name] && assignedDocuments[req.name].length > 0 && (
-                          <div className="mt-2 pt-2 border-t">
-                            <p className="text-sm text-gray-600 mb-1">Assigned documents:</p>
-                            <div className="space-y-1">
-                              {assignedDocuments[req.name].map((docId) => {
-                                const doc = documents.find(d => d.id.toString() === docId);
-                                return doc ? (
-                                  <div key={docId} className="flex items-center justify-between p-2 bg-green-50 rounded text-sm">
-                                    <div className="flex items-center gap-2">
-                                      {getFileIcon(doc)}
-                                      <span className="text-green-700">{doc.name}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <Button
-                                        size="sm"
+                  <div className="space-y-6">
+                    {/* Group missing documents by category */}
+                    {[
+                      { 
+                        key: 'borrower', 
+                        title: 'Borrower & Entity Documents',
+                        docs: missingDocuments.filter(req => req.category === 'borrower')
+                      },
+                      { 
+                        key: 'financial', 
+                        title: 'Financial Documents',
+                        docs: missingDocuments.filter(req => 
+                          req.name.includes('Bank Statement') || 
+                          req.name.includes('Voided Check')
+                        )
+                      },
+                      { 
+                        key: 'property', 
+                        title: 'Property Ownership',
+                        docs: missingDocuments.filter(req => 
+                          req.category === 'property' && 
+                          !req.name.includes('Current Lender') && 
+                          !req.name.includes('Payoff') &&
+                          req.name !== 'Appraisal'
+                        )
+                      },
+                      { 
+                        key: 'appraisal', 
+                        title: 'Appraisal',
+                        docs: missingDocuments.filter(req => req.name === 'Appraisal')
+                      },
+                      { 
+                        key: 'insurance', 
+                        title: 'Insurance',
+                        docs: missingDocuments.filter(req => req.category === 'insurance')
+                      },
+                      { 
+                        key: 'title', 
+                        title: 'Title',
+                        docs: missingDocuments.filter(req => req.category === 'title')
+                      },
+                      { 
+                        key: 'payoff', 
+                        title: 'Payoff Information',
+                        docs: missingDocuments.filter(req => 
+                          req.name.includes('Current Lender') || 
+                          req.name.includes('Payoff')
+                        )
+                      },
+                      { 
+                        key: 'lender_specific', 
+                        title: 'Lender-Specific Documents',
+                        docs: missingDocuments.filter(req => 
+                          req.name.includes('Borrowing Authorization') ||
+                          req.name.includes('Disclosure Form')
+                        )
+                      },
+                      { 
+                        key: 'custom', 
+                        title: 'Custom Requirements',
+                        docs: missingDocuments.filter(req => req.category === 'custom')
+                      }
+                    ].map(category => {
+                      if (category.docs.length === 0) return null;
+                      
+                      return (
+                        <div key={category.key} className="space-y-3">
+                          <h4 className="font-medium text-gray-900 border-b pb-2">
+                            {category.title}
+                            <span className="ml-2 text-sm text-gray-500">
+                              {category.docs.length} missing
+                            </span>
+                          </h4>
+                          
+                          <div className="space-y-3">
+                            {category.docs.map((req, index) => (
+                              <div key={index} className="border rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-3">
+                                    <File className="w-4 h-4 text-gray-400" />
+                                    <span className="font-medium">{req.name}</span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {req.category}
+                                    </Badge>
+                                    {(req.name.includes('Borrowing Authorization') || req.name.includes('Disclosure Form')) && (
+                                      <Badge className="bg-blue-100 text-blue-800 border-blue-300 text-xs">
+                                        Kiavi Specific
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => markRequirementComplete(req.name)}
+                                      className="text-green-600 hover:text-green-700"
+                                    >
+                                      <Check className="w-4 h-4 mr-1" />
+                                      Mark Complete
+                                    </Button>
+                                    {req.category === "custom" && (
+                                      <Button 
+                                        size="sm" 
                                         variant="ghost"
-                                        onClick={() => handleDocumentPreview(doc)}
-                                        className="h-6 px-2 text-blue-600 hover:text-blue-700"
+                                        onClick={() => removeCustomDocument(req.name)}
+                                        className="text-red-600 hover:text-red-700"
+                                        title="Remove custom document"
                                       >
-                                        <Eye className="w-3 h-3" />
+                                        <X className="w-4 h-4" />
                                       </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => removeDocumentFromRequirement(req.name, docId)}
-                                        className="h-6 px-2 text-red-600 hover:text-red-700"
-                                      >
-                                        <X className="w-3 h-3" />
-                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 mt-2">
+                                  <Select onValueChange={(value) => assignDocumentToRequirement(req.name, value)}>
+                                    <SelectTrigger className="w-[300px]">
+                                      <SelectValue placeholder="Assign uploaded document..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {documents.map((doc) => (
+                                        <SelectItem key={doc.id} value={doc.id.toString()}>
+                                          {doc.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost"
+                                    onClick={() => setShowInlineUpload(showInlineUpload === req.name ? null : req.name)}
+                                  >
+                                    <Plus className="w-4 h-4 mr-1" />
+                                    {showInlineUpload === req.name ? 'Cancel Upload' : 'Upload New'}
+                                  </Button>
+                                </div>
+                                
+                                {assignedDocuments[req.name] && assignedDocuments[req.name].length > 0 && (
+                                  <div className="mt-2 pt-2 border-t">
+                                    <p className="text-sm text-gray-600 mb-1">Assigned documents:</p>
+                                    <div className="space-y-1">
+                                      {assignedDocuments[req.name].map((docId) => {
+                                        const doc = documents.find(d => d.id.toString() === docId);
+                                        return doc ? (
+                                          <div key={docId} className="flex items-center justify-between p-2 bg-green-50 rounded text-sm">
+                                            <div className="flex items-center gap-2">
+                                              {getFileIcon(doc)}
+                                              <span className="text-green-700">{doc.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => handleDocumentPreview(doc)}
+                                                className="h-6 px-2 text-blue-600 hover:text-blue-700"
+                                              >
+                                                <Eye className="w-3 h-3" />
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => removeDocumentFromRequirement(req.name, docId)}
+                                                className="h-6 px-2 text-red-600 hover:text-red-700"
+                                              >
+                                                <X className="w-3 h-3" />
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        ) : null;
+                                      })}
                                     </div>
                                   </div>
-                                ) : null;
-                              })}
-                            </div>
+                                )}
+                                
+                                {showInlineUpload === req.name && (
+                                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <SmartDocumentUpload 
+                                      loanId={loanId} 
+                                      requirementName={req.name}
+                                      onSuccess={() => {
+                                        queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+                                        setShowInlineUpload(null);
+                                      }} 
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            ))}
                           </div>
-                        )}
-                        
-                        {showInlineUpload === req.name && (
-                          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <SmartDocumentUpload 
-                              loanId={loanId} 
-                              requirementName={req.name}
-                              onSuccess={() => {
-                                queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
-                                setShowInlineUpload(null);
-                              }} 
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
