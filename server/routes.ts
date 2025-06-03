@@ -248,27 +248,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Check Google Drive connection status
+  // Check Google Drive connection status with automatic restoration
   app.get("/api/auth/google/status", async (req, res) => {
     try {
-      // Check session first
-      if ((req.session as any)?.googleAuthenticated) {
-        return res.json({ connected: true });
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.json({ connected: false });
       }
-      
-      // Check database for stored tokens
-      if (req.user?.id) {
-        const driveToken = await storage.getUserToken(req.user.id, 'drive');
-        if (driveToken && driveToken.accessToken) {
-          // Restore tokens to session
-          (req.session as any).googleTokens = {
-            access_token: driveToken.accessToken,
-            refresh_token: driveToken.refreshToken,
-            expiry_date: driveToken.expiryDate?.getTime()
-          };
-          (req.session as any).googleAuthenticated = true;
-          
-          console.log('Restored Google Drive tokens from database for user:', req.user.id);
+
+      // Always check database first for persistent tokens
+      const driveToken = await storage.getUserToken(userId, 'drive');
+      if (driveToken && driveToken.accessToken) {
+        
+        // Check if token needs refresh
+        const isExpired = driveToken.expiryDate && driveToken.expiryDate.getTime() < Date.now();
+        
+        if (isExpired && driveToken.refreshToken) {
+          try {
+            console.log('Auto-refreshing expired Google Drive token...');
+            const { google } = await import('googleapis');
+            const OAuth2 = google.auth.OAuth2;
+            
+            const oauth2Client = new OAuth2(
+              process.env.GOOGLE_CLIENT_ID,
+              process.env.GOOGLE_CLIENT_SECRET,
+              'http://localhost:3000/callback'
+            );
+            
+            oauth2Client.setCredentials({
+              refresh_token: driveToken.refreshToken
+            });
+            
+            const { credentials } = await oauth2Client.refreshAccessToken();
+            
+            // Update database with new tokens
+            await storage.updateUserToken(userId, 'drive', {
+              accessToken: credentials.access_token || '',
+              refreshToken: credentials.refresh_token || driveToken.refreshToken,
+              expiryDate: credentials.expiry_date ? new Date(credentials.expiry_date) : null
+            });
+            
+            // Update session
+            (req.session as any).googleTokens = {
+              access_token: credentials.access_token,
+              refresh_token: credentials.refresh_token || driveToken.refreshToken,
+              expiry_date: credentials.expiry_date
+            };
+            (req.session as any).googleAuthenticated = true;
+            
+            console.log('Google Drive token auto-refreshed successfully');
+            return res.json({ connected: true });
+          } catch (refreshError) {
+            console.error('Auto-refresh failed:', refreshError);
+            return res.json({ connected: false, requiresReauth: true });
+          }
+        } else {
+          // Token is still valid, restore to session if not already there
+          if (!(req.session as any)?.googleAuthenticated) {
+            (req.session as any).googleTokens = {
+              access_token: driveToken.accessToken,
+              refresh_token: driveToken.refreshToken,
+              expiry_date: driveToken.expiryDate?.getTime()
+            };
+            (req.session as any).googleAuthenticated = true;
+            console.log('Restored valid Google Drive tokens from database');
+          }
           return res.json({ connected: true });
         }
       }
@@ -277,6 +321,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error checking Google Drive status:', error);
       res.json({ connected: false });
+    }
+  });
+
+  // Disconnect Google Drive
+  app.post("/api/auth/google/disconnect", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Remove tokens from database
+      await storage.deleteUserToken(userId, 'drive');
+      await storage.deleteUserToken(userId, 'gmail');
+      
+      // Clear session
+      delete (req.session as any).googleTokens;
+      delete (req.session as any).googleAuthenticated;
+      delete (req.session as any).gmailTokens;
+      
+      console.log('Google Drive and Gmail disconnected for user:', userId);
+      res.json({ success: true, message: 'Google services disconnected successfully' });
+    } catch (error) {
+      console.error('Error disconnecting Google services:', error);
+      res.status(500).json({ error: 'Failed to disconnect Google services' });
     }
   });
 
@@ -292,15 +361,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let googleTokens = (req.session as any)?.googleTokens;
       
       if (!googleTokens) {
-        // Try to restore from database
+        // Always try to restore from database for persistent connection
         const driveToken = await storage.getUserToken(userId, 'drive');
         if (driveToken && driveToken.accessToken) {
-          googleTokens = {
-            access_token: driveToken.accessToken,
-            refresh_token: driveToken.refreshToken,
-            expiry_date: driveToken.expiryDate?.getTime()
-          };
+          // Check if token needs refresh before using
+          const isExpired = driveToken.expiryDate && driveToken.expiryDate.getTime() < Date.now();
+          
+          if (isExpired && driveToken.refreshToken) {
+            try {
+              console.log('Refreshing expired Google Drive token before folder access...');
+              const { google } = await import('googleapis');
+              const OAuth2 = google.auth.OAuth2;
+              
+              const oauth2Client = new OAuth2(
+                process.env.GOOGLE_CLIENT_ID,
+                process.env.GOOGLE_CLIENT_SECRET,
+                'http://localhost:3000/callback'
+              );
+              
+              oauth2Client.setCredentials({
+                refresh_token: driveToken.refreshToken
+              });
+              
+              const { credentials } = await oauth2Client.refreshAccessToken();
+              
+              // Update database with new tokens
+              await storage.updateUserToken(userId, 'drive', {
+                accessToken: credentials.access_token || '',
+                refreshToken: credentials.refresh_token || driveToken.refreshToken,
+                expiryDate: credentials.expiry_date ? new Date(credentials.expiry_date) : null
+              });
+              
+              googleTokens = {
+                access_token: credentials.access_token,
+                refresh_token: credentials.refresh_token || driveToken.refreshToken,
+                expiry_date: credentials.expiry_date
+              };
+              
+              console.log('Google Drive token refreshed successfully for folder access');
+            } catch (refreshError) {
+              console.error('Token refresh failed during folder access:', refreshError);
+              return res.status(401).json({ 
+                error: 'Google Drive authentication expired. Please reconnect.',
+                requiresReauth: true 
+              });
+            }
+          } else {
+            googleTokens = {
+              access_token: driveToken.accessToken,
+              refresh_token: driveToken.refreshToken,
+              expiry_date: driveToken.expiryDate?.getTime()
+            };
+          }
+          
           (req.session as any).googleTokens = googleTokens;
+          (req.session as any).googleAuthenticated = true;
+          console.log('Restored Google Drive tokens from database for folder access');
         } else {
           return res.status(401).json({ 
             error: 'Google Drive not connected',
