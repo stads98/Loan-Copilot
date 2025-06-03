@@ -40,16 +40,16 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
       <div className="px-4 py-5 sm:p-6">
         <div className="sm:flex sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-lg leading-6 font-heading font-medium text-gray-900">Google Drive Integration</h3>
+            <h3 className="text-lg leading-6 font-heading font-medium text-gray-900">Google Integration</h3>
             <p className="mt-1 max-w-2xl text-sm text-gray-500">
-              Connect to view and analyze loan documents
+              Connect to Gmail and Google Drive for full document management
             </p>
           </div>
           <div className="mt-5 sm:mt-0">
             <Button 
               onClick={isConnected ? async () => {
                 try {
-                  const response = await fetch('/api/auth/google-drive/disconnect', {
+                  const response = await fetch('/api/auth/google/disconnect', {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
@@ -60,7 +60,7 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
                     window.location.reload();
                   }
                 } catch (error) {
-                  console.error('Error disconnecting Google Drive:', error);
+                  console.error('Error disconnecting Google services:', error);
                 }
               } : handleConnectDrive}
               disabled={isLoading}
@@ -72,7 +72,7 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
                 <path d="M23.071 14.333l-4.433 7.667-4.527-7.833h-9.006l4.433-7.667 4.527 7.833h9.006z" fill="#4285f4"/>
                 <path d="M8.96 14.333h9.006l-4.527-7.833h-9.005l4.527 7.833z" fill="#4285f4"/>
               </svg>
-              {isConnected ? "Disconnect" : "Connect Drive"}
+              {isConnected ? "Disconnect" : "Connect Google"}
             </Button>
           </div>
         </div>
@@ -107,10 +107,10 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
               </div>
               <div className="ml-4">
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  Connected to Google Drive
+                  Connected to Google Services
                 </h3>
                 <p className="text-sm text-gray-500">
-                  Documents are being analyzed automatically
+                  Gmail and Google Drive connected - documents are being analyzed automatically
                 </p>
               </div>
               <div className="ml-auto">
