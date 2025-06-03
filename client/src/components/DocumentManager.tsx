@@ -573,7 +573,7 @@ export default function DocumentManager({
                                 </div>
                                 {doc.source?.startsWith("gmail:") && (
                                   <div className="text-xs text-gray-400 mt-1">
-                                    from {doc.source.replace("gmail:", "").replace(/[<>]/g, "")}
+                                    via email
                                   </div>
                                 )}
                               </div>

@@ -1706,9 +1706,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   const subject = message.subject.toLowerCase();
                   const messageFrom = message.from.toLowerCase();
                   
-                  // Only allow documents that match specific criteria:
+                  // Allow documents that match ANY of these criteria:
                   
-                  // 1. Must be from one of our relevant contacts
+                  // 1. From one of our relevant contacts
                   const relevantContacts = [
                     'sam2345@live.com',           // Samuel Anicette (borrower)
                     'kristian@newpathtitle.com',  // Kristian Negrin (title)
@@ -1719,18 +1719,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   
                   const isFromRelevantContact = relevantContacts.some(contact => messageFrom.includes(contact));
                   
-                  // 2. AND must mention this specific property OR loan number
+                  // 2. OR mentions this specific property (12333 Colony Preserve)
                   const mentionsProperty = (
                     (filename.includes('12333') && filename.includes('colony preserve')) ||
                     (subject.includes('12333') && subject.includes('colony preserve'))
                   );
                   
+                  // 3. OR mentions loan number
                   const mentionsLoanNumber = (
                     filename.includes('34991748') || subject.includes('34991748')
                   );
                   
-                  // Document must be from relevant contact AND mention either property or loan number
-                  return isFromRelevantContact && (mentionsProperty || mentionsLoanNumber);
+                  // Document matches if ANY condition is true
+                  return isFromRelevantContact || mentionsProperty || mentionsLoanNumber;
                 })();
 
                 if (!isRelevantDocument) {
