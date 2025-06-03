@@ -2200,6 +2200,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get Gmail messages
+  app.get("/api/gmail/messages", isAuthenticated, async (req, res) => {
+    try {
+      if (!(req.session as any)?.gmailTokens) {
+        return res.status(401).json({ message: "Gmail authentication required" });
+      }
+
+      const { google } = await import('googleapis');
+      const { createGmailAuth } = await import("./lib/gmail");
+      const gmail = google.gmail('v1');
+      
+      const gmailAuth = createGmailAuth(
+        (req.session as any).gmailTokens.access_token,
+        (req.session as any).gmailTokens.refresh_token
+      );
+
+      const maxResults = parseInt(req.query.maxResults as string) || 50;
+      const loanId = req.query.loanId ? parseInt(req.query.loanId as string) : null;
+
+      // Get list of messages
+      const listResponse = await gmail.users.messages.list({
+        auth: gmailAuth,
+        userId: 'me',
+        maxResults: maxResults,
+        q: 'has:attachment filename:pdf OR subject:(loan OR title OR insurance OR property)'
+      });
+
+      const messages = [];
+      
+      if (listResponse.data.messages) {
+        // Get metadata for each message
+        for (const message of listResponse.data.messages) {
+          try {
+            const msgResponse = await gmail.users.messages.get({
+              auth: gmailAuth,
+              userId: 'me',
+              id: message.id!,
+              format: 'metadata',
+              metadataHeaders: ['From', 'Subject', 'Date', 'To', 'Cc']
+            });
+
+            const headers = msgResponse.data.payload?.headers || [];
+            const subject = headers.find(h => h.name === 'Subject')?.value || '';
+            const from = headers.find(h => h.name === 'From')?.value || '';
+            const date = headers.find(h => h.name === 'Date')?.value || '';
+            
+            // Check for attachments
+            const hasAttachments = msgResponse.data.payload?.parts?.some(part => 
+              part.filename && part.filename.length > 0
+            ) || false;
+
+            messages.push({
+              id: message.id,
+              threadId: message.threadId,
+              snippet: msgResponse.data.snippet || '',
+              subject: subject,
+              from: from,
+              date: date,
+              unread: msgResponse.data.labelIds?.includes('UNREAD') || false,
+              hasAttachments: hasAttachments
+            });
+          } catch (msgError) {
+            console.error(`Error getting message ${message.id}:`, msgError);
+            // Continue with other messages
+          }
+        }
+      }
+
+      res.json({ messages });
+    } catch (error) {
+      console.error("Error fetching Gmail messages:", error);
+      res.status(500).json({ message: "Error fetching messages" });
+    }
+  });
+
   // Disconnect Gmail
   app.post("/api/gmail/disconnect", isAuthenticated, async (req, res) => {
     try {
