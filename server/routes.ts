@@ -222,7 +222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { google } = await import('googleapis');
       const OAuth2 = google.auth.OAuth2;
       
-      const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
+      const redirectUri = 'https://0007b75f-d504-4d28-927e-2b1824d99bb5-00-2pydj6ryedxd2.picard.replit.dev/api/auth/google/callback';
       console.log('Callback using redirect URI:', redirectUri);
       console.log('Received code:', req.query.code ? 'Present' : 'Missing');
       
