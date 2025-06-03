@@ -647,22 +647,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Sort by upload date, keep the first one
           group.sort((a: any, b: any) => new Date(a.uploadedAt || 0).getTime() - new Date(b.uploadedAt || 0).getTime());
           
-          // Only remove duplicates if they have the EXACT same name AND file size
-          // This prevents false positives like "Policy Declaration (1).pdf" vs "Policy Declaration.pdf"
-          const exactMatches = group.filter((doc: any, index: number) => {
-            if (index === 0) return true; // Keep first document
-            const firstDoc = group[0];
-            return doc.name === firstDoc.name && doc.fileSize === firstDoc.fileSize;
+          // Only remove duplicates if they have the EXACT same name, file size, AND source
+          // This prevents false positives and preserves legitimate documents
+          const duplicateGroups = new Map<string, any[]>();
+          
+          group.forEach((doc: any) => {
+            const duplicateKey = `${doc.name}_${doc.fileSize}_${doc.source || 'unknown'}`;
+            if (!duplicateGroups.has(duplicateKey)) {
+              duplicateGroups.set(duplicateKey, []);
+            }
+            duplicateGroups.get(duplicateKey)!.push(doc);
           });
           
-          if (exactMatches.length > 1) {
-            console.log(`Found exact duplicate group for ${key}:`, exactMatches.map((d: any) => `${d.name} (${d.uploadedAt})`));
-            
-            // Delete all but the first exact match
-            for (let i = 1; i < exactMatches.length; i++) {
-              console.log(`Removing exact duplicate: ${exactMatches[i].name} (ID: ${exactMatches[i].id})`);
-              await storage.deleteDocument(exactMatches[i].id);
-              duplicatesRemoved++;
+          for (const [dupKey, dupGroup] of duplicateGroups) {
+            if (dupGroup.length > 1) {
+              // Sort by upload date, keep the first one
+              dupGroup.sort((a: any, b: any) => new Date(a.uploadedAt || 0).getTime() - new Date(b.uploadedAt || 0).getTime());
+              
+              console.log(`Found exact duplicate group for ${dupKey}:`, dupGroup.map((d: any) => `${d.name} (${d.uploadedAt})`));
+              
+              // Delete all but the first
+              for (let i = 1; i < dupGroup.length; i++) {
+                console.log(`Removing exact duplicate: ${dupGroup[i].name} (ID: ${dupGroup[i].id})`);
+                await storage.deleteDocument(dupGroup[i].id);
+                duplicatesRemoved++;
+              }
             }
           }
         }
