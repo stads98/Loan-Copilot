@@ -3029,7 +3029,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Found ${files.length} files and ${folders.length} folders`);
       
       if (files.length === 0) {
-        return res.status(400).json({ success: false, message: "No documents found in the selected folder" });
+        console.log("No documents found in folder, creating loan without documents");
+        // Create loan without documents - just use the loan data provided
+        
+        // Step 4: Create property from loan data
+        const property = await storage.createProperty({
+          address: loanData?.propertyAddress || "Address from loan data",
+          city: loanData?.city || "City", 
+          state: loanData?.state || "State",
+          zipCode: loanData?.zipCode || "00000",
+          propertyType: loanData?.propertyType || "single_family"
+        });
+        
+        // Step 5: Create loan
+        const loan = await storage.createLoan({
+          loanNumber: loanData?.loanNumber || "",
+          borrowerName: loanData?.borrowerName || "Borrower Name",
+          borrowerEntityName: loanData?.borrowerEntityName || loanData?.borrowerName || "Borrower Name",
+          propertyAddress: loanData?.propertyAddress || "Property Address",
+          propertyType: loanData?.propertyType || "single_family",
+          estimatedValue: loanData?.estimatedValue || null,
+          loanAmount: loanData?.loanAmount || "0",
+          loanToValue: loanData?.loanToValue || null,
+          loanType: loanData?.loanType || "DSCR",
+          loanPurpose: loanData?.loanPurpose || "Purchase",
+          funder: loanData?.funder || "Kiavi",
+          status: "in_progress",
+          targetCloseDate: loanData?.targetCloseDate || null,
+          driveFolder: folderId,
+          googleDriveFolderId: folderId,
+          propertyId: property.id,
+          lenderId: 1, // Kiavi
+          processorId: user.id,
+          completionPercentage: 0
+        });
+        
+        // Step 6: Create initial message
+        await storage.createMessage({
+          content: `Loan created successfully! The Google Drive folder is connected but currently empty. You can now start uploading documents to the folder and they will be automatically processed.
+          
+Loan Details:
+- Loan Number: ${loan.loanNumber}
+- Borrower: ${loan.borrowerName}
+- Property: ${loan.propertyAddress}
+- Loan Type: ${loan.loanType}
+- Loan Purpose: ${loan.loanPurpose}
+
+Ready to start document collection and processing.`,
+          role: "assistant",
+          loanId: loan.id
+        });
+        
+        return res.status(201).json({ 
+          success: true, 
+          loanId: loan.id,
+          documentsProcessed: 0,
+          missingDocuments: 0,
+          foldersScanned: 1,
+          message: "Loan created successfully with empty Google Drive folder"
+        });
       }
       
       // Step 2: Download and process each document
