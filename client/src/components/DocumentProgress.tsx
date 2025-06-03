@@ -29,9 +29,8 @@ export default function DocumentProgress({ documents, requiredDocuments, contact
     Object.values(documentAssignments).flat()
   );
   
-  // Get unassigned documents (uploaded but not categorized properly AND not assigned to any requirement)
+  // Get unassigned documents (not assigned to any requirement, regardless of category)
   const unassignedDocs = documents.filter(doc => 
-    (!doc.category || doc.category === 'uncategorized') && 
     !assignedDocumentIds.has(doc.id.toString())
   );
   
