@@ -18,6 +18,7 @@ import {
   Eye,
   Paperclip
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 
 interface GmailMessage {
@@ -56,6 +57,8 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
   const [showReply, setShowReply] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [isSendingReply, setIsSendingReply] = useState(false);
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
+  const [isScanningSelected, setIsScanningSelected] = useState(false);
 
   const { toast } = useToast();
 
@@ -255,6 +258,64 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
     }
   };
 
+  const toggleEmailSelection = (messageId: string) => {
+    const newSelected = new Set(selectedEmails);
+    if (newSelected.has(messageId)) {
+      newSelected.delete(messageId);
+    } else {
+      newSelected.add(messageId);
+    }
+    setSelectedEmails(newSelected);
+  };
+
+  const scanSelectedEmails = async () => {
+    if (selectedEmails.size === 0) {
+      toast({
+        title: "No Emails Selected",
+        description: "Please select at least one email to scan for PDFs.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!loanId) {
+      toast({
+        title: "No Loan Selected",
+        description: "Please select a loan before scanning emails.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsScanningSelected(true);
+    try {
+      const messageIds = Array.from(selectedEmails);
+      console.log(`Scanning ${messageIds.length} selected emails for PDFs...`);
+      
+      const response = await apiRequest("POST", `/api/loans/${loanId}/scan-visible-emails`, {
+        messageIds: messageIds
+      });
+      
+      toast({
+        title: "Email Scan Complete",
+        description: response.message,
+      });
+      
+      // Clear selection after successful scan
+      setSelectedEmails(new Set());
+      
+    } catch (error) {
+      console.error('Selected email scan error:', error);
+      toast({
+        title: "Scan Failed",
+        description: "Failed to scan selected emails for PDFs. Please ensure Gmail is connected.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsScanningSelected(false);
+    }
+  };
+
   useEffect(() => {
     checkGmailConnection();
   }, []);
@@ -321,6 +382,24 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
           )}
           {isConnected ? (
             <>
+              {selectedEmails.size > 0 && loanId && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={scanSelectedEmails}
+                  disabled={isScanningSelected}
+                  className="text-xs"
+                >
+                  {isScanningSelected ? (
+                    <>
+                      <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                      Scanning...
+                    </>
+                  ) : (
+                    `Scan ${selectedEmails.size} Selected`
+                  )}
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
