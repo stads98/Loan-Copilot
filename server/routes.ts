@@ -1345,180 +1345,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      console.log(`Syncing documents from Google Drive folder: ${folderId} for loan: ${loanId}`);
+      console.log(`COMPLETE SYNC: Making Google Drive an exact mirror of local documents for loan: ${loanId}`);
       
-      // Get files from Google Drive folder
-      const { getDriveFiles } = await import("./lib/google");
+      // Get local documents (these are the source of truth)
+      const localDocuments = await storage.getDocumentsByLoanId(loanId);
+      const activeLocalDocs = localDocuments.filter(doc => !doc.deleted);
+      
+      console.log(`Found ${activeLocalDocs.length} active local documents to mirror to Google Drive`);
+      
+      // Get current Google Drive files
+      const { getDriveFiles, deleteDriveFile } = await import("./lib/google");
       const { uploadFileToGoogleDriveOAuth } = await import("./lib/google-oauth");
       const googleTokens = (req.session as any)?.googleTokens;
-      const files = await getDriveFiles(folderId, googleTokens?.access_token) || [];
+      const currentDriveFiles = await getDriveFiles(folderId, googleTokens?.access_token) || [];
       
-      console.log(`Found ${files.length} files to sync`);
+      console.log(`Found ${currentDriveFiles.length} existing files in Google Drive folder`);
       
-      // CRITICAL: LOCAL DOCUMENT MANAGEMENT IS PRIMARY SOURCE
-      // Implement comprehensive protection against document deletion
-      const { logProtectedOperation } = await import("./lib/sync-protection");
-      
-      // Update existing documents or create new ones
-      let documentsUpdated = 0;
-      let documentsCreated = 0;
-      let documentsUploaded = 0;
-      
-      // LOCAL DOCUMENT MANAGEMENT IS PRIMARY SOURCE - NEVER DELETE LOCAL FILES
-      // Step 1: Only add new files from Google Drive, preserve ALL local documents
-      const driveFileIds = new Set(files.map(f => f.id));
-      const existingDocs = await storage.getDocumentsByLoanId(loanId);
-      
-      // COMPREHENSIVE PROTECTION: Zero tolerance for local document deletion
-      console.log(`🛡️ EMERGENCY PROTECTION ACTIVE: All ${existingDocs.length} local documents are PERMANENTLY PROTECTED`);
-      console.log(`🛡️ Local document management is the ONLY authoritative source - Google Drive cannot delete local files`);
-      logProtectedOperation("Manual Google Drive Sync", existingDocs.length);
-      
-      // Add or update documents from Google Drive
-      for (const file of files) {
+      // STEP 1: Clear Google Drive folder completely
+      console.log("STEP 1: Clearing Google Drive folder to ensure exact mirror...");
+      let deletedCount = 0;
+      for (const driveFile of currentDriveFiles) {
         try {
-          const existingDoc = existingDocs.find(doc => doc.fileId === file.id);
-          
-          if (existingDoc) {
-            // Update existing document with latest Google Drive metadata
-            await storage.updateDocument(existingDoc.id, {
-              name: file.name,
-              fileType: file.mimeType,
-              fileSize: file.size ? parseInt(file.size) : null,
-              driveFileId: file.id,
-              lastModified: file.modifiedTime ? new Date(file.modifiedTime) : null
-            });
-            documentsUpdated++;
-            console.log(`Updated document: ${file.name}`);
-          } else {
-            // Create new document for Google Drive file
-            await storage.createDocument({
-              name: file.name,
-              fileId: file.id,
-              fileType: file.mimeType,
-              fileSize: file.size ? parseInt(file.size) : null,
-              category: "imported",
-              loanId: loanId
-            });
-            documentsCreated++;
-          }
+          await deleteDriveFile(driveFile.id, googleTokens?.access_token);
+          deletedCount++;
+          console.log(`Deleted from Google Drive: ${driveFile.name}`);
         } catch (error) {
-          console.error(`Error processing file ${file.name}:`, error);
+          console.error(`Failed to delete ${driveFile.name} from Google Drive:`, error);
         }
       }
-
-      // Step 2: Sync FROM Database TO Google Drive (prevent duplicates)
-      console.log("Starting bi-directional sync - uploading local documents to Google Drive...");
-      try {
-        const allLocalDocs = await storage.getDocumentsByLoanId(loanId);
-        const driveFileNames = new Set(files.map(f => f.name));
-        
-        console.log(`Found ${allLocalDocs.length} local documents to check for upload`);
-        
-        for (const localDoc of allLocalDocs) {
-          // Skip deleted documents - they should not sync to Google Drive
-          if (localDoc.deleted) {
-            console.log(`Skipping deleted document: ${localDoc.name}`);
-            continue;
-          }
-          
-          // Check if a file with the same name already exists in Drive
-          if (driveFileNames.has(localDoc.name)) {
-            console.log(`Skipping ${localDoc.name} - already in Google Drive`);
-            continue;
-          }
-          
-          // Only upload documents that have local file content (uploaded files or email attachments)
-          // Google Drive IDs are long strings without extensions, local files have extensions or email-attachment prefix
+      console.log(`Cleared ${deletedCount} files from Google Drive folder`);
+      
+      // STEP 2: Upload all local documents to Google Drive
+      console.log("STEP 2: Uploading all local documents to Google Drive...");
+      let uploadedCount = 0;
+      
+      for (const localDoc of activeLocalDocs) {
+        try {
+          // Only upload documents that have local file content
           if (localDoc.fileId && (localDoc.fileId.includes('.') || localDoc.fileId.startsWith('email-attachment-'))) {
-            // This is a local file (has extension in fileId or is an email attachment)
+            const fs = await import('fs').then(m => m.promises);
+            const path = await import('path');
+            const filePath = path.join(process.cwd(), 'uploads', localDoc.fileId);
+            
             try {
-              const fs = await import('fs').then(m => m.promises);
-              const path = await import('path');
-              const filePath = path.join(process.cwd(), 'uploads', localDoc.fileId);
-              
-              console.log(`Checking if file exists at: ${filePath}`);
               if (await fs.access(filePath).then(() => true).catch(() => false)) {
                 console.log(`Uploading ${localDoc.name} to Google Drive...`);
                 const fileBuffer = await fs.readFile(filePath);
                 
-                // Try OAuth upload first if tokens are available
-                const googleTokens = (req.session as any)?.googleTokens;
-                if (googleTokens) {
-                  try {
-                    const driveFileId = await uploadFileToGoogleDriveOAuth(
-                      localDoc.name,
-                      fileBuffer,
-                      `application/${localDoc.fileType}`,
-                      folderId,
-                      googleTokens
-                    );
-                    
-                    // Update document record with Google Drive file ID
-                    await storage.updateDocument(localDoc.id, {
-                      fileId: driveFileId,
-                      source: "synced_to_drive"
-                    });
-                    
-                    documentsUploaded++;
-                    console.log(`Successfully uploaded ${localDoc.name} to Google Drive with OAuth: ${driveFileId}`);
-                  } catch (oauthError) {
-                    console.error(`OAuth upload failed for ${localDoc.name}, trying service account:`, oauthError);
-                    
-                    // Fallback to service account upload
-                    try {
-                      const { uploadFileToGoogleDrive } = await import("./lib/google");
-                      const driveFileId = await uploadFileToGoogleDrive(
-                        localDoc.name,
-                        fileBuffer,
-                        `application/${localDoc.fileType}`,
-                        folderId
-                      );
-                      
-                      await storage.updateDocument(localDoc.id, {
-                        fileId: driveFileId,
-                        source: "synced_to_drive"
-                      });
-                      
-                      documentsUploaded++;
-                      console.log(`Successfully uploaded ${localDoc.name} with service account: ${driveFileId}`);
-                    } catch (serviceError) {
-                      console.error(`Both OAuth and service account upload failed for ${localDoc.name}:`, serviceError);
-                    }
-                  }
-                } else {
-                  console.log(`No OAuth tokens available, skipping upload for ${localDoc.name}`);
-                }
+                const driveFileId = await uploadFileToGoogleDriveOAuth(
+                  localDoc.name,
+                  fileBuffer,
+                  localDoc.fileType || 'application/octet-stream',
+                  folderId,
+                  googleTokens
+                );
+                
+                // Update document record with new Google Drive file ID
+                await storage.updateDocument(localDoc.id, {
+                  fileId: driveFileId,
+                  source: "synced_to_drive"
+                });
+                
+                uploadedCount++;
+                console.log(`Successfully uploaded ${localDoc.name} to Google Drive: ${driveFileId}`);
               } else {
                 console.log(`Local file not found for ${localDoc.name} at ${filePath}`);
               }
             } catch (uploadError) {
               console.error(`Failed to upload ${localDoc.name} to Google Drive:`, uploadError);
-              // Don't fail the entire sync if one upload fails
             }
           } else {
-            console.log(`Skipping ${localDoc.name} - no local file to upload`);
+            console.log(`Skipping ${localDoc.name} - not a local file (Google Drive document)`);
           }
+        } catch (error) {
+          console.error(`Error processing ${localDoc.name}:`, error);
         }
-        
-        console.log(`Bi-directional sync completed: ${documentsUploaded} documents uploaded to Google Drive`);
-      } catch (syncError) {
-        console.error("Error during bi-directional sync:", syncError);
-        // Don't fail the entire sync if upload portion fails
       }
       
-      const syncMessage = documentsUploaded > 0 
-        ? `Bi-directional sync completed: ${documentsCreated} new from Drive, ${documentsUpdated} updated from Drive, ${documentsUploaded} uploaded to Drive`
-        : `Sync from Drive completed: ${documentsCreated} new documents, ${documentsUpdated} updated. Upload to Drive requires folder write permissions.`;
-
+      console.log(`COMPLETE SYNC FINISHED: Google Drive now mirrors ${uploadedCount} local documents`);
+      console.log(`Google Drive folder cleared: ${deletedCount} files removed`);
+      console.log(`Google Drive folder populated: ${uploadedCount} files uploaded`);
+      
       res.json({
         success: true,
-        message: syncMessage,
-        documentsCreated,
-        documentsUpdated,
-        documentsUploaded,
-        totalFiles: files.length,
-        syncDirection: documentsUploaded > 0 ? "bidirectional" : "download_only"
+        message: `Complete sync finished: Google Drive folder cleared (${deletedCount} files) and repopulated with ${uploadedCount} local documents`,
+        documentsCleared: deletedCount,
+        documentsUploaded: uploadedCount,
+        syncType: "complete_mirror"
       });
       
     } catch (error) {
