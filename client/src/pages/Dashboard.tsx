@@ -270,12 +270,13 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
                 borrowerEntityName={loan.borrowerEntityName}
               />
 
-              {/* Gmail Inbox */}
-              <GmailInbox loanId={loan.id} />
             </div>
 
             {/* Middle Column: AI Guidance & Tasks */}
             <div className="lg:col-span-2 space-y-6">
+              {/* Gmail Inbox - Moved here for better visibility */}
+              <GmailInbox loanId={loan.id} />
+
               {/* Action Items Section - Moved to top for priority */}
               <div className="bg-white rounded-lg shadow-md border-l-4 border-amber-500" data-component="task-priority">
                 <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
