@@ -91,6 +91,8 @@ export default function DocumentManager({
   }, [loanId]);
 
   const sendToDrive = async () => {
+    console.log("SendToDrive button clicked!", { driveFolder, loanId });
+    
     if (!driveFolder) {
       toast({
         title: "No Drive Folder",
@@ -102,6 +104,7 @@ export default function DocumentManager({
 
     setIsSendingToDrive(true);
     try {
+      console.log("Making POST request to send-to-drive...");
       const response = await fetch(`/api/loans/${loanId}/send-to-drive`, {
         method: 'POST',
         headers: {
@@ -112,11 +115,13 @@ export default function DocumentManager({
         }),
       });
 
+      console.log("Response status:", response.status);
       if (!response.ok) {
         throw new Error('Failed to send documents to Drive');
       }
 
       const result = await response.json();
+      console.log("Send to drive result:", result);
       
       toast({
         title: "Success",
