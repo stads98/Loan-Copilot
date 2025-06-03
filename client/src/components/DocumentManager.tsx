@@ -48,6 +48,7 @@ export default function DocumentManager({
   const [localCompletedRequirements, setLocalCompletedRequirements] = useState<Set<string>>(new Set());
   const [assignedDocuments, setAssignedDocuments] = useState<Record<string, string[]>>({}); // requirement -> document IDs
   const [customDocuments, setCustomDocuments] = useState<Array<{name: string, category: string}>>([]); // Custom missing documents
+  const [searchQuery, setSearchQuery] = useState("");
   const [deletedDocuments, setDeletedDocuments] = useState<Document[]>([]);
   const [showDeleted, setShowDeleted] = useState(false);
   const [newCustomDocumentName, setNewCustomDocumentName] = useState("");
@@ -514,73 +515,95 @@ export default function DocumentManager({
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-4">
-                {documents
-                  .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())
-                  .map((doc) => (
-                  <Card key={doc.id} className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {getFileIcon(doc)}
-                        <div>
-                          <p className="font-medium">{doc.name}</p>
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            {doc.source === "gmail" && (
-                              <Badge className="bg-blue-100 text-blue-800 border-blue-300 text-xs">
-                                Auto-downloaded
-                              </Badge>
-                            )}
-                            {doc.category && (
-                              <Badge variant="outline" className="text-xs">
-                                {doc.category}
-                              </Badge>
-                            )}
-                            {doc.uploadedAt && (
-                              <span>
-                                {format(new Date(doc.uploadedAt), "MMM dd, yyyy 'at' h:mm a")}
-                              </span>
-                            )}
-                            {doc.fileSize && (
-                              <span>
-                                {doc.fileSize >= 1024 * 1024 
-                                  ? `${(doc.fileSize / 1024 / 1024).toFixed(1)} MB`
-                                  : `${Math.round(doc.fileSize / 1024)} KB`
-                                }
-                              </span>
-                            )}
+              <>
+                <div className="flex items-center gap-2 mb-4">
+                  <Input
+                    placeholder="Search documents by name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="max-w-sm"
+                  />
+                  {searchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="grid gap-4">
+                  {documents
+                    .filter(doc => 
+                      doc.name.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())
+                    .map((doc) => (
+                      <Card key={doc.id} className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {getFileIcon(doc)}
+                              <div>
+                                <p className="font-medium">{doc.name}</p>
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                  {doc.source === "gmail" && (
+                                    <Badge className="bg-blue-100 text-blue-800 border-blue-300 text-xs">
+                                      Auto-downloaded
+                                    </Badge>
+                                  )}
+                                  {doc.category && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {doc.category}
+                                    </Badge>
+                                  )}
+                                  {doc.uploadedAt && (
+                                    <span>
+                                      {format(new Date(doc.uploadedAt), "MMM dd, yyyy 'at' h:mm a")}
+                                    </span>
+                                  )}
+                                  {doc.fileSize && (
+                                    <span>
+                                      {doc.fileSize >= 1024 * 1024 
+                                        ? `${(doc.fileSize / 1024 / 1024).toFixed(1)} MB`
+                                        : `${Math.round(doc.fileSize / 1024)} KB`
+                                      }
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={() => viewDocument(doc)}
+                                title="View document"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={() => downloadDocument(doc)}
+                                title="Download document"
+                              >
+                                <Download className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => deleteDocument(doc.id)}
+                                title="Delete document"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="ghost"
-                          onClick={() => viewDocument(doc)}
-                          title="View document"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="ghost"
-                          onClick={() => downloadDocument(doc)}
-                          title="Download document"
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          onClick={() => deleteDocument(doc.id)}
-                          title="Delete document"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
                   </Card>
                 ))}
-              </div>
+                </div>
+              </>
             )}
           </TabsContent>
 
