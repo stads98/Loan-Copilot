@@ -1420,13 +1420,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (req.session as any).gmailTokens.refresh_token
       );
 
-      // Get all inbox messages (scan more for comprehensive search, including older emails)
+      // Build comprehensive search for ALL contact emails and loan-related terms
+      const eightWeeksAgo = new Date();
+      eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+      const dateQuery = eightWeeksAgo.toISOString().split('T')[0].replace(/-/g, '/');
+      
+      // Get ALL contact emails from the loan
+      const contactEmails = loan.contacts?.map((c: any) => c.email).filter(Boolean) || [];
+      
+      console.log('Searching for emails from these contacts:', contactEmails);
+      console.log('Contact roles:', loan.contacts?.map((c: any) => `${c.name} (${c.role}) - ${c.email}`));
+      
+      // Build comprehensive search that includes contact emails and attachments
+      let searchTerms = [`has:attachment after:${dateQuery}`];
+      
+      // Add searches for ALL contact emails (borrower, title agents, insurance agents, etc.)
+      if (contactEmails.length > 0) {
+        contactEmails.forEach((email: string) => {
+          if (email) {
+            searchTerms.push(`(from:${email} OR to:${email} OR cc:${email}) after:${dateQuery}`);
+          }
+        });
+      }
+      
+      // Add borrower name and loan number searches
+      if (loan.loan?.borrowerName) {
+        searchTerms.push(`"${loan.loan.borrowerName}" after:${dateQuery}`);
+      }
+      if (loan.loan?.loanNumber) {
+        searchTerms.push(`"${loan.loan.loanNumber}" after:${dateQuery}`);
+      }
+      
+      const searchQuery = `(${searchTerms.join(' OR ')})`;
+      console.log('Gmail search query:', searchQuery);
+      
       const listResponse = await gmail.users.messages.list({
         auth: gmailAuth,
         userId: 'me',
-        maxResults: 1000, // Increased to get more emails
-        q: 'in:inbox after:2025/05/01' // Search emails from May 1st onwards to catch older emails
+        maxResults: 1000,
+        q: searchQuery
       });
+      
+      console.log(`Gmail search returned ${listResponse.data.messages?.length || 0} messages`);
 
       if (!listResponse.data.messages) {
         return res.json({ 
@@ -1773,29 +1808,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
       const dateQuery = eightWeeksAgo.toISOString().split('T')[0].replace(/-/g, '/');
       
-      // Search more broadly - include specific contact emails and loan-related terms
-      const contactEmails = loan.contacts?.map((c: any) => c.email).filter(Boolean) || [];
-      const borrowerEmail = loan.contacts?.find((c: any) => c.role === 'borrower')?.email;
+      // Get loan data first if loanId is provided to build comprehensive search
+      let searchQuery = `has:attachment after:${dateQuery}`;
       
-      // Build a comprehensive search that includes contact emails and attachments
-      let searchTerms = [`has:attachment after:${dateQuery}`];
-      
-      // Add searches for specific contact emails
-      if (contactEmails.length > 0) {
-        contactEmails.forEach(email => {
-          searchTerms.push(`(from:${email} OR to:${email} OR cc:${email}) after:${dateQuery}`);
-        });
+      if (loanId) {
+        const loan = await storage.getLoanWithDetails(loanId);
+        if (loan) {
+          // Search more broadly - include ALL contact emails and loan-related terms
+          const contactEmails = loan.contacts?.map((c: any) => c.email).filter(Boolean) || [];
+          
+          console.log('Searching for emails from these contacts:', contactEmails);
+          console.log('Contact roles:', loan.contacts?.map((c: any) => `${c.name} (${c.role}) - ${c.email}`));
+          
+          // Build a comprehensive search that includes contact emails and attachments
+          let searchTerms = [`has:attachment after:${dateQuery}`];
+          
+          // Add searches for ALL contact emails (borrower, title agents, insurance agents, etc.)
+          if (contactEmails.length > 0) {
+            contactEmails.forEach((email: string) => {
+              if (email) {
+                searchTerms.push(`(from:${email} OR to:${email} OR cc:${email}) after:${dateQuery}`);
+              }
+            });
+          }
+          
+          // Add borrower name and loan number searches
+          if (loan.loan?.borrowerName) {
+            searchTerms.push(`"${loan.loan.borrowerName}" after:${dateQuery}`);
+          }
+          if (loan.loan?.loanNumber) {
+            searchTerms.push(`"${loan.loan.loanNumber}" after:${dateQuery}`);
+          }
+          
+          searchQuery = `(${searchTerms.join(' OR ')})`;
+        }
       }
-      
-      // Add borrower name and loan number searches
-      if (loan.loan?.borrowerName) {
-        searchTerms.push(`"${loan.loan.borrowerName}" after:${dateQuery}`);
-      }
-      if (loan.loan?.loanNumber) {
-        searchTerms.push(`"${loan.loan.loanNumber}" after:${dateQuery}`);
-      }
-      
-      const searchQuery = `(${searchTerms.join(' OR ')})`;
       
       console.log('Gmail search query:', searchQuery);
       const listResponse = await gmail.users.messages.list({
