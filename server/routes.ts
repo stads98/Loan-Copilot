@@ -53,67 +53,11 @@ const upload = multer({
 
 // Auto-sync function to trigger Google Drive synchronization
 async function triggerAutoSync(loanId: number, action: string, filename?: string) {
-  try {
-    console.log(`Auto-sync triggered for loan ${loanId}: ${action}${filename ? ` - ${filename}` : ''}`);
-    
-    // Get loan details to check if Google Drive is connected
-    const loan = await storage.getLoan(loanId);
-    if (!loan?.driveFolder) {
-      console.log('Auto-sync skipped: No Google Drive folder configured');
-      return;
-    }
-
-    // Trigger background sync without blocking the main request
-    setTimeout(async () => {
-      try {
-        console.log(`Executing auto-sync for loan ${loanId}...`);
-        
-        // Get Google Drive files for the loan folder
-        const { getDriveFiles } = await import("./lib/google");
-        const files = await getDriveFiles(loan.driveFolder);
-        
-        // Perform bidirectional sync
-        const driveFileIds = new Set(files.map(f => f.id));
-        const existingDocs = await storage.getDocumentsByLoanId(loanId);
-        
-        let syncChanges = 0;
-        
-        // DO NOT remove local documents - local storage is the primary source
-        // Instead, check for documents that need to be uploaded to Google Drive
-        console.log(`Auto-sync: Preserving all ${existingDocs.length} local documents as primary source`);
-        
-        // Add new documents from Google Drive
-        for (const file of files) {
-          const existingDoc = existingDocs.find(doc => doc.fileId === file.id);
-          if (!existingDoc) {
-            await storage.createDocument({
-              name: file.name,
-              fileId: file.id,
-              fileType: file.mimeType,
-              fileSize: file.size ? parseInt(file.size) : null,
-              category: "imported",
-              status: "received",
-              source: "google_drive",
-              loanId: loanId
-            });
-            syncChanges++;
-            console.log(`Auto-sync: Added ${file.name} from Google Drive`);
-          }
-        }
-        
-        if (syncChanges > 0) {
-          console.log(`Auto-sync completed: ${syncChanges} changes synchronized`);
-        } else {
-          console.log('Auto-sync completed: No changes needed');
-        }
-      } catch (syncError) {
-        console.error('Auto-sync error:', syncError);
-      }
-    }, 1000); // 1 second delay to avoid blocking
-    
-  } catch (error) {
-    console.error('Auto-sync trigger error:', error);
-  }
+  // EMERGENCY PROTECTION: Auto-sync completely disabled to prevent document deletion
+  console.log(`🛡️ AUTO-SYNC DISABLED: Local documents are permanently protected from sync operations`);
+  console.log(`🛡️ Action: ${action}${filename ? ` - ${filename}` : ''} will NOT trigger sync for loan ${loanId}`);
+  console.log(`🛡️ Local document management is the ONLY authoritative source`);
+  return; // Exit immediately - no sync operations allowed
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1338,6 +1282,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Found ${files.length} files to sync`);
       
+      // CRITICAL: LOCAL DOCUMENT MANAGEMENT IS PRIMARY SOURCE
+      // Implement comprehensive protection against document deletion
+      const { logProtectedOperation } = await import("./lib/sync-protection");
+      
       // Update existing documents or create new ones
       let documentsUpdated = 0;
       let documentsCreated = 0;
@@ -1348,8 +1296,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const driveFileIds = new Set(files.map(f => f.id));
       const existingDocs = await storage.getDocumentsByLoanId(loanId);
       
-      console.log(`PROTECTION ACTIVE: Preserving all ${existingDocs.length} local documents as primary source`);
-      console.log(`Google Drive sync will only ADD files, never DELETE local files`);
+      // COMPREHENSIVE PROTECTION: Zero tolerance for local document deletion
+      console.log(`🛡️ EMERGENCY PROTECTION ACTIVE: All ${existingDocs.length} local documents are PERMANENTLY PROTECTED`);
+      console.log(`🛡️ Local document management is the ONLY authoritative source - Google Drive cannot delete local files`);
+      logProtectedOperation("Manual Google Drive Sync", existingDocs.length);
       
       // Add or update documents from Google Drive
       for (const file of files) {
