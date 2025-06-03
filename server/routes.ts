@@ -1739,17 +1739,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   continue;
                 }
 
-                // Determine category
+                // Determine category based on sender
                 let category = 'other';
-                const lowerFilename = attachment.filename.toLowerCase();
-                if (lowerFilename.includes('insurance') || lowerFilename.includes('policy')) {
-                  category = 'insurance';
-                } else if (lowerFilename.includes('appraisal') || lowerFilename.includes('comp')) {
-                  category = 'property';
-                } else if (lowerFilename.includes('income') || lowerFilename.includes('bank') || lowerFilename.includes('statement')) {
-                  category = 'borrower';
-                } else if (lowerFilename.includes('title') || lowerFilename.includes('payoff')) {
-                  category = 'title';
+                
+                // Extract sender name from email
+                const fromMatch = message.from.match(/^([^<]+)/);
+                if (fromMatch) {
+                  const senderName = fromMatch[1].trim();
+                  category = senderName;
+                } else {
+                  // Fallback to email if name not found
+                  const emailMatch = message.from.match(/<([^>]+)>/);
+                  if (emailMatch) {
+                    category = emailMatch[1];
+                  }
                 }
 
                 // Create document record with clean filename
