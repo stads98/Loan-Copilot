@@ -331,6 +331,6 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(userTokens)
       .where(and(eq(userTokens.userId, userId), eq(userTokens.service, service)));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 }

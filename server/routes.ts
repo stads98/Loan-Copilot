@@ -2601,18 +2601,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return true;
             }
             
-            // Third priority: Check if it's the primary property AND borrower together (more restrictive)
-            if (loan.loan?.borrowerName && loan.property?.address) {
-              const borrowerName = loan.loan.borrowerName.toLowerCase();
+            // Third priority: Check property address - just street number + street name
+            if (loan.property?.address) {
               const streetAddress = loan.property.address.split(',')[0].trim().toLowerCase();
               
-              // Only include if BOTH borrower name and street address are in subject AND it's loan-related
-              const hasBothInSubject = subject.includes(borrowerName) && subject.includes(streetAddress);
-              const isLoanRelated = subject.includes('loan') || subject.includes('application') || 
-                                   subject.includes('closing') || subject.includes('refinance') || 
-                                   subject.includes('mortgage') || subject.includes('refi');
-              
-              if (hasBothInSubject && isLoanRelated) {
+              // Include if street address is mentioned in subject (e.g., "32 run st")
+              if (subject.includes(streetAddress)) {
                 return true;
               }
             }
