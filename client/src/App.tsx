@@ -12,6 +12,7 @@ import Templates from "@/pages/Templates";
 import Settings from "@/pages/Settings";
 import { useEffect, useState } from "react";
 import { apiRequest } from "./lib/queryClient";
+import { GoogleDriveProvider } from "@/contexts/GoogleDriveContext";
 
 function Router() {
   const [user, setUser] = useState<any>(null);
@@ -97,10 +98,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <GoogleDriveProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </GoogleDriveProvider>
     </QueryClientProvider>
   );
 }

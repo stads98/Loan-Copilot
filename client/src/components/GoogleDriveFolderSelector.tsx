@@ -40,6 +40,16 @@ export default function GoogleDriveFolderSelector({
   const loadFolders = async () => {
     setLoading(true);
     try {
+      // First check if Google Drive is connected
+      const statusResponse = await fetch('/api/auth/google/status');
+      const statusData = await statusResponse.json();
+      
+      if (!statusData.connected) {
+        setRequiresAuth(true);
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/drive/folders');
       if (response.ok) {
         const data = await response.json();
@@ -134,6 +144,21 @@ export default function GoogleDriveFolderSelector({
       loadFolders();
     }
   }, [isOpen]);
+
+  // Auto-check connection status on mount
+  useEffect(() => {
+    const checkConnectionStatus = async () => {
+      try {
+        const statusResponse = await fetch('/api/auth/google/status');
+        const statusData = await statusResponse.json();
+        setRequiresAuth(!statusData.connected);
+      } catch (error) {
+        setRequiresAuth(true);
+      }
+    };
+    
+    checkConnectionStatus();
+  }, []);
 
   useEffect(() => {
     // Auto-populate new folder name with property address when it changes
