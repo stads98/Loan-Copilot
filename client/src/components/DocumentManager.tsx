@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import SmartDocumentUpload from "@/components/SmartDocumentUpload";
+
 import SendToAnalyst from "@/components/SendToAnalyst";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -893,14 +893,88 @@ export default function DocumentManager({
                                 
                                 {showInlineUpload === req.name && (
                                   <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                    <SmartDocumentUpload 
-                                      loanId={loanId} 
-                                      requirementName={req.name}
-                                      onSuccess={() => {
-                                        queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
-                                        setShowInlineUpload(null);
-                                      }} 
-                                    />
+                                    <div className="flex items-center justify-between mb-3">
+                                      <h5 className="text-sm font-medium text-blue-900">Upload for {req.name}</h5>
+                                      <Button size="sm" variant="ghost" onClick={() => setShowInlineUpload(null)}>
+                                        <X className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                    
+                                    <div className="space-y-3">
+                                      <div>
+                                        <input
+                                          type="file"
+                                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                          multiple
+                                          onChange={async (e) => {
+                                            const files = Array.from(e.target.files || []);
+                                            if (files.length > 0) {
+                                              const uploadPromises = files.map(async (file) => {
+                                                const formData = new FormData();
+                                                formData.append('file', file);
+                                                formData.append('name', `${req.name} - ${file.name.split('.').slice(0, -1).join('.')}`);
+                                                formData.append('category', req.category);
+                                                
+                                                return fetch(`/api/loans/${loanId}/documents`, {
+                                                  method: 'POST',
+                                                  body: formData
+                                                });
+                                              });
+                                              
+                                              try {
+                                                const responses = await Promise.all(uploadPromises);
+                                                const successCount = responses.filter(r => r.ok).length;
+                                                const failCount = responses.length - successCount;
+                                                
+                                                const uploadedDocumentIds = [];
+                                                for (let i = 0; i < responses.length; i++) {
+                                                  if (responses[i].ok) {
+                                                    const docData = await responses[i].json();
+                                                    uploadedDocumentIds.push(docData.id.toString());
+                                                  }
+                                                }
+                                                
+                                                uploadedDocumentIds.forEach(docId => {
+                                                  assignDocumentToRequirement(req.name, docId);
+                                                });
+                                                
+                                                queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+                                                setShowInlineUpload(null);
+                                                
+                                                if (failCount === 0) {
+                                                  toast({
+                                                    title: "Documents uploaded successfully",
+                                                    description: `${successCount} document${successCount > 1 ? 's' : ''} uploaded for ${req.name}`,
+                                                  });
+                                                } else {
+                                                  toast({
+                                                    title: "Partial upload success",
+                                                    description: `${successCount} uploaded, ${failCount} failed`,
+                                                    variant: "destructive"
+                                                  });
+                                                }
+                                              } catch (error) {
+                                                toast({
+                                                  title: "Upload Failed",
+                                                  description: "There was an error uploading your documents.",
+                                                  variant: "destructive"
+                                                });
+                                              }
+                                            }
+                                          }}
+                                          className="hidden"
+                                          id={`file-upload-${req.name}`}
+                                        />
+                                        <Button
+                                          variant="outline"
+                                          onClick={() => document.getElementById(`file-upload-${req.name}`)?.click()}
+                                          className="w-full h-12 border-dashed border-2 flex items-center justify-center"
+                                        >
+                                          <Upload className="w-4 h-4 mr-2" />
+                                          Select Files to Upload
+                                        </Button>
+                                      </div>
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -916,13 +990,80 @@ export default function DocumentManager({
           </TabsContent>
 
           <TabsContent value="upload" className="space-y-4">
-            <SmartDocumentUpload 
-              loanId={loanId} 
-              onSuccess={() => {
-                queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
-                setActiveTab("document-list");
-              }} 
-            />
+            <Card>
+              <CardHeader>
+                <CardTitle>Upload Documents</CardTitle>
+                <CardDescription>
+                  Upload new documents for this loan. Files will be automatically processed and analyzed.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                      multiple
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (files.length > 0) {
+                          const uploadPromises = files.map(async (file) => {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('name', file.name.split('.').slice(0, -1).join('.'));
+                            formData.append('category', 'other');
+                            
+                            return fetch(`/api/loans/${loanId}/documents`, {
+                              method: 'POST',
+                              body: formData
+                            });
+                          });
+                          
+                          try {
+                            const responses = await Promise.all(uploadPromises);
+                            const successCount = responses.filter(r => r.ok).length;
+                            const failCount = responses.length - successCount;
+                            
+                            queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+                            setActiveTab("document-list");
+                            
+                            if (failCount === 0) {
+                              toast({
+                                title: "Documents uploaded successfully",
+                                description: `${successCount} document${successCount > 1 ? 's' : ''} uploaded`,
+                              });
+                            } else {
+                              toast({
+                                title: "Partial upload success",
+                                description: `${successCount} uploaded, ${failCount} failed`,
+                                variant: "destructive"
+                              });
+                            }
+                          } catch (error) {
+                            toast({
+                              title: "Upload Failed",
+                              description: "There was an error uploading your documents.",
+                              variant: "destructive"
+                            });
+                          }
+                        }
+                      }}
+                      className="hidden"
+                      id="bulk-file-upload"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => document.getElementById('bulk-file-upload')?.click()}
+                      className="w-full h-24 border-dashed border-2 flex flex-col items-center justify-center"
+                    >
+                      <Upload className="w-8 h-8 mb-2" />
+                      <span className="text-lg">Select Files to Upload</span>
+                      <span className="text-sm text-gray-500">PDF, JPG, PNG, DOC, DOCX</span>
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="completed" className="space-y-4">
