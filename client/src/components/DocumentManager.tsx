@@ -629,54 +629,7 @@ export default function DocumentManager({
                 ))}
                 </div>
 
-                {/* Deleted Documents Section */}
-                {deletedDocuments.length > 0 && (
-                  <div className="mt-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-medium text-gray-700">Deleted Documents</h3>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowDeleted(!showDeleted)}
-                        className="text-xs text-gray-500 hover:text-gray-700"
-                      >
-                        {showDeleted ? 'Hide' : 'Show'} ({deletedDocuments.length})
-                      </Button>
-                    </div>
-                    
-                    {showDeleted && (
-                      <div className="space-y-2 p-3 bg-gray-50 rounded-lg border">
-                        {deletedDocuments.map((doc) => (
-                          <div key={doc.id} className="flex items-center justify-between p-2 bg-white rounded border">
-                            <div className="flex items-center gap-2">
-                              {getFileIcon(doc)}
-                              <span className="text-sm text-gray-500 line-through">
-                                {doc.name}
-                              </span>
-                              <Badge variant="secondary" className="text-xs">
-                                {doc.category || 'other'}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="text-xs text-gray-400">
-                                Deleted {doc.uploadedAt && format(new Date(doc.uploadedAt), 'MMM d, yyyy')}
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => restoreDocument(doc.id)}
-                                className="h-6 px-2 text-blue-600 hover:text-blue-700"
-                                title="Restore document"
-                              >
-                                <RotateCcw className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+
               </>
             )}
           </TabsContent>
