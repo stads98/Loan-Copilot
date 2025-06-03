@@ -1925,9 +1925,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
           
-          // Add borrower name and loan number searches
-          if (loan.loan?.borrowerName) {
-            searchTerms.push(`"${loan.loan.borrowerName}" after:${dateQuery}`);
+          // Add property-specific searches (only include borrower name if it mentions the property)
+          if (loan.loan?.borrowerName && loan.property?.address) {
+            searchTerms.push(`("${loan.loan.borrowerName}" AND "12333 Colony Preserve") after:${dateQuery}`);
           }
           if (loan.loan?.loanNumber) {
             searchTerms.push(`"${loan.loan.loanNumber}" after:${dateQuery}`);

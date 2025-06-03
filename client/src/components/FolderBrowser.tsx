@@ -78,13 +78,13 @@ export default function FolderBrowser({ open, onOpenChange, onSelectFolder, curr
         setItems([]);
       }
     } catch (error) {
-      // Demo data for testing
+      // Demo data for testing - use unique mock IDs to avoid conflicts
       const mockItems: FolderItem[] = [
-        { id: "folder1", name: "123 Main St - Purchase", type: "folder" },
-        { id: "folder2", name: "456 Oak Ave - Refinance", type: "folder" },
-        { id: "folder3", name: "789 Pine Rd - Cash Out Refi", type: "folder" },
-        { id: "folder4", name: "321 Elm St - Purchase", type: "folder" },
-        { id: "folder5", name: "654 Maple Dr - DSCR Loan", type: "folder" },
+        { id: "mock_folder_1", name: "123 Main St - Purchase", type: "folder" },
+        { id: "mock_folder_2", name: "456 Oak Ave - Refinance", type: "folder" },
+        { id: "mock_folder_3", name: "789 Pine Rd - Cash Out Refi", type: "folder" },
+        { id: "mock_folder_4", name: "321 Elm St - Purchase", type: "folder" },
+        { id: "mock_folder_5", name: "654 Maple Dr - DSCR Loan", type: "folder" },
       ];
       setItems(mockItems);
     } finally {
