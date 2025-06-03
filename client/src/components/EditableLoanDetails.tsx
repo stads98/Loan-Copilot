@@ -21,11 +21,12 @@ export default function EditableLoanDetails({ loanId, loanDetails }: EditableLoa
     loanNumber: loanDetails?.loan?.loanNumber || "",
     borrowerName: loanDetails?.loan?.borrowerName || "",
     borrowerEntityName: loanDetails?.loan?.borrowerEntityName || "",
-    propertyAddress: loanDetails?.property?.address || "",
-    propertyType: loanDetails?.property?.propertyType || "",
+    propertyAddress: loanDetails?.loan?.propertyAddress || "",
+    propertyType: loanDetails?.loan?.propertyType || "",
     loanAmount: loanDetails?.loan?.loanAmount || "",
     loanType: loanDetails?.loan?.loanType || "",
     loanPurpose: loanDetails?.loan?.loanPurpose || "",
+    funder: loanDetails?.loan?.funder || "",
     status: loanDetails?.loan?.status || "",
     targetCloseDate: loanDetails?.loan?.targetCloseDate || "",
     notes: loanDetails?.loan?.notes || ""
@@ -70,11 +71,12 @@ export default function EditableLoanDetails({ loanId, loanDetails }: EditableLoa
       loanNumber: loanDetails?.loan?.loanNumber || "",
       borrowerName: loanDetails?.loan?.borrowerName || "",
       borrowerEntityName: loanDetails?.loan?.borrowerEntityName || "",
-      propertyAddress: loanDetails?.property?.address || "",
-      propertyType: loanDetails?.property?.propertyType || "",
+      propertyAddress: loanDetails?.loan?.propertyAddress || "",
+      propertyType: loanDetails?.loan?.propertyType || "",
       loanAmount: loanDetails?.loan?.loanAmount || "",
       loanType: loanDetails?.loan?.loanType || "",
       loanPurpose: loanDetails?.loan?.loanPurpose || "",
+      funder: loanDetails?.loan?.funder || "",
       status: loanDetails?.loan?.status || "",
       targetCloseDate: loanDetails?.loan?.targetCloseDate || "",
       notes: loanDetails?.loan?.notes || ""
@@ -268,6 +270,29 @@ export default function EditableLoanDetails({ loanId, loanDetails }: EditableLoa
                 </Select>
               ) : (
                 <p className="mt-1 text-sm">{loanDetails?.loan?.loanPurpose || "Not specified"}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="funder">Funder</Label>
+              {isEditing ? (
+                <Select
+                  value={editData.funder}
+                  onValueChange={(value) => setEditData({...editData, funder: value})}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select funder" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="kiavi">Kiavi</SelectItem>
+                    <SelectItem value="visio">Visio</SelectItem>
+                    <SelectItem value="lima_one">Lima One</SelectItem>
+                    <SelectItem value="groundfloor">Groundfloor</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="mt-1 text-sm">{loanDetails?.loan?.funder || "Not specified"}</p>
               )}
             </div>
           </div>
