@@ -44,7 +44,6 @@ export default function DocumentManager({
   onCompletedRequirementsChange 
 }: DocumentManagerProps) {
   const [activeTab, setActiveTab] = useState("document-list");
-  const [isSyncing, setIsSyncing] = useState(false);
 
   const [localCompletedRequirements, setLocalCompletedRequirements] = useState<Set<string>>(new Set());
   const [assignedDocuments, setAssignedDocuments] = useState<Record<string, string[]>>({}); // requirement -> document IDs
@@ -57,7 +56,6 @@ export default function DocumentManager({
   const [showInlineUpload, setShowInlineUpload] = useState<string | null>(null); // Track which requirement is showing upload
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  const [googleDriveConnected, setGoogleDriveConnected] = useState(false);
   const { toast } = useToast();
   
   // Use external completed requirements if provided, otherwise use local state
@@ -98,38 +96,7 @@ export default function DocumentManager({
 
 
 
-  const syncGoogleDrive = async () => {
-    setIsSyncing(true);
-    try {
-      const response = await apiRequest("POST", `/api/loans/${loanId}/sync-drive`, {});
-      
-      // Handle both success and informational responses
-      if (response.success !== false) {
-        queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
-        
-        const successMessage = response.message || 
-          (response.documentsCreated > 0 || response.documentsUpdated > 0 || response.documentsUploaded > 0)
-            ? `Sync completed: ${response.documentsCreated || 0} new, ${response.documentsUpdated || 0} updated, ${response.documentsUploaded || 0} uploaded`
-            : "Google Drive sync completed successfully";
-            
-        toast({
-          title: "Sync Complete",
-          description: successMessage
-        });
-      } else {
-        throw new Error(response.message || 'Sync failed');
-      }
-    } catch (error: any) {
-      console.error("Sync error:", error);
-      toast({
-        title: "Sync Error", 
-        description: error.message || "Failed to sync documents from Google Drive.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+
 
   const resetAllDocuments = async () => {
     setIsResetting(true);
@@ -446,21 +413,7 @@ export default function DocumentManager({
               completedRequirements={Array.from(completedRequirements)}
             />
 
-            <Button 
-              onClick={syncGoogleDrive}
-              disabled={isSyncing}
-              variant="outline"
-              size="sm"
-            >
-              {isSyncing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Syncing...
-                </>
-              ) : (
-                "Sync Google Drive"
-              )}
-            </Button>
+
 
             <Button
               onClick={() => setShowResetConfirmation(true)}
