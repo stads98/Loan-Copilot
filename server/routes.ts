@@ -4006,6 +4006,49 @@ Would you like me to draft an email to request any specific documents or informa
     }
   });
 
+  // Send all loan documents to Google Drive (clear folder first, then upload all)
+  app.post('/api/loans/:loanId/send-to-drive', isAuthenticated, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.loanId);
+      const { folderId } = req.body;
+      const userId = (req.user as any)?.id;
+
+      if (!folderId) {
+        return res.status(400).json({ error: 'Folder ID is required' });
+      }
+
+      // Get all documents for this loan
+      const documents = await storage.getDocumentsByLoanId(loanId);
+      
+      if (documents.length === 0) {
+        return res.json({ uploadedCount: 0, message: 'No documents to upload' });
+      }
+
+      // Get Google Drive tokens
+      const tokens = await storage.getUserToken(userId, 'google_drive');
+      if (!tokens) {
+        return res.status(401).json({ error: 'Google Drive not connected' });
+      }
+
+      // Clear the folder first
+      const { clearDriveFolder, uploadDocumentsToDrive } = await import('./lib/google');
+      await clearDriveFolder(folderId, tokens.access_token, tokens.refresh_token);
+
+      // Upload all documents
+      const uploadResult = await uploadDocumentsToDrive(documents, folderId, tokens.access_token, tokens.refresh_token);
+      
+      res.json({ 
+        uploadedCount: uploadResult.successCount,
+        failedCount: uploadResult.failedCount,
+        message: `${uploadResult.successCount} documents uploaded to Google Drive`
+      });
+
+    } catch (error) {
+      console.error('Error sending documents to Drive:', error);
+      res.status(500).json({ error: 'Failed to send documents to Google Drive' });
+    }
+  });
+
   // Google Drive specific disconnect endpoint
   app.post('/api/auth/google-drive/disconnect', isAuthenticated, async (req, res) => {
     try {

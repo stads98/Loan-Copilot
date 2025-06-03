@@ -56,6 +56,8 @@ export default function DocumentManager({
   const [showInlineUpload, setShowInlineUpload] = useState<string | null>(null); // Track which requirement is showing upload
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isSendingToDrive, setIsSendingToDrive] = useState(false);
+  const [driveFolder, setDriveFolder] = useState<string | null>(null);
   const { toast } = useToast();
   
   // Use external completed requirements if provided, otherwise use local state
@@ -75,6 +77,11 @@ export default function DocumentManager({
         } else {
           console.log('No document assignments found in loan data');
         }
+        
+        // Set drive folder from loan data
+        if (data.loan?.googleDriveFolderId || data.loan?.driveFolder) {
+          setDriveFolder(data.loan.googleDriveFolderId || data.loan.driveFolder);
+        }
       } catch (error) {
         console.error("Failed to load document assignments:", error);
       }
@@ -82,6 +89,50 @@ export default function DocumentManager({
     
     loadLoanData();
   }, [loanId]);
+
+  const sendToDrive = async () => {
+    if (!driveFolder) {
+      toast({
+        title: "No Drive Folder",
+        description: "No Google Drive folder is connected to this loan.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSendingToDrive(true);
+    try {
+      const response = await fetch(`/api/loans/${loanId}/send-to-drive`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          folderId: driveFolder
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send documents to Drive');
+      }
+
+      const result = await response.json();
+      
+      toast({
+        title: "Success",
+        description: `${result.uploadedCount} documents sent to Google Drive`,
+      });
+    } catch (error) {
+      console.error('Error sending to Drive:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send documents to Google Drive",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingToDrive(false);
+    }
+  };
 
 
 
@@ -402,7 +453,27 @@ export default function DocumentManager({
               completedRequirements={Array.from(completedRequirements)}
             />
 
-
+            {driveFolder && (
+              <Button
+                onClick={sendToDrive}
+                disabled={isSendingToDrive}
+                variant="outline"
+                size="sm"
+                className="text-blue-600 hover:text-blue-700 border-blue-300 hover:border-blue-400"
+              >
+                {isSendingToDrive ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Send to Drive
+                  </>
+                )}
+              </Button>
+            )}
 
             <Button
               onClick={() => setShowResetConfirmation(true)}
