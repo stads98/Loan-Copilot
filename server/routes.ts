@@ -2183,27 +2183,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Download each PDF
           for (const attachment of pdfAttachments) {
             try {
-              // More robust duplicate detection
-              const cleanAttachmentName = attachment.filename.toLowerCase().replace(/\s+/g, ' ').trim();
-              
-              // Check for duplicates in existing documents
-              const isDuplicateExisting = existingDocuments.some(doc => {
-                const cleanExistingName = doc.name.split(' (from ')[0].toLowerCase().replace(/\s+/g, ' ').trim();
-                const sizeMatch = !doc.fileSize || Math.abs(doc.fileSize - attachment.size) < 5000; // 5KB tolerance
-                
-                return cleanExistingName === cleanAttachmentName && sizeMatch;
-              });
-              
-              // Check for duplicates in current scan
-              const attachmentKey = `${cleanAttachmentName}_${Math.floor(attachment.size / 1000)}kb`; // Round to nearest KB
-              const isDuplicateInScan = downloadedInThisScan.has(attachmentKey);
-
-              if (isDuplicateExisting || isDuplicateInScan) {
-                console.log(`Skipping duplicate: ${attachment.filename}`);
-                continue;
-              }
-
-              // Mark as downloaded in this scan
+              // DISABLED: Duplicate detection during email scanning to prevent false positives
+              // Mark as downloaded in this scan for internal tracking
+              const attachmentKey = `${attachment.filename}_${attachment.size}`;
               downloadedInThisScan.add(attachmentKey);
 
               // Download attachment data
@@ -2311,20 +2293,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   continue;
                 }
 
-                // Determine category based on sender
+                // Determine category based on document type, not sender
                 let category = 'other';
+                const filename = attachment.filename.toLowerCase();
                 
-                // Extract sender name from email
-                const fromMatch = message.from.match(/^([^<]+)/);
-                if (fromMatch) {
-                  const senderName = fromMatch[1].trim();
-                  category = senderName;
-                } else {
-                  // Fallback to email if name not found
-                  const emailMatch = message.from.match(/<([^>]+)>/);
-                  if (emailMatch) {
-                    category = emailMatch[1];
-                  }
+                if (filename.includes('insurance') || filename.includes('policy') || filename.includes('binder')) {
+                  category = 'insurance';
+                } else if (filename.includes('title') || filename.includes('deed') || filename.includes('survey')) {
+                  category = 'title';
+                } else if (filename.includes('appraisal') || filename.includes('valuation')) {
+                  category = 'property';
+                } else if (filename.includes('license') || filename.includes('llc') || filename.includes('id')) {
+                  category = 'borrower';
+                } else if (filename.includes('loan') || filename.includes('application')) {
+                  category = 'loan';
                 }
 
                 // Upload to Google Drive for backup and organization
