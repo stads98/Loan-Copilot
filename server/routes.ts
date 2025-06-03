@@ -1364,51 +1364,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let documentsCreated = 0;
       let documentsUploaded = 0;
       
-      // LOCAL DOCUMENT MANAGEMENT IS PRIMARY SOURCE - NEVER DELETE LOCAL FILES
-      // Step 1: Only add new files from Google Drive, preserve ALL local documents
-      const driveFileIds = new Set(files.map(f => f.id));
+      // LOCAL DOCUMENT MANAGEMENT IS PRIMARY SOURCE
+      // Upload-Only Sync: Local → Google Drive + Delete Synchronization
       const existingDocs = await storage.getDocumentsByLoanId(loanId);
+      // Get documents that were soft-deleted (marked as deleted)
+      const allDocs = await storage.getAllDocumentsByLoanId(loanId);
+      const deletedDocs = allDocs.filter(doc => doc.deleted === true);
       
-      // COMPREHENSIVE PROTECTION: Zero tolerance for local document deletion
-      console.log(`🛡️ EMERGENCY PROTECTION ACTIVE: All ${existingDocs.length} local documents are PERMANENTLY PROTECTED`);
-      console.log(`🛡️ Local document management is the ONLY authoritative source - Google Drive cannot delete local files`);
-      logProtectedOperation("Manual Google Drive Sync", existingDocs.length);
+      console.log(`📁 LOCAL-FIRST SYNC: Managing ${existingDocs.length} local documents as primary source`);
+      console.log(`🗑️ Processing ${deletedDocs.length} deleted documents for removal from Google Drive`);
+      logProtectedOperation("Upload-Only Google Drive Sync", existingDocs.length);
       
-      // Add or update documents from Google Drive
-      for (const file of files) {
-        try {
-          const existingDoc = existingDocs.find(doc => doc.fileId === file.id);
-          
-          if (existingDoc) {
-            // Update existing document with latest Google Drive metadata
-            await storage.updateDocument(existingDoc.id, {
-              name: file.name,
-              fileType: file.mimeType,
-              fileSize: file.size ? parseInt(file.size) : null,
-              driveFileId: file.id,
-              lastModified: file.modifiedTime ? new Date(file.modifiedTime) : null
-            });
-            documentsUpdated++;
-            console.log(`Updated document: ${file.name}`);
-          } else {
-            // Create new document for Google Drive file
-            await storage.createDocument({
-              name: file.name,
-              fileId: file.id,
-              fileType: file.mimeType,
-              fileSize: file.size ? parseInt(file.size) : null,
-              category: "imported",
-              loanId: loanId
-            });
-            documentsCreated++;
+      // Step 1: Delete from Google Drive any documents that were deleted locally
+      const { deleteFileFromGoogleDrive } = await import("./lib/google");
+      let documentsDeleted = 0;
+      
+      for (const deletedDoc of deletedDocs) {
+        if (deletedDoc.fileId && /^[a-zA-Z0-9_-]{25,50}$/.test(deletedDoc.fileId)) {
+          try {
+            console.log(`🗑️ Deleting ${deletedDoc.name} from Google Drive...`);
+            await deleteFileFromGoogleDrive(deletedDoc.fileId);
+            documentsDeleted++;
+            console.log(`✅ Successfully deleted ${deletedDoc.name} from Google Drive`);
+          } catch (deleteError) {
+            console.error(`❌ Failed to delete ${deletedDoc.name} from Google Drive:`, deleteError);
           }
-        } catch (error) {
-          console.error(`Error processing file ${file.name}:`, error);
         }
       }
 
-      // Step 2: Sync FROM Database TO Google Drive (prevent duplicates)
-      console.log("Starting bi-directional sync - uploading local documents to Google Drive...");
+      // Step 2: Upload local documents TO Google Drive (prevent duplicates)
+      console.log("Starting upload-only sync - uploading local documents to Google Drive...");
       try {
         const allLocalDocs = await storage.getDocumentsByLoanId(loanId);
         const driveFileNames = new Set(files.map(f => f.name));
