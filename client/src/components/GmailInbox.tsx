@@ -701,13 +701,22 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                     </div>
                   )}
                   <div
-                    className={`p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors ${
+                    className={`p-3 rounded-lg border hover:bg-gray-50 transition-colors ${
                       message.unread ? 'bg-blue-50 border-blue-200' : 'bg-white'
-                    } ${hasThread ? 'ml-4' : ''}`}
-                    onClick={() => openMessage(message)}
+                    } ${hasThread ? 'ml-4' : ''} ${selectedEmails.has(message.id) ? 'ring-2 ring-blue-500' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
+                      {loanId && (
+                        <div className="flex items-center mt-1">
+                          <Checkbox
+                            id={`email-${message.id}`}
+                            checked={selectedEmails.has(message.id)}
+                            onCheckedChange={() => toggleEmailSelection(message.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openMessage(message)}>
                         <div className="flex items-center gap-2 mb-1">
                           {message.subject?.startsWith('Re:') ? (
                             <div className="flex items-center gap-1">
