@@ -1138,17 +1138,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get files from Google Drive folder
       const { getDriveFiles } = await import("./lib/google");
+      const { uploadFileToGoogleDriveOAuth } = await import("./lib/google-oauth");
       const googleTokens = (req.session as any)?.googleTokens;
-      const files = await getDriveFiles(folderId, googleTokens?.access_token);
-      
-      if (!files || files.length === 0) {
-        return res.status(200).json({ 
-          message: "Google Drive folder is empty or contains no supported file types", 
-          documentsCreated: 0,
-          documentsUpdated: 0,
-          documentsUploaded: 0
-        });
-      }
+      const files = await getDriveFiles(folderId, googleTokens?.access_token) || [];
       
       console.log(`Found ${files.length} files to sync`);
       
