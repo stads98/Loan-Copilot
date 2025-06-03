@@ -602,6 +602,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get Google Drive folder name
+  app.get("/api/drive/folder/:folderId/name", async (req, res) => {
+    try {
+      const { folderId } = req.params;
+      
+      if (!req.user) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const userId = (req.user as any).id;
+      
+      // Get tokens from session or database
+      let googleTokens = (req.session as any)?.googleTokens;
+      
+      if (!googleTokens) {
+        const driveToken = await storage.getUserToken(userId, 'drive');
+        if (driveToken) {
+          googleTokens = {
+            access_token: driveToken.accessToken,
+            refresh_token: driveToken.refreshToken,
+            expiry_date: driveToken.expiryDate?.getTime()
+          };
+        } else {
+          return res.status(401).json({ message: "Google Drive not connected" });
+        }
+      }
+
+      const { google } = await import('googleapis');
+      const OAuth2 = google.auth.OAuth2;
+      
+      const oauth2Client = new OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        'http://localhost:3000/callback'
+      );
+      
+      oauth2Client.setCredentials(googleTokens);
+      const driveClient = google.drive({ version: 'v3', auth: oauth2Client });
+
+      const response = await driveClient.files.get({
+        fileId: folderId,
+        fields: 'id,name'
+      });
+
+      res.json({ 
+        id: response.data.id,
+        name: response.data.name 
+      });
+    } catch (error) {
+      console.error('Error fetching folder name:', error);
+      res.status(500).json({ error: 'Failed to fetch folder name' });
+    }
+  });
+
   // Lenders
   app.get("/api/lenders", async (req, res) => {
     const lenders = await storage.getLenders();
