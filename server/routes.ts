@@ -1724,7 +1724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     const hasStreetNumber = filename.includes('12333') || subject.includes('12333');
                     if (!hasStreetNumber) return false;
                     
-                    // Check for various street name formats
+                    // Check for various street name formats with common abbreviations
                     const streetVariations = [
                       'colony preserve dr',
                       'colony preserve drive', 
@@ -1738,7 +1738,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       'colony preserve avenue',
                       'colony preserve way',
                       'colony preserve ln',
-                      'colony preserve lane'
+                      'colony preserve lane',
+                      'colony preserve rd',
+                      'colony preserve road',
+                      'colony preserve pl',
+                      'colony preserve place',
+                      'colony preserve cir',
+                      'colony preserve circle',
+                      'colony preserve pkwy',
+                      'colony preserve parkway'
                     ];
                     
                     return streetVariations.some(variation => 

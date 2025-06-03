@@ -146,18 +146,15 @@ export default function DocumentManager({
   const restoreDocument = async (documentId: number) => {
     try {
       const response = await apiRequest("PATCH", `/api/documents/${documentId}/restore`, {});
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Document restored successfully."
-        });
-        // Refresh both document lists and deleted documents
-        queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
-        fetchDeletedDocuments();
-      } else {
-        throw new Error('Restore failed');
-      }
+      toast({
+        title: "Success",
+        description: "Document restored successfully."
+      });
+      // Refresh both document lists and deleted documents
+      queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+      fetchDeletedDocuments();
     } catch (error) {
+      console.error('Restore error:', error);
       toast({
         title: "Error",
         description: "Failed to restore document.",
@@ -462,11 +459,6 @@ export default function DocumentManager({
                       <Badge variant="secondary" className="text-xs">
                         {doc.category || 'other'}
                       </Badge>
-                      {doc.source === 'gmail' && (
-                        <Badge variant="outline" className="text-xs">
-                          Email
-                        </Badge>
-                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-xs text-gray-400">
