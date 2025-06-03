@@ -1752,45 +1752,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   // Allow documents that match ANY of these criteria:
                   
                   // 1. From one of our relevant contacts
-                  const relevantContacts = [
-                    'sam2345@live.com',           // Samuel Anicette (borrower)
-                    'kristian@newpathtitle.com',  // Kristian Negrin (title)
-                    'taujhae@newpathtitle.com',   // Taujhae Oladejo (title)
-                    'luma@planlifeusa.com',       // Luma Aref (insurance)
-                    'jacksonlonda137@gmail.com'   // Londa Jackson (assistant)
-                  ];
-                  
+                  const relevantContacts = loan.contacts?.map((c: any) => c.email?.toLowerCase()).filter(Boolean) || [];
                   const isFromRelevantContact = relevantContacts.some(contact => messageFrom.includes(contact));
                   
-                  // 2. OR mentions this specific property (12333 Colony Preserve with variations)
+                  // 2. OR mentions this specific property
                   const mentionsProperty = (() => {
-                    const hasStreetNumber = filename.includes('12333') || subject.includes('12333');
+                    if (!loan.loan?.propertyAddress) return false;
+                    
+                    const propertyAddress = loan.loan.propertyAddress.toLowerCase();
+                    const streetMatch = propertyAddress.match(/^(\d+)\s+(.+?)(?:,|$)/);
+                    
+                    if (!streetMatch) return false;
+                    
+                    const streetNumber = streetMatch[1];
+                    const streetName = streetMatch[2];
+                    
+                    // Check if filename or subject includes the street number
+                    const hasStreetNumber = filename.includes(streetNumber) || subject.includes(streetNumber);
                     if (!hasStreetNumber) return false;
                     
-                    // Check for various street name formats with common abbreviations
-                    const streetVariations = [
-                      'colony preserve dr',
-                      'colony preserve drive', 
-                      'colony preserve ct',
-                      'colony preserve court',
-                      'colony preserve st',
-                      'colony preserve street',
-                      'colony preserve blvd',
-                      'colony preserve boulevard',
-                      'colony preserve ave',
-                      'colony preserve avenue',
-                      'colony preserve way',
-                      'colony preserve ln',
-                      'colony preserve lane',
-                      'colony preserve rd',
-                      'colony preserve road',
-                      'colony preserve pl',
-                      'colony preserve place',
-                      'colony preserve cir',
-                      'colony preserve circle',
-                      'colony preserve pkwy',
-                      'colony preserve parkway'
-                    ];
+                    // Create variations of the street name
+                    const streetVariations = [streetName];
+                    
+                    // Add common abbreviations
+                    const streetWithAbbrev = streetName
+                      .replace(/\bdrive\b/gi, 'dr')
+                      .replace(/\bstreet\b/gi, 'st')
+                      .replace(/\bavenue\b/gi, 'ave')
+                      .replace(/\broad\b/gi, 'rd')
+                      .replace(/\bboulevard\b/gi, 'blvd')
+                      .replace(/\bcourt\b/gi, 'ct')
+                      .replace(/\blane\b/gi, 'ln')
+                      .replace(/\bplace\b/gi, 'pl')
+                      .replace(/\bcircle\b/gi, 'cir')
+                      .replace(/\bparkway\b/gi, 'pkwy');
+                    
+                    if (streetWithAbbrev !== streetName) {
+                      streetVariations.push(streetWithAbbrev);
+                    }
                     
                     return streetVariations.some(variation => 
                       filename.includes(variation) || subject.includes(variation)
@@ -1798,12 +1797,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   })();
                   
                   // 3. OR mentions loan number
-                  const mentionsLoanNumber = (
-                    filename.includes('34991748') || subject.includes('34991748')
+                  const mentionsLoanNumber = loan.loan?.loanNumber && (
+                    filename.includes(loan.loan.loanNumber.toLowerCase()) || 
+                    subject.includes(loan.loan.loanNumber.toLowerCase())
                   );
                   
-                  // Only include if from relevant contact OR mentions this specific property/loan
-                  return isFromRelevantContact || mentionsProperty || mentionsLoanNumber;
+                  // 4. OR mentions borrower name
+                  const mentionsBorrower = loan.loan?.borrowerName && (
+                    filename.includes(loan.loan.borrowerName.toLowerCase()) ||
+                    subject.includes(loan.loan.borrowerName.toLowerCase()) ||
+                    messageFrom.includes(loan.loan.borrowerName.toLowerCase())
+                  );
+                  
+                  // Only include if from relevant contact OR mentions this specific property/loan/borrower
+                  return isFromRelevantContact || mentionsProperty || mentionsLoanNumber || mentionsBorrower;
                 })();
 
                 if (!isRelevantDocument) {
