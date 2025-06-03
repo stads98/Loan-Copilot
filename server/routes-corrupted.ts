@@ -2444,82 +2444,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!(req.session as any)?.gmailTokens) {
         return res.status(401).json({ message: "Gmail authentication required" });
       }
+            id: message.id!,
+            format: 'metadata',
+            metadataHeaders: ['From', 'Subject', 'Date', 'To', 'Cc']
+          });
 
-      const { google } = await import('googleapis');
-      const { createGmailAuth } = await import("./lib/gmail");
-      const gmail = google.gmail('v1');
-      
-      const gmailAuth = createGmailAuth(
-        (req.session as any).gmailTokens.access_token,
-        (req.session as any).gmailTokens.refresh_token
-      );
+          const headers = msgResponse.data.payload?.headers || [];
+          const subject = headers.find(h => h.name === 'Subject')?.value?.toLowerCase() || '';
+          const from = headers.find(h => h.name === 'From')?.value?.toLowerCase() || '';
+          const to = headers.find(h => h.name === 'To')?.value?.toLowerCase() || '';
+          const cc = headers.find(h => h.name === 'Cc')?.value?.toLowerCase() || '';
 
-      const { to, subject, body } = req.body;
-      const files = req.files as Express.Multer.File[];
+          // Use same filtering logic as regular Gmail messages
+          let isRelevant = false;
 
-      if (!to || !subject) {
-        return res.status(400).json({ message: "To and subject are required" });
-      }
+          // Check property address with enhanced matching
+          if (loan.property?.address) {
+            const fullAddress = loan.property.address.toLowerCase();
+            const streetOnly = fullAddress.split(',')[0].trim().toLowerCase();
+            
+            const addressVariations = [fullAddress, streetOnly];
+            
+            const streetMatch = streetOnly.match(/^(\d+)\s+(.+?)(\s+(st|street|dr|drive|ave|avenue|rd|road|ln|lane|blvd|boulevard|way|ct|court|pl|place))?$/i);
+            if (streetMatch) {
+              const streetNumber = streetMatch[1];
+              const streetName = streetMatch[2];
+              
+              addressVariations.push(streetName);
+              addressVariations.push(`${streetNumber} ${streetName}`);
+              
+              const streetWithAbbrev = streetOnly
+                .replace(/\bdrive\b/gi, 'dr')
+                .replace(/\bstreet\b/gi, 'st')
+                .replace(/\bavenue\b/gi, 'ave')
+                .replace(/\broad\b/gi, 'rd')
+                .replace(/\bboulevard\b/gi, 'blvd');
+                
+              if (streetWithAbbrev !== streetOnly) {
+                addressVariations.push(streetWithAbbrev);
+              }
+            }
+            
+            for (const variation of addressVariations) {
+              if (subject.includes(variation)) {
+                isRelevant = true;
+                break;
+              }
+            }
+          }
 
-      let emailContent = [
-        'Content-Type: text/html; charset="UTF-8"',
-        'MIME-Version: 1.0',
-        `To: ${to}`,
-        `Subject: ${subject}`,
-        '',
-        body || ''
-      ].join('\n');
-
-      if (files && files.length > 0) {
-        const boundary = 'boundary_' + Math.random().toString(36);
-        emailContent = [
-          `Content-Type: multipart/mixed; boundary="${boundary}"`,
-          'MIME-Version: 1.0',
-          `To: ${to}`,
-          `Subject: ${subject}`,
-          '',
-          `--${boundary}`,
-          'Content-Type: text/html; charset="UTF-8"',
-          '',
-          body || '',
-          ''
-        ].join('\n');
-
-        for (const file of files) {
-          const fileContent = file.buffer.toString('base64');
-          emailContent += [
-            `--${boundary}`,
-            `Content-Type: ${file.mimetype}`,
-            `Content-Disposition: attachment; filename="${file.originalname}"`,
-            'Content-Transfer-Encoding: base64',
-            '',
-            fileContent,
-            ''
-          ].join('\n');
-        }
-
-        emailContent += `--${boundary}--`;
-      }
-
-      const encodedEmail = Buffer.from(emailContent).toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-
-      await gmail.users.messages.send({
-        auth: gmailAuth,
-        userId: 'me',
-        requestBody: {
-          raw: encodedEmail
-        }
-      });
-
-      res.json({ success: true, message: "Email sent successfully" });
-    } catch (error) {
-      console.error('Error sending email:', error);
-      res.status(500).json({ message: "Failed to send email" });
-    }
-  });
+          // Check loan number
+          if (!isRelevant && loan.loan?.loanNumber && subject.includes(loan.loan.loanNumber.toLowerCase())) {
+            isRelevant = true;
           }
 
           // Check borrower name
