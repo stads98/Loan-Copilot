@@ -1196,9 +1196,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
           
-          // Only upload documents that have local file content (uploaded files, not Google Drive documents)
-          if (localDoc.fileId && localDoc.fileId.includes('.')) {
-            // This is a local file (has extension in fileId)
+          // Only upload documents that have local file content (uploaded files or email attachments)
+          if (localDoc.fileId && (localDoc.fileId.includes('.') || localDoc.fileId.startsWith('email-attachment-'))) {
+            // This is a local file (has extension in fileId or is an email attachment)
             try {
               const fs = await import('fs').then(m => m.promises);
               const path = await import('path');
