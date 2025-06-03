@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Mail, RefreshCw, ExternalLink, User, Calendar, Paperclip, ArrowLeft, Eye, Download, Save } from "lucide-react";
+import { Mail, RefreshCw, ExternalLink, User, Calendar, Paperclip, ArrowLeft, Eye, Download, Save, Search, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 
 interface GmailMessage {
@@ -48,6 +49,8 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
   const [showReply, setShowReply] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [isSendingReply, setIsSendingReply] = useState(false);
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
+  const [isScanningSelected, setIsScanningSelected] = useState(false);
   const { toast } = useToast();
 
   // Function to parse email threads and separate individual messages
@@ -449,6 +452,111 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
 
   // Auto-processing disabled - only manual operations allowed;
 
+  // Selective email scanning function
+  const scanSelectedEmails = async () => {
+    if (selectedEmails.size === 0) {
+      toast({
+        title: "No emails selected",
+        description: "Please select emails to scan for PDFs",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!loanId) {
+      toast({
+        title: "No loan selected",
+        description: "Please select a loan to add documents to",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsScanningSelected(true);
+    let totalPDFs = 0;
+
+    try {
+      for (const emailId of Array.from(selectedEmails)) {
+        try {
+          // Get email details and attachments
+          const response = await apiRequest("GET", `/api/gmail/messages/${emailId}`);
+          const attachments = response.attachments || [];
+          
+          // Filter for PDF attachments
+          const pdfAttachments = attachments.filter((att: any) => 
+            att.mimeType?.includes('pdf') || att.filename?.toLowerCase().endsWith('.pdf')
+          );
+
+          // Download each PDF attachment
+          for (const attachment of pdfAttachments) {
+            try {
+              const attachmentResponse = await apiRequest("GET", `/api/gmail/messages/${emailId}/attachments/${attachment.attachmentId}`);
+              
+              if (attachmentResponse && attachmentResponse.data) {
+                const saveResponse = await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
+                  attachmentData: attachmentResponse.data,
+                  filename: attachment.filename,
+                  mimeType: attachment.mimeType,
+                  size: attachment.size,
+                  emailSubject: response.subject,
+                  emailFrom: response.from
+                });
+                
+                totalPDFs++;
+              }
+            } catch (attachmentError) {
+              console.error(`Failed to download attachment ${attachment.filename}:`, attachmentError);
+            }
+          }
+        } catch (emailError) {
+          console.error(`Failed to process email ${emailId}:`, emailError);
+        }
+      }
+
+      // Refresh documents list
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId] });
+
+      // Clear selection
+      setSelectedEmails(new Set());
+
+      toast({
+        title: "Scan Complete",
+        description: `Found and downloaded ${totalPDFs} PDF documents from ${selectedEmails.size} selected emails`,
+      });
+
+    } catch (error) {
+      console.error("Error scanning selected emails:", error);
+      toast({
+        title: "Scan Failed",
+        description: "Failed to scan selected emails for PDFs",
+        variant: "destructive"
+      });
+    } finally {
+      setIsScanningSelected(false);
+    }
+  };
+
+  // Toggle email selection
+  const toggleEmailSelection = (emailId: string) => {
+    const newSelected = new Set(selectedEmails);
+    if (newSelected.has(emailId)) {
+      newSelected.delete(emailId);
+    } else {
+      newSelected.add(emailId);
+    }
+    setSelectedEmails(newSelected);
+  };
+
+  // Select/deselect all emails
+  const toggleSelectAll = () => {
+    if (selectedEmails.size === messages.length) {
+      setSelectedEmails(new Set());
+    } else {
+      setSelectedEmails(new Set(messages.map(msg => msg.id)));
+    }
+  };
+
   useEffect(() => {
     // Auto-refresh every minute
     const interval = setInterval(() => {
@@ -499,6 +607,27 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
               >
                 <ExternalLink className="w-4 h-4" />
               </Button>
+              {loanId && (
+                <Button
+                  onClick={scanSelectedEmails}
+                  disabled={isScanningSelected || selectedEmails.size === 0}
+                  variant="outline"
+                  size="sm"
+                  className="ml-2"
+                >
+                  {isScanningSelected ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Scanning...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 mr-2" />
+                      Scan Selected ({selectedEmails.size})
+                    </>
+                  )}
+                </Button>
+              )}
             </>
           ) : (
             <Button
@@ -542,6 +671,19 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
           </div>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto">
+            {/* Select All Checkbox */}
+            {loanId && messages.length > 0 && (
+              <div className="flex items-center gap-2 p-2 border-b border-gray-200 bg-gray-50 rounded-lg">
+                <Checkbox
+                  id="select-all"
+                  checked={selectedEmails.size === messages.length && messages.length > 0}
+                  onCheckedChange={toggleSelectAll}
+                />
+                <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
+                  Select All ({messages.length} emails)
+                </label>
+              </div>
+            )}
             {messages.map((message, index) => {
               // Check if this message is part of a thread
               const isThreadStart = index === 0 || messages[index - 1].threadId !== message.threadId;
