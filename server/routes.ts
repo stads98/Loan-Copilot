@@ -1343,13 +1343,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let documentsCreated = 0;
       let documentsUploaded = 0;
       
-      // Step 1: Sync FROM Google Drive TO Database - only add new files, don't remove local files
+      // LOCAL DOCUMENT MANAGEMENT IS PRIMARY SOURCE - NEVER DELETE LOCAL FILES
+      // Step 1: Only add new files from Google Drive, preserve ALL local documents
       const driveFileIds = new Set(files.map(f => f.id));
       const existingDocs = await storage.getDocumentsByLoanId(loanId);
       
-      // DO NOT remove local documents - local storage is the primary source
-      // Google Drive is backup/sync destination only
-      console.log(`Preserving all ${existingDocs.length} local documents as primary source`);
+      console.log(`PROTECTION ACTIVE: Preserving all ${existingDocs.length} local documents as primary source`);
+      console.log(`Google Drive sync will only ADD files, never DELETE local files`);
       
       // Add or update documents from Google Drive
       for (const file of files) {
