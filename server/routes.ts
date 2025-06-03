@@ -128,6 +128,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Get Google OAuth URL endpoint (for frontend to use)
+  app.get("/api/auth/google/url", async (req, res) => {
+    try {
+      const { google } = await import('googleapis');
+      const OAuth2 = google.auth.OAuth2;
+      
+      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+        return res.status(500).json({ error: 'Google credentials not configured' });
+      }
+      
+      const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
+      
+      const oauth2Client = new OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        redirectUri
+      );
+
+      const scopes = [
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/drive',
+        'https://www.googleapis.com/auth/gmail.send',
+        'https://www.googleapis.com/auth/gmail.readonly',
+        'https://www.googleapis.com/auth/userinfo.email'
+      ];
+
+      const authUrl = oauth2Client.generateAuthUrl({
+        access_type: 'offline',
+        scope: scopes,
+        prompt: 'consent'
+      });
+
+      res.json({ authUrl });
+    } catch (error) {
+      console.error('Google OAuth URL generation error:', error);
+      res.status(500).json({ error: 'Failed to generate Google authentication URL' });
+    }
+  });
+
   // Google OAuth routes
   app.get("/api/auth/google", async (req, res) => {
     try {

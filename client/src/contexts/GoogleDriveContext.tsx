@@ -42,30 +42,19 @@ export const GoogleDriveProvider: React.FC<GoogleDriveProviderProps> = ({ childr
   const connect = async () => {
     try {
       setIsLoading(true);
-      window.open('/api/auth/google', 'google-auth', 'width=500,height=600');
       
-      // Listen for auth completion
-      const checkConnection = setInterval(async () => {
-        try {
-          const response = await fetch('/api/auth/google/status');
-          const data = await response.json();
-          if (data.connected) {
-            setIsConnected(true);
-            clearInterval(checkConnection);
-            setIsLoading(false);
-          }
-        } catch (error) {
-          // Continue checking
-        }
-      }, 1000);
-
-      // Stop checking after 2 minutes
-      setTimeout(() => {
-        clearInterval(checkConnection);
-        setIsLoading(false);
-      }, 120000);
+      // Get the unified Google OAuth URL
+      const response = await fetch('/api/auth/google/url');
+      const data = await response.json();
+      
+      if (data.authUrl) {
+        // Redirect to Google OAuth for unified authentication
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error('Failed to get authentication URL');
+      }
     } catch (error) {
-      console.error('Error connecting to Google Drive:', error);
+      console.error('Error connecting to Google services:', error);
       setIsLoading(false);
     }
   };
