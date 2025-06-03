@@ -332,10 +332,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const documents = await storage.getDocumentsByLoanId(loanId);
       
-      // Group by name and file_size to find duplicates
+      // Function to normalize filename by removing macOS download suffixes like (1), (2), etc.
+      function normalizeFileName(filename: string): string {
+        // Remove patterns like " (1)", " (2)", etc. from the end before the file extension
+        return filename.replace(/\s*\(\d+\)(\.[^.]+)?$/, '$1');
+      }
+      
+      // Group by normalized name and file_size to find duplicates
       const documentGroups = new Map<string, any[]>();
       documents.forEach(doc => {
-        const key = `${doc.name}_${doc.fileSize}`;
+        const normalizedName = normalizeFileName(doc.name);
+        const key = `${normalizedName}_${doc.fileSize}`;
         if (!documentGroups.has(key)) {
           documentGroups.set(key, []);
         }
@@ -349,8 +356,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Sort by upload date, keep the first one
           group.sort((a, b) => new Date(a.uploadedAt || 0).getTime() - new Date(b.uploadedAt || 0).getTime());
           
+          console.log(`Found duplicate group for ${key}:`, group.map(d => `${d.name} (${d.uploadedAt})`));
+          
           // Delete all but the first
           for (let i = 1; i < group.length; i++) {
+            console.log(`Removing duplicate: ${group[i].name} (ID: ${group[i].id})`);
             await storage.deleteDocument(group[i].id);
             duplicatesRemoved++;
           }
@@ -1496,11 +1506,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Add property-specific searches (only include borrower name if it mentions the property)
+      // Add property-specific searches (more restrictive - require both borrower AND property)
       if (loan.loan?.borrowerName && loan.loan?.propertyAddress) {
         // Extract the street address (first part before the comma)
         const streetAddress = loan.loan.propertyAddress.split(',')[0].trim();
-        searchTerms.push(`("${loan.loan.borrowerName}" AND "${streetAddress}") after:${dateQuery}`);
+        // More restrictive: require BOTH borrower name AND street address in subject or body
+        searchTerms.push(`(subject:("${loan.loan.borrowerName}" "${streetAddress}") OR ("${loan.loan.borrowerName}" AND "${streetAddress}" AND (subject:"loan" OR subject:"application" OR subject:"closing" OR subject:"refinance"))) after:${dateQuery}`);
       }
       if (loan.loan?.loanNumber) {
         searchTerms.push(`"${loan.loan.loanNumber}" after:${dateQuery}`);
@@ -1975,11 +1986,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
           
-          // Add property-specific searches (only include borrower name if it mentions the property)
+          // Add property-specific searches (more restrictive - require both borrower AND property)
           if (loan.loan?.borrowerName && loan.loan?.propertyAddress) {
             // Extract the street address (first part before the comma)
             const streetAddress = loan.loan.propertyAddress.split(',')[0].trim();
-            searchTerms.push(`("${loan.loan.borrowerName}" AND "${streetAddress}") after:${dateQuery}`);
+            // More restrictive: require BOTH borrower name AND street address in subject or body
+            searchTerms.push(`(subject:("${loan.loan.borrowerName}" "${streetAddress}") OR ("${loan.loan.borrowerName}" AND "${streetAddress}" AND (subject:"loan" OR subject:"application" OR subject:"closing" OR subject:"refinance"))) after:${dateQuery}`);
           }
           if (loan.loan?.loanNumber) {
             searchTerms.push(`"${loan.loan.loanNumber}" after:${dateQuery}`);
