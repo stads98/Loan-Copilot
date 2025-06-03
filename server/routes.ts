@@ -1660,46 +1660,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Error fetching documents" });
     }
   });
-      const googleTokens = (req.session as any)?.googleTokens;
-      const currentDriveFiles = await getDriveFiles(folderId, googleTokens?.access_token) || [];
-      
-      console.log(`Found ${currentDriveFiles.length} existing files in Google Drive folder`);
-      
-      // STEP 1: Clear Google Drive folder completely (simplified approach)
-      console.log("STEP 1: Clearing Google Drive folder to ensure exact mirror...");
-      let deletedCount = 0;
-      
-      // For now, we'll track what gets uploaded instead of deleting
-      // This ensures no data loss during the sync process
-      console.log("Proceeding to upload local documents to create mirror...");
-      
-      // STEP 2: Upload all local documents to Google Drive
-      console.log("STEP 2: Uploading all local documents to Google Drive...");
-      let uploadedCount = 0;
-      
-      for (const localDoc of activeLocalDocs) {
-        try {
-          // Only upload documents that have local file content
-          if (localDoc.fileId && (localDoc.fileId.includes('.') || localDoc.fileId.startsWith('email-attachment-'))) {
-            const fs = await import('fs').then(m => m.promises);
-            const path = await import('path');
-            const filePath = path.join(process.cwd(), 'uploads', localDoc.fileId);
-            
-            try {
-              if (await fs.access(filePath).then(() => true).catch(() => false)) {
-                console.log(`Uploading ${localDoc.name} to Google Drive...`);
-                const fileBuffer = await fs.readFile(filePath);
-                
-                const driveFileId = await uploadFileToGoogleDriveOAuth(
-                  localDoc.name,
-                  fileBuffer,
-                  localDoc.fileType || 'application/octet-stream',
-                  folderId,
-                  googleTokens
-                );
-                
-                // Update document record with new Google Drive file ID
-                await storage.updateDocument(localDoc.id, {
+
+  // Return the HTTP server and complete setup
+  const httpServer = createServer(app);
+  
+  return httpServer;
+}
                   fileId: driveFileId,
                   source: "synced_to_drive"
                 });
