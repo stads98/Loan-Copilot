@@ -302,13 +302,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
           (req.session as any).googleTokens = googleTokens;
         } else {
-          return res.status(401).json({ error: 'Google Drive not connected' });
+          return res.status(401).json({ 
+            error: 'Google Drive not connected',
+            requiresReauth: true 
+          });
         }
       }
 
-      // Use OAuth tokens to list folders
+      // Check if we have a refresh token
+      if (!googleTokens.refresh_token) {
+        return res.status(401).json({ 
+          error: 'Google Drive authentication expired. Please reconnect.',
+          requiresReauth: true 
+        });
+      }
+
+      // Use OAuth tokens to list folders from main loan folder
       const { listGoogleDriveFilesOAuth } = await import("./lib/google-oauth");
-      const files = await listGoogleDriveFilesOAuth('root', googleTokens);
+      const mainLoanFolderId = '1hqWhYyq9XzTg_LRfQCuNcNwwb2lX82qY'; // Main loan folder
+      const files = await listGoogleDriveFilesOAuth(mainLoanFolderId, googleTokens);
       
       // Filter to only show folders
       const folderList = files
@@ -322,7 +334,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ folders: folderList });
     } catch (error) {
       console.error('Error listing Google Drive folders:', error);
-      res.status(500).json({ error: 'Failed to list folders' });
+      if (error.message?.includes('refresh token') || error.message?.includes('unauthorized')) {
+        res.status(401).json({ 
+          error: 'Google Drive authentication expired. Please reconnect.',
+          requiresReauth: true 
+        });
+      } else {
+        res.status(500).json({ error: 'Failed to list folders' });
+      }
     }
   });
 
@@ -360,9 +379,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { getAuthenticatedDriveClient } = await import("./lib/google-oauth");
       const driveClient = getAuthenticatedDriveClient(googleTokens);
       
+      const mainLoanFolderId = '1hqWhYyq9XzTg_LRfQCuNcNwwb2lX82qY'; // Main loan folder
       const folderMetadata = {
         name: name.trim(),
-        mimeType: 'application/vnd.google-apps.folder'
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [mainLoanFolderId]
       };
 
       const response = await driveClient.files.create({

@@ -32,8 +32,10 @@ export default function GoogleDriveFolderSelector({
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFolder, setSelectedFolder] = useState<GoogleDriveFolder | null>(null);
-  const [newFolderName, setNewFolderName] = useState(propertyAddress);
+  const [newFolderName, setNewFolderName] = useState("");
   const { toast } = useToast();
+
+  const [requiresAuth, setRequiresAuth] = useState(false);
 
   const loadFolders = async () => {
     setLoading(true);
@@ -42,8 +44,19 @@ export default function GoogleDriveFolderSelector({
       if (response.ok) {
         const data = await response.json();
         setFolders(data.folders || []);
+        setRequiresAuth(false);
       } else {
-        throw new Error('Failed to load folders');
+        const errorData = await response.json();
+        if (errorData.requiresReauth) {
+          setRequiresAuth(true);
+          toast({
+            title: "Google Drive Authentication Required",
+            description: "Please reconnect your Google Drive account to access folders.",
+            variant: "destructive"
+          });
+        } else {
+          throw new Error('Failed to load folders');
+        }
       }
     } catch (error) {
       console.error('Error loading Google Drive folders:', error);
@@ -120,6 +133,13 @@ export default function GoogleDriveFolderSelector({
       loadFolders();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    // Auto-populate new folder name with property address when it changes
+    if (propertyAddress && !newFolderName) {
+      setNewFolderName(propertyAddress);
+    }
+  }, [propertyAddress, newFolderName]);
 
   const filteredFolders = folders.filter(folder =>
     folder.name.toLowerCase().includes(searchQuery.toLowerCase())
