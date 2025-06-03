@@ -513,33 +513,18 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
         }
       }
 
-      // Force immediate and complete cache refresh
-      console.log('Forcing cache refresh for loan documents...');
+      // Targeted cache refresh - only for document-related data
+      console.log('Refreshing documents cache...');
       
-      // 1. Remove all cached data completely
-      queryClient.removeQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
+      // Only refresh loan data to show new documents, preserve Gmail interface
       queryClient.removeQueries({ queryKey: [`/api/loans/${loanId}`] });
-      queryClient.removeQueries({ queryKey: ['/api/loans', loanId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
       
-      // 2. Invalidate all related queries
-      await queryClient.invalidateQueries({ 
-        queryKey: ['/api/loans'], 
-        refetchType: 'all'
-      });
-      
-      // 3. Force immediate refetch with fresh network requests
-      setTimeout(async () => {
-        await queryClient.refetchQueries({ 
-          queryKey: [`/api/loans/${loanId}`],
-          type: 'active'
-        });
-        console.log('Documents refreshed successfully');
-      }, 100);
-      
-      // 4. Trigger a window reload as ultimate fallback if cache is stubborn
+      // Small delay then refresh just the loan data
       setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+        queryClient.refetchQueries({ queryKey: [`/api/loans/${loanId}`] });
+        console.log('Documents updated successfully');
+      }, 200);
 
       // Clear selection
       setSelectedEmails(new Set());
