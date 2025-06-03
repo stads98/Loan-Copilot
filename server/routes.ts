@@ -316,6 +316,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ message: "Invalid loan ID" });
     }
 
+    // Auto-remove duplicates when loan is accessed
+    await removeDuplicatesForLoan(id);
+
     const loan = await storage.getLoanWithDetails(id);
     if (!loan) {
       return res.status(404).json({ message: "Loan not found" });
@@ -323,6 +326,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     res.json(loan);
   });
+
+  // Helper function to automatically remove duplicates
+  async function removeDuplicatesForLoan(loanId: number) {
+    try {
+      const documents = await storage.getDocumentsByLoanId(loanId);
+      
+      // Group by name and file_size to find duplicates
+      const documentGroups = new Map<string, any[]>();
+      documents.forEach(doc => {
+        const key = `${doc.name}_${doc.fileSize}`;
+        if (!documentGroups.has(key)) {
+          documentGroups.set(key, []);
+        }
+        documentGroups.get(key)!.push(doc);
+      });
+      
+      // Remove duplicates (keep the first, delete the rest)
+      let duplicatesRemoved = 0;
+      for (const [key, group] of documentGroups) {
+        if (group.length > 1) {
+          // Sort by upload date, keep the first one
+          group.sort((a, b) => new Date(a.uploadedAt || 0).getTime() - new Date(b.uploadedAt || 0).getTime());
+          
+          // Delete all but the first
+          for (let i = 1; i < group.length; i++) {
+            await storage.deleteDocument(group[i].id);
+            duplicatesRemoved++;
+          }
+        }
+      }
+      
+      if (duplicatesRemoved > 0) {
+        console.log(`Auto-removed ${duplicatesRemoved} duplicate documents for loan ${loanId}`);
+      }
+    } catch (error) {
+      console.error("Error removing duplicates:", error);
+    }
+  }
 
   app.delete("/api/loans/:id", isAuthenticated, async (req, res) => {
     try {
