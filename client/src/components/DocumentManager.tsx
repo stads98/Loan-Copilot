@@ -812,94 +812,16 @@ export default function DocumentManager({
                           </div>
                         )}
                         
-                        {/* Inline Upload Section */}
                         {showInlineUpload === req.name && (
                           <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <div className="flex items-center justify-between mb-3">
-                              <h5 className="text-sm font-medium text-blue-900">Upload for {req.name}</h5>
-                              <Button size="sm" variant="ghost" onClick={() => setShowInlineUpload(null)}>
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                            
-                            <div className="space-y-3">
-                              <div>
-                                <input
-                                  type="file"
-                                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                                  multiple
-                                  onChange={async (e) => {
-                                    const files = Array.from(e.target.files || []);
-                                    if (files.length > 0) {
-                                      // Handle multiple file uploads
-                                      const uploadPromises = files.map(async (file) => {
-                                        const formData = new FormData();
-                                        formData.append('file', file);
-                                        formData.append('name', `${req.name} - ${file.name.split('.').slice(0, -1).join('.')}`);
-                                        formData.append('category', 'borrower');
-                                        
-                                        return fetch(`/api/loans/${loanId}/documents`, {
-                                          method: 'POST',
-                                          body: formData
-                                        });
-                                      });
-                                      
-                                      try {
-                                        const responses = await Promise.all(uploadPromises);
-                                        const successCount = responses.filter(r => r.ok).length;
-                                        const failCount = responses.length - successCount;
-                                        
-                                        // Get the uploaded document IDs and assign them to the requirement
-                                        const uploadedDocumentIds = [];
-                                        for (let i = 0; i < responses.length; i++) {
-                                          if (responses[i].ok) {
-                                            const docData = await responses[i].json();
-                                            uploadedDocumentIds.push(docData.id.toString());
-                                          }
-                                        }
-                                        
-                                        // Assign all successfully uploaded documents to this requirement
-                                        uploadedDocumentIds.forEach(docId => {
-                                          assignDocumentToRequirement(req.name, docId);
-                                        });
-                                        
-                                        queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
-                                        setShowInlineUpload(null);
-                                        
-                                        if (failCount === 0) {
-                                          toast({
-                                            title: "Documents uploaded successfully",
-                                            description: `${successCount} document${successCount > 1 ? 's' : ''} uploaded for ${req.name}`,
-                                          });
-                                        } else {
-                                          toast({
-                                            title: "Partial upload success",
-                                            description: `${successCount} uploaded, ${failCount} failed`,
-                                            variant: "destructive"
-                                          });
-                                        }
-                                      } catch (error) {
-                                        toast({
-                                          title: "Upload Failed",
-                                          description: "There was an error uploading your documents.",
-                                          variant: "destructive"
-                                        });
-                                      }
-                                    }
-                                  }}
-                                  className="hidden"
-                                  id={`file-upload-${req.name}`}
-                                />
-                                <Button
-                                  variant="outline"
-                                  onClick={() => document.getElementById(`file-upload-${req.name}`)?.click()}
-                                  className="w-full h-12 border-dashed border-2 flex items-center justify-center"
-                                >
-                                  <Upload className="w-4 h-4 mr-2" />
-                                  Select Files to Upload
-                                </Button>
-                              </div>
-                            </div>
+                            <SmartDocumentUpload 
+                              loanId={loanId} 
+                              requirementName={req.name}
+                              onSuccess={() => {
+                                queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+                                setShowInlineUpload(null);
+                              }} 
+                            />
                           </div>
                         )}
                       </div>
