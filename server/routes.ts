@@ -1426,6 +1426,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dateQuery = eightWeeksAgo.toISOString().split('T')[0].replace(/-/g, '/');
       
       // Get ALL contact emails from the loan
+      console.log('Loan contacts found:', loan.contacts?.length || 0);
+      console.log('All loan contacts:', JSON.stringify(loan.contacts, null, 2));
+      
       const contactEmails = loan.contacts?.map((c: any) => c.email).filter(Boolean) || [];
       
       console.log('Searching for emails from these contacts:', contactEmails);
