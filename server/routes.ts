@@ -2178,12 +2178,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalPDFs += pdfAttachments.length;
 
           // Check for existing documents to avoid duplicates
-          const existingDocuments = await storage.getDocumentsByLoanId(loanId);
+          const existingDocuments = await storage.getAllDocumentsByLoanId(loanId);
 
           // Download each PDF
           for (const attachment of pdfAttachments) {
             try {
-              // DISABLED: Duplicate detection during email scanning to prevent false positives
+              // Enhanced duplicate detection - check by name, size, and source
+              const sourceKey = `gmail:${message.from}`;
+              const isDuplicate = existingDocuments.some(doc => 
+                doc.name === attachment.filename && 
+                doc.fileSize === attachment.size &&
+                doc.source === sourceKey &&
+                !doc.deleted // Only check non-deleted documents
+              );
+
+              if (isDuplicate) {
+                console.log(`Skipping duplicate document: ${attachment.filename} from ${message.from}`);
+                continue;
+              }
+              
               // Mark as downloaded in this scan for internal tracking
               const attachmentKey = `${attachment.filename}_${attachment.size}`;
               downloadedInThisScan.add(attachmentKey);
@@ -2237,7 +2250,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       - Relevant contacts: ${JSON.stringify(relevantContacts)}
                       - Is from relevant contact: ${isFromRelevantContact}
                       - Filename: ${filename}
-                      - Subject: ${subject}`);
+                      - Subject: ${subject}
+                      - Will process: ${isFromRelevantContact ? 'YES' : 'NO'}`);
                   }
                   
                   // 2. OR mentions this specific property
