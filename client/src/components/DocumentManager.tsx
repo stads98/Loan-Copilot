@@ -57,6 +57,7 @@ export default function DocumentManager({
   const [showInlineUpload, setShowInlineUpload] = useState<string | null>(null); // Track which requirement is showing upload
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [googleDriveConnected, setGoogleDriveConnected] = useState(false);
   const { toast } = useToast();
   
   // Use external completed requirements if provided, otherwise use local state

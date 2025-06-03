@@ -5,6 +5,7 @@ import { insertUserSchema, insertLoanSchema, insertPropertySchema, insertContact
 import { z } from "zod";
 import { processLoanDocuments, analyzeDriveDocuments } from "./lib/openai";
 import { authenticateGoogle, getDriveFiles, scanFolderRecursively, downloadDriveFile } from "./lib/google";
+import { getGoogleAuthUrl, handleGoogleCallback, uploadFileToGoogleDriveOAuth, listGoogleDriveFilesOAuth } from "./lib/google-oauth";
 import { createFallbackAssistantResponse } from "./lib/fallbackAI";
 import session from "express-session";
 import passport from "passport";
@@ -147,8 +148,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       const scopes = [
-        'https://www.googleapis.com/auth/drive.readonly',
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/drive',
         'https://www.googleapis.com/auth/gmail.send',
+        'https://www.googleapis.com/auth/gmail.readonly',
         'https://www.googleapis.com/auth/userinfo.email'
       ];
 
@@ -896,7 +899,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
           
-          // Upload local document to Google Drive
+          // Upload local document to Google Drive using OAuth tokens
           if (localDoc.fileId && localDoc.fileId.includes('.')) {
             // This is a local file (has extension in fileId)
             try {
@@ -908,23 +911,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (await fs.access(filePath).then(() => true).catch(() => false)) {
                 console.log(`Uploading ${localDoc.name} to Google Drive...`);
                 const fileBuffer = await fs.readFile(filePath);
-                const { uploadFileToGoogleDrive } = await import("./lib/google");
                 
-                const driveFileId = await uploadFileToGoogleDrive(
-                  localDoc.name,
-                  fileBuffer,
-                  `application/${localDoc.fileType}`,
-                  folderId
-                );
-                
-                // Update document record with Google Drive file ID
-                await storage.updateDocument(localDoc.id, {
-                  fileId: driveFileId,
-                  source: "synced_to_drive"
-                });
-                
-                documentsUploaded++;
-                console.log(`Successfully uploaded ${localDoc.name} to Google Drive with ID: ${driveFileId}`);
+                // Try OAuth upload first if tokens are available
+                const googleTokens = (req.session as any)?.googleTokens;
+                if (googleTokens) {
+                  try {
+                    const driveFileId = await uploadFileToGoogleDriveOAuth(
+                      localDoc.name,
+                      fileBuffer,
+                      `application/${localDoc.fileType}`,
+                      folderId,
+                      googleTokens
+                    );
+                    
+                    // Update document record with Google Drive file ID
+                    await storage.updateDocument(localDoc.id, {
+                      fileId: driveFileId,
+                      source: "synced_to_drive"
+                    });
+                    
+                    documentsUploaded++;
+                    console.log(`Successfully uploaded ${localDoc.name} to Google Drive with OAuth: ${driveFileId}`);
+                  } catch (oauthError) {
+                    console.error(`OAuth upload failed for ${localDoc.name}, trying service account:`, oauthError);
+                    
+                    // Fallback to service account upload
+                    try {
+                      const { uploadFileToGoogleDrive } = await import("./lib/google");
+                      const driveFileId = await uploadFileToGoogleDrive(
+                        localDoc.name,
+                        fileBuffer,
+                        `application/${localDoc.fileType}`,
+                        folderId
+                      );
+                      
+                      await storage.updateDocument(localDoc.id, {
+                        fileId: driveFileId,
+                        source: "synced_to_drive"
+                      });
+                      
+                      documentsUploaded++;
+                      console.log(`Successfully uploaded ${localDoc.name} with service account: ${driveFileId}`);
+                    } catch (serviceError) {
+                      console.error(`Both OAuth and service account upload failed for ${localDoc.name}:`, serviceError);
+                    }
+                  }
+                } else {
+                  console.log(`No OAuth tokens available, skipping upload for ${localDoc.name}`);
+                }
               } else {
                 console.log(`Local file not found for ${localDoc.name} at ${filePath}`);
               }
