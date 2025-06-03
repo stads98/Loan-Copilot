@@ -1498,12 +1498,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        message: syncMessage,
-        documentsCreated,
-        documentsUpdated,
+        message: `Upload-only sync completed: ${documentsUploaded} uploaded, ${documentsDeleted} deleted from Google Drive`,
         documentsUploaded,
-        totalFiles: files.length,
-        syncDirection: documentsUploaded > 0 ? "bidirectional" : "download_only"
+        documentsDeleted,
+        syncDirection: "upload_only_with_delete"
       });
       
     } catch (error) {
