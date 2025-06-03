@@ -1088,10 +1088,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid document ID" });
       }
 
+      // Get document info before restoring for auto-sync
+      const document = await storage.getDocument(id);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
       const restoredDocument = await storage.updateDocument(id, { deleted: false });
       if (!restoredDocument) {
         return res.status(404).json({ message: "Document not found" });
       }
+
+      // Trigger auto-sync after document restoration
+      await triggerAutoSync(document.loanId, "restore", document.name);
 
       res.json({ success: true, document: restoredDocument });
     } catch (error) {
