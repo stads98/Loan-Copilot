@@ -803,14 +803,7 @@ export default function DocumentManager({
                                       {documents.filter(doc => {
                                         // Filter out documents that are already assigned to any requirement
                                         const allAssignedDocIds = Object.values(assignedDocuments).flat();
-                                        const isUnassigned = !allAssignedDocIds.includes(doc.id.toString());
-                                        
-                                        // Debug log for this specific requirement dropdown
-                                        if (req.name === "Driver's License (front and back)" && isUnassigned) {
-                                          console.log(`Available for ${req.name}: ${doc.name} (ID: ${doc.id})`);
-                                        }
-                                        
-                                        return isUnassigned;
+                                        return !allAssignedDocIds.includes(doc.id.toString());
                                       }).map((doc) => (
                                         <SelectItem key={doc.id} value={doc.id.toString()}>
                                           {doc.name}
