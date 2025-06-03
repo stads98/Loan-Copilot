@@ -2489,12 +2489,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
           
-          // Add property-specific searches (more restrictive - require both borrower AND property)
+          // Add property-specific searches 
           if (loan.loan?.borrowerName && loan.loan?.propertyAddress) {
             // Extract the street address (first part before the comma)
             const streetAddress = loan.loan.propertyAddress.split(',')[0].trim();
-            // More restrictive: require BOTH borrower name AND street address in subject or body
+            // Search for borrower name AND street address combination
             searchTerms.push(`(subject:("${loan.loan.borrowerName}" "${streetAddress}") OR ("${loan.loan.borrowerName}" AND "${streetAddress}" AND (subject:"loan" OR subject:"application" OR subject:"closing" OR subject:"refinance"))) after:${dateQuery}`);
+            
+            // Add broader search for just the street address from common loan domains
+            const commonLoanDomains = ['adlercapital.us', 'adlercapital.info', 'adlercapital.com'];
+            commonLoanDomains.forEach(domain => {
+              searchTerms.push(`(from:${domain} AND "${streetAddress}") after:${dateQuery}`);
+            });
+            
+            // Search for street address with attachment requirement
+            searchTerms.push(`("${streetAddress}" AND has:attachment) after:${dateQuery}`);
           }
           if (loan.loan?.loanNumber) {
             searchTerms.push(`"${loan.loan.loanNumber}" after:${dateQuery}`);

@@ -1,0 +1,215 @@
+
+Gmail Inbox
+Last sync: 14:12
+
+
+Disconnect
+No messages found
+
+Priority Action Items
+Action Items
+Tasks to complete for this loan file
+
+Add task
+No tasks added yet
+0 of 0 tasks completed
+Google Drive Integration
+Connect to view and analyze loan documents
+
+Connected
+Connected to Google Drive
+Documents are being analyzed automatically
+
+Change Folder
+Loan Processing Co-Pilot
+AI-powered guidance and document analysis
+
+Active
+Loan created successfully! The Google Drive folder is connected but currently empty. You can now start uploading documents to the folder and they will be automatically processed.
+
+Loan Details:
+• Loan Number: 32 run st, miami fl 33433
+• Borrower: John Doe
+• Property: 32 run st, miami fl 33433
+• Loan Type: DSCR
+• Loan Purpose: Purchase
+
+Ready to start document collection and processing.
+
+02:03 PM
+Ask about DSCR loans, documents, or request email templates...
+Send
+Document Management
+Send to Analyst
+Scan All Emails
+Sync Google Drive
+Reset Documents
+All Documents (1)
+Missing (21)
+Upload
+Completed (1)
+Missing Documents
+These documents are required but haven't been completed yet.
+Add Custom Requirement
+Add Custom Requirement
+Borrower & Entity Documents8 missing
+Driver's License (front and back)
+borrower
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Articles of Organization / Incorporation
+borrower
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Certificate of Good Standing
+borrower
+Mark Complete
+
+Assign uploaded document...
+Upload New
+EIN Letter from IRS
+borrower
+Mark Complete
+
+Assign uploaded document...
+Upload New
+2 most recent Bank Statements
+borrower
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Voided Check
+borrower
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Borrowing Authorization Form
+borrower
+Kiavi Specific
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Disclosure Form
+borrower
+Kiavi Specific
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Financial Documents2 missing
+2 most recent Bank Statements
+borrower
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Voided Check
+borrower
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Property Ownership2 missing
+HUD (or Other Documentation of Property Ownership)
+property
+Mark Complete
+
+Assign uploaded document...
+Upload New
+All Current Leases
+property
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Appraisal1 missing
+Appraisal
+property
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Insurance4 missing
+Insurance Policy
+insurance
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Insurance Agent Contact Info
+insurance
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Flood Policy (If applicable)
+insurance
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Flood Insurance Agent Contact Info
+insurance
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Title4 missing
+Title Agent Contact Info
+title
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Preliminary Title
+title
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Closing Protection Letter
+title
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Wire Instructions
+title
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Payoff Information2 missing
+Current Lender Contact Info
+property
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Payoff Statement
+property
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Lender-Specific Documents2 missing
+Borrowing Authorization Form
+borrower
+Kiavi Specific
+Mark Complete
+
+Assign uploaded document...
+Upload New
+Disclosure Form
+borrower
+Kiavi Specific
+Mark Complete
+
+Assign uploaded document...

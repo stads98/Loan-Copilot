@@ -211,6 +211,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteDocument(id: number): Promise<boolean> {
+    // For reset operation, we want to permanently delete
+    // Check if this is called from reset by checking the document first
+    const document = await this.getDocument(id);
+    if (!document) return false;
+    
+    // Permanently delete the document from database
+    const [deletedDocument] = await db
+      .delete(documents)
+      .where(eq(documents.id, id))
+      .returning();
+    return !!deletedDocument;
+  }
+
+  async softDeleteDocument(id: number): Promise<boolean> {
     const [deletedDocument] = await db
       .update(documents)
       .set({ deleted: true })
