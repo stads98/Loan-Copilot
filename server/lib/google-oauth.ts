@@ -78,7 +78,7 @@ export async function uploadFileToGoogleDriveOAuth(
       },
       media: {
         mimeType: mimeType,
-        body: require('stream').Readable.from(fileBuffer)
+        body: (await import('stream')).Readable.from(fileBuffer)
       },
       fields: 'id'
     });

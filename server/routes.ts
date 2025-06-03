@@ -2123,7 +2123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Scan all emails and auto-download all PDFs for a loan
+  // Optimized scan all emails - uses pre-filtered emails from Gmail Inbox for faster processing
   app.post("/api/loans/:loanId/scan-all-emails", isAuthenticated, async (req, res) => {
     try {
       if (!(req.session as any)?.gmailTokens) {
@@ -2131,13 +2131,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const loanId = parseInt(req.params.loanId);
-      console.log('=== EMAIL SCAN START ===');
-      console.log('Getting loan details for ID:', loanId);
+      console.log('=== OPTIMIZED EMAIL SCAN START ===');
+      console.log('Using pre-filtered emails from Gmail Inbox for faster processing');
       
       const loan = await storage.getLoanWithDetails(loanId);
-      console.log('Loan loaded:', !!loan);
-      console.log('Loan structure:', Object.keys(loan || {}));
-      
       if (!loan) {
         return res.status(404).json({ message: "Loan not found" });
       }
@@ -2151,41 +2148,289 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (req.session as any).gmailTokens.refresh_token
       );
 
-      // Build comprehensive search for ALL contact emails and loan-related terms
+      console.log('Getting pre-filtered emails from Gmail Inbox API...');
+      
+      // OPTIMIZATION: Use the exact same filtering logic as Gmail Inbox to get pre-filtered emails
+      // This avoids scanning thousands of emails and only processes relevant ones
+      const processedThreads = new Map();
+      const allMessages = [];
+      const maxResults = 100; // Reasonable limit for performance
+      
+      // Get emails using same date filter as Gmail Inbox
       const eightWeeksAgo = new Date();
       eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
-      const dateQuery = eightWeeksAgo.toISOString().split('T')[0].replace(/-/g, '/');
+      const afterDate = Math.floor(eightWeeksAgo.getTime() / 1000);
       
-      // Get ALL contact emails from the loan
-      console.log('=== EMAIL SCAN DEBUG ===');
-      console.log('Loan ID:', loanId);
-      console.log('Loan contacts found:', loan.contacts?.length || 0);
-      console.log('All loan contacts:', JSON.stringify(loan.contacts, null, 2));
-      
-      const contactEmails = loan.contacts?.map((c: any) => c.email).filter(Boolean) || [];
-      console.log('Extracted contact emails:', contactEmails);
-      
-      console.log('Searching for emails from these contacts:', contactEmails);
-      console.log('Contact roles:', loan.contacts?.map((c: any) => `${c.name} (${c.role}) - ${c.email}`));
-      
-      // Build comprehensive search that includes contact emails and attachments
-      let searchTerms = [`has:attachment after:${dateQuery}`];
-      
-      // Add searches for ALL contact emails (borrower, title agents, insurance agents, etc.)
-      if (contactEmails.length > 0) {
-        contactEmails.forEach((email: string) => {
-          if (email) {
-            searchTerms.push(`(from:${email} OR to:${email} OR cc:${email}) after:${dateQuery}`);
-          }
+      const listResponse = await gmail.users.messages.list({
+        auth: gmailAuth,
+        userId: 'me',
+        q: `after:${afterDate}`,
+        maxResults: 500
+      });
+
+      if (!listResponse.data.messages) {
+        return res.json({ 
+          success: true, 
+          message: "No emails found",
+          totalScanned: 0,
+          pdfsFound: 0,
+          downloaded: []
         });
       }
+
+      console.log(`Processing ${listResponse.data.messages.length} recent emails with same filtering as Gmail Inbox...`);
+
+      // Process emails using exact same filtering logic as Gmail Inbox
+      for (const message of listResponse.data.messages.slice(0, maxResults)) {
+        if (!processedThreads.has(message.threadId)) {
+          try {
+            const msgResponse = await gmail.users.messages.get({
+              auth: gmailAuth,
+              userId: 'me',
+              id: message.id!,
+              format: 'metadata',
+              metadataHeaders: ['From', 'To', 'Cc', 'Subject', 'Date']
+            });
+
+            const headers = msgResponse.data.payload?.headers || [];
+            const subject = headers.find(h => h.name === 'Subject')?.value || '';
+            const from = headers.find(h => h.name === 'From')?.value || '';
+            const to = headers.find(h => h.name === 'To')?.value || '';
+            const cc = headers.find(h => h.name === 'Cc')?.value || '';
+
+            // Apply loan-specific filtering (same as Gmail Inbox)
+            const subjectLower = subject.toLowerCase();
+            const fromLower = from.toLowerCase();
+            const toLower = to.toLowerCase();
+            const ccLower = cc.toLowerCase();
+            
+            let isRelevant = false;
+            
+            // Check if from/to any of the loan contacts
+            const contactEmails = loan.contacts?.map((c: any) => c.email?.toLowerCase()).filter(Boolean) || [];
+            const isFromLoanContact = contactEmails.some(email => 
+              fromLower.includes(email) || toLower.includes(email) || ccLower.includes(email)
+            );
+            
+            if (isFromLoanContact) {
+              isRelevant = true;
+            }
+            
+            // Check loan number
+            if (!isRelevant && loan.loan?.loanNumber && subjectLower.includes(loan.loan.loanNumber.toLowerCase())) {
+              isRelevant = true;
+            }
+            
+            // Check property address - just street number + street name
+            if (!isRelevant && loan.property?.address) {
+              const streetAddress = loan.property.address.split(',')[0].trim().toLowerCase();
+              if (subjectLower.includes(streetAddress)) {
+                isRelevant = true;
+              }
+            }
+
+            if (isRelevant) {
+              const messageData = {
+                id: message.id,
+                threadId: message.threadId,
+                subject,
+                from,
+                to,
+                cc,
+                snippet: msgResponse.data.snippet || '',
+                date: headers.find(h => h.name === 'Date')?.value || '',
+                hasAttachments: msgResponse.data.payload?.parts?.some(part => 
+                  part.filename && part.filename.length > 0
+                ) || false
+              };
+
+              processedThreads.set(message.threadId, messageData);
+              allMessages.push(messageData);
+            }
+          } catch (msgError) {
+            console.error('Error fetching message details:', msgError);
+          }
+        }
+      }
+
+      console.log(`Found ${allMessages.length} pre-filtered relevant emails`);
       
-      // Add property-specific searches (subject line only - street address variations)
-      if (loan.loan?.propertyAddress) {
-        const streetAddress = loan.loan.propertyAddress.split(',')[0].trim();
-        const streetMatch = streetAddress.match(/^(\d+)\s+(.+?)(\s+(st|street|dr|drive|ave|avenue|rd|road|ln|lane|blvd|boulevard|way|ct|court|pl|place|cir|circle|pkwy|parkway))?$/i);
-        
-        if (streetMatch) {
+      // Filter to only emails with attachments for PDF scanning
+      const emailsWithAttachments = allMessages.filter(msg => msg.hasAttachments);
+      console.log(`Found ${emailsWithAttachments.length} relevant emails with attachments`);
+
+      // Now scan the pre-filtered emails for PDF attachments
+      const downloadedPDFs = [];
+      let totalPDFs = 0;
+      const existingDocuments = await storage.getAllDocumentsByLoanId(loanId);
+
+      for (const message of emailsWithAttachments) {
+        try {
+          // Get full message with attachments
+          const msgResponse = await gmail.users.messages.get({
+            auth: gmailAuth,
+            userId: 'me',
+            id: message.id!,
+            format: 'full'
+          });
+
+          const parts = msgResponse.data.payload?.parts || [];
+          const attachments = [];
+
+          const extractAttachments = (parts: any[]) => {
+            for (const part of parts) {
+              if (part.filename && part.body?.attachmentId) {
+                attachments.push({
+                  filename: part.filename,
+                  mimeType: part.mimeType,
+                  attachmentId: part.body.attachmentId,
+                  size: part.body.size
+                });
+              }
+              if (part.parts) {
+                extractAttachments(part.parts);
+              }
+            }
+          };
+
+          extractAttachments(parts);
+
+          // Filter for PDFs only
+          const pdfAttachments = attachments.filter(att => att.mimeType?.includes('pdf'));
+          totalPDFs += pdfAttachments.length;
+
+          // Download each PDF
+          for (const attachment of pdfAttachments) {
+            try {
+              // Enhanced duplicate detection - check by name, size, and source
+              const sourceKey = `gmail:${message.from}`;
+              const isDuplicate = existingDocuments.some(doc => 
+                doc.name === attachment.filename && 
+                doc.fileSize === attachment.size &&
+                doc.source === sourceKey &&
+                !doc.deleted // Only check non-deleted documents
+              );
+
+              if (isDuplicate) {
+                console.log(`Skipping duplicate document: ${attachment.filename} from ${message.from}`);
+                continue;
+              }
+
+              // Download attachment data
+              const attachmentResponse = await gmail.users.messages.attachments.get({
+                auth: gmailAuth,
+                userId: 'me',
+                messageId: message.id!,
+                id: attachment.attachmentId
+              });
+
+              if (attachmentResponse.data?.data) {
+                // Decode and save to documents
+                let base64Data = attachmentResponse.data.data;
+                base64Data = base64Data.replace(/-/g, '+').replace(/_/g, '/');
+                while (base64Data.length % 4) {
+                  base64Data += '=';
+                }
+                const fileBuffer = Buffer.from(base64Data, 'base64');
+
+                // Create unique filename to avoid conflicts
+                const fileId = `email-attachment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.pdf`;
+                const pathModule = await import('path');
+                const filePath = pathModule.join(process.cwd(), 'uploads', fileId);
+
+                // Save to uploads directory
+                const { promises: fs } = await import('fs');
+                const pathModule = await import('path');
+                await fs.writeFile(filePath, fileBuffer);
+
+                // Determine document category
+                let category = 'other';
+                const lowerFilename = attachment.filename.toLowerCase();
+                if (lowerFilename.includes('insurance') || lowerFilename.includes('policy')) {
+                  category = 'insurance';
+                } else if (lowerFilename.includes('appraisal')) {
+                  category = 'property';
+                } else if (lowerFilename.includes('income') || lowerFilename.includes('bank') || lowerFilename.includes('statement')) {
+                  category = 'borrower';
+                } else if (lowerFilename.includes('title')) {
+                  category = 'title';
+                }
+
+                // Create document record
+                await storage.createDocument({
+                  name: attachment.filename,
+                  fileId: fileId, // Local file ID
+                  fileType: attachment.mimeType || 'application/pdf',
+                  fileSize: attachment.size,
+                  source: sourceKey, // Track source for duplicate detection
+                  category: category,
+                  loanId: loanId
+                });
+
+                downloadedPDFs.push({
+                  filename: attachment.filename,
+                  emailSubject: message.subject,
+                  size: attachment.size,
+                  category: category
+                });
+
+                console.log(`Downloaded PDF: ${attachment.filename} from ${message.from}`);
+              }
+            } catch (downloadError) {
+              console.error(`Failed to download PDF ${attachment.filename}:`, downloadError);
+            }
+          }
+        } catch (error) {
+          console.error(`Error scanning message ${message.id} for attachments:`, error);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Optimized scan complete! Found ${downloadedPDFs.length} PDFs across ${emailsWithAttachments.length} pre-filtered emails.`,
+        totalScanned: emailsWithAttachments.length,
+        pdfsFound: totalPDFs,
+        downloaded: downloadedPDFs
+      });
+
+    } catch (error) {
+      console.error('Error in optimized email scan:', error);
+      res.status(500).json({ message: "Error scanning emails for PDFs" });
+    }
+  });
+
+  // Get individual Gmail message with full content and attachments
+  app.get("/api/gmail/messages/:messageId", isAuthenticated, async (req, res) => {
+    try {
+      if (!(req.session as any)?.gmailTokens) {
+        return res.status(401).json({ message: "Gmail authentication required" });
+      }
+
+      const { google } = await import('googleapis');
+      const { createGmailAuth } = await import("./lib/gmail");
+      const gmail = google.gmail('v1');
+      
+      const gmailAuth = createGmailAuth(
+        (req.session as any).gmailTokens.access_token,
+        (req.session as any).gmailTokens.refresh_token
+      );
+
+      const messageId = req.params.messageId;
+
+      // Get full message content
+      const msgResponse = await gmail.users.messages.get({
+        auth: gmailAuth,
+        userId: 'me',
+        id: messageId,
+        format: 'full'
+      });
+
+      const msg = msgResponse.data;
+      let content = '';
+      const attachments = [];
+
+      // Extract content and attachments from payload
+      function processPayload(payload: any) {
           const streetNumber = streetMatch[1];
           const streetName = streetMatch[2];
           
