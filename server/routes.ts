@@ -2812,7 +2812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Upload to Google Drive
             const driveResponse = await drive.files.create({
               requestBody: {
-                name: `${filename} (from Email)`,
+                name: filename,
                 parents: loan.driveFolder ? [loan.driveFolder] : undefined,
               },
               media: {
@@ -2857,9 +2857,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create document record
-      const fromText = emailFrom && emailFrom !== 'undefined' ? ` (from ${emailFrom.replace(/[<>]/g, '').split('<')[0].trim()})` : '';
       const document = await storage.createDocument({
-        name: `${filename}${fromText}`,
+        name: filename,
         fileId: driveFileId,
         loanId: loanId,
         fileType: mimeType,
