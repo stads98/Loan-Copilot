@@ -840,7 +840,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update existing documents or create new ones
       let documentsUpdated = 0;
       let documentsCreated = 0;
+      let documentsUploaded = 0;
       
+      // Step 1: Sync FROM Google Drive TO Database
       for (const file of files) {
         try {
           // Check if document already exists
@@ -871,12 +873,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`Error processing file ${file.name}:`, error);
         }
       }
+
+      // Step 2: Sync FROM Database TO Google Drive (prevent duplicates)
+      try {
+        const allLocalDocs = await storage.getDocumentsByLoanId(loanId);
+        const driveFileNames = new Set(files.map(f => f.name));
+        
+        for (const localDoc of allLocalDocs) {
+          // Skip if document is already in Google Drive or doesn't have local file content
+          if (localDoc.fileId && localDoc.fileId.length > 10 && !localDoc.fileId.includes('.')) {
+            // This is already a Google Drive document
+            continue;
+          }
+          
+          // Check if a file with the same name already exists in Drive
+          if (driveFileNames.has(localDoc.name)) {
+            console.log(`Skipping upload of ${localDoc.name} - already exists in Google Drive`);
+            continue;
+          }
+          
+          // Upload local document to Google Drive
+          if (localDoc.fileId && localDoc.fileId.includes('.')) {
+            // This is a local file (has extension in fileId)
+            try {
+              const fs = await import('fs').then(m => m.promises);
+              const path = await import('path');
+              const filePath = path.join(process.cwd(), 'uploads', localDoc.fileId);
+              
+              if (await fs.access(filePath).then(() => true).catch(() => false)) {
+                const fileBuffer = await fs.readFile(filePath);
+                const { uploadFileToGoogleDrive } = await import("./lib/google");
+                
+                const driveFileId = await uploadFileToGoogleDrive(
+                  localDoc.name,
+                  fileBuffer,
+                  `application/${localDoc.fileType}`,
+                  folderId
+                );
+                
+                // Update document record with Google Drive file ID
+                await storage.updateDocument(localDoc.id, {
+                  fileId: driveFileId,
+                  source: "synced_to_drive"
+                });
+                
+                documentsUploaded++;
+                console.log(`Uploaded ${localDoc.name} to Google Drive`);
+              }
+            } catch (uploadError) {
+              console.error(`Error uploading ${localDoc.name} to Google Drive:`, uploadError);
+            }
+          }
+        }
+      } catch (syncError) {
+        console.error("Error during bi-directional sync:", syncError);
+      }
       
       res.json({
         success: true,
-        message: "Documents synced successfully from Google Drive",
+        message: `Bi-directional sync completed: ${documentsCreated} new from Drive, ${documentsUpdated} updated from Drive, ${documentsUploaded} uploaded to Drive`,
         documentsCreated,
         documentsUpdated,
+        documentsUploaded,
         totalFiles: files.length
       });
       
