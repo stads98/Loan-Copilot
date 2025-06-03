@@ -646,6 +646,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fields: 'id,name'
       });
 
+      console.log('Folder API response:', response.data);
+      
       res.json({ 
         id: response.data.id,
         name: response.data.name 
