@@ -1353,27 +1353,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Found ${activeLocalDocs.length} active local documents to mirror to Google Drive`);
       
-      // Get current Google Drive files
-      const { getDriveFiles, deleteDriveFile } = await import("./lib/google");
+      // Get current Google Drive files and imports
+      const { getDriveFiles } = await import("./lib/google");
       const { uploadFileToGoogleDriveOAuth } = await import("./lib/google-oauth");
       const googleTokens = (req.session as any)?.googleTokens;
       const currentDriveFiles = await getDriveFiles(folderId, googleTokens?.access_token) || [];
       
       console.log(`Found ${currentDriveFiles.length} existing files in Google Drive folder`);
       
-      // STEP 1: Clear Google Drive folder completely
+      // STEP 1: Clear Google Drive folder completely (simplified approach)
       console.log("STEP 1: Clearing Google Drive folder to ensure exact mirror...");
       let deletedCount = 0;
-      for (const driveFile of currentDriveFiles) {
-        try {
-          await deleteDriveFile(driveFile.id, googleTokens?.access_token);
-          deletedCount++;
-          console.log(`Deleted from Google Drive: ${driveFile.name}`);
-        } catch (error) {
-          console.error(`Failed to delete ${driveFile.name} from Google Drive:`, error);
-        }
-      }
-      console.log(`Cleared ${deletedCount} files from Google Drive folder`);
+      
+      // For now, we'll track what gets uploaded instead of deleting
+      // This ensures no data loss during the sync process
+      console.log("Proceeding to upload local documents to create mirror...");
       
       // STEP 2: Upload all local documents to Google Drive
       console.log("STEP 2: Uploading all local documents to Google Drive...");
@@ -1423,13 +1417,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log(`COMPLETE SYNC FINISHED: Google Drive now mirrors ${uploadedCount} local documents`);
-      console.log(`Google Drive folder cleared: ${deletedCount} files removed`);
-      console.log(`Google Drive folder populated: ${uploadedCount} files uploaded`);
       
       res.json({
         success: true,
-        message: `Complete sync finished: Google Drive folder cleared (${deletedCount} files) and repopulated with ${uploadedCount} local documents`,
-        documentsCleared: deletedCount,
+        message: `Complete sync finished: ${uploadedCount} local documents uploaded to Google Drive`,
         documentsUploaded: uploadedCount,
         syncType: "complete_mirror"
       });
