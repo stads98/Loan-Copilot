@@ -17,14 +17,23 @@ interface DocumentProgressProps {
   loanDetails?: any;
   completedRequirements?: Set<string>;
   onCompletedRequirementsChange?: (completed: Set<string>) => void;
+  documentAssignments?: Record<string, string[]>;
 }
 
-export default function DocumentProgress({ documents, requiredDocuments, contacts = [], loanDetails, completedRequirements = new Set(), onCompletedRequirementsChange }: DocumentProgressProps) {
+export default function DocumentProgress({ documents, requiredDocuments, contacts = [], loanDetails, completedRequirements = new Set(), onCompletedRequirementsChange, documentAssignments = {} }: DocumentProgressProps) {
   const [showChecklist, setShowChecklist] = useState(false);
   const [showAssignments, setShowAssignments] = useState(false);
   
-  // Get unassigned documents (uploaded but not categorized properly)
-  const unassignedDocs = documents.filter(doc => !doc.category || doc.category === 'uncategorized');
+  // Get all assigned document IDs
+  const assignedDocumentIds = new Set(
+    Object.values(documentAssignments).flat()
+  );
+  
+  // Get unassigned documents (uploaded but not categorized properly AND not assigned to any requirement)
+  const unassignedDocs = documents.filter(doc => 
+    (!doc.category || doc.category === 'uncategorized') && 
+    !assignedDocumentIds.has(doc.id.toString())
+  );
   
   // Get all required document names for assignment dropdown
   const allRequiredDocs = [

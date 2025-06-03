@@ -257,6 +257,7 @@ export default function Dashboard({ user, onLogout, activeLoanId: externalLoanId
                 loanDetails={{ ...loan, lender, property }}
                 completedRequirements={completedRequirements}
                 onCompletedRequirementsChange={handleCompletedRequirementsChange}
+                documentAssignments={loan?.documentAssignments || {}}
               />
 
               {/* Contact List */}
