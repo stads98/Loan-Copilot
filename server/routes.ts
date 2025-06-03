@@ -1164,6 +1164,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
               fileSize: file.size ? parseInt(file.size) : null
             });
             documentsUpdated++;
+            
+            // Check if local file exists, if not download it for bidirectional consistency
+            const fs = await import('fs').then(m => m.promises);
+            const path = await import('path');
+            const uploadsDir = path.join(process.cwd(), 'uploads');
+            const localFilePath = path.join(uploadsDir, existingDoc.fileId);
+            
+            try {
+              await fs.access(localFilePath);
+              // File exists locally, no action needed
+            } catch {
+              // File missing locally, download from Google Drive to restore consistency
+              console.log(`Downloading missing local file: ${file.name}`);
+              try {
+                const { google } = await import('googleapis');
+                const oauth2Client = new google.auth.OAuth2();
+                oauth2Client.setCredentials(googleTokens);
+                const drive = google.drive({ version: 'v3', auth: oauth2Client });
+                
+                const response = await drive.files.get({
+                  fileId: file.id,
+                  alt: 'media'
+                });
+                
+                if (response.data) {
+                  // Save the binary file data directly
+                  await fs.writeFile(localFilePath, response.data as any);
+                  console.log(`Successfully restored local file: ${file.name}`);
+                } else {
+                  console.log(`Could not download content for ${file.name}, file may be empty`);
+                }
+              } catch (downloadError) {
+                console.error(`Failed to download ${file.name} from Google Drive:`, downloadError);
+              }
+            }
           } else {
             // Create new document
             await storage.createDocument({
