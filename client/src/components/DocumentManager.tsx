@@ -363,7 +363,9 @@ export default function DocumentManager({
     try {
       const response = await apiRequest("DELETE", `/api/documents/${docId}`);
       if (response.success) {
+        // Refresh both the main loan data and deleted documents immediately
         queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+        fetchDeletedDocuments();
         toast({
           title: "Success",
           description: "Document deleted successfully."
