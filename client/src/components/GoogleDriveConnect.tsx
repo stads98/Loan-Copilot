@@ -19,63 +19,63 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
   
   const [showFolderBrowser, setShowFolderBrowser] = useState(false);
 
-  // Poll for connection status changes and fetch folder info
-  useEffect(() => {
-    const checkConnectionStatus = async () => {
-      try {
-        const response = await fetch('/api/auth/google/status');
-        const data = await response.json();
-        setConnectionStatus(data.connected);
-        
-        // If connected, fetch actual Google Drive folder name
-        if (data.connected && loanId) {
-          try {
-            const loanResponse = await fetch(`/api/loans/${loanId}`);
-            const loanData = await loanResponse.json();
-            if (loanData.loan?.driveFolder) {
-              // Fetch actual folder name from Google Drive
-              try {
-                const folderResponse = await fetch(`/api/drive/folder/${loanData.loan.driveFolder}/name`);
-                if (folderResponse.ok) {
-                  const folderData = await folderResponse.json();
-                  setCurrentFolderName(folderData.name || 'Unknown Folder');
-                } else if (folderResponse.status === 403) {
-                  // Permission error - show helpful message
-                  const errorData = await folderResponse.json();
-                  if (errorData.requiresReauth) {
-                    setCurrentFolderName('⚠️ Re-authentication required for folder names');
-                  } else {
-                    setCurrentFolderName('⚠️ Permission denied for folder access');
-                  }
+  // Function to check connection status
+  const checkConnectionStatus = async () => {
+    try {
+      const response = await fetch('/api/auth/google/status');
+      const data = await response.json();
+      setConnectionStatus(data.connected);
+      
+      // If connected, fetch actual Google Drive folder name
+      if (data.connected && loanId) {
+        try {
+          const loanResponse = await fetch(`/api/loans/${loanId}`);
+          const loanData = await loanResponse.json();
+          if (loanData.loan?.driveFolder) {
+            // Fetch actual folder name from Google Drive
+            try {
+              const folderResponse = await fetch(`/api/drive/folder/${loanData.loan.driveFolder}/name`);
+              if (folderResponse.ok) {
+                const folderData = await folderResponse.json();
+                setCurrentFolderName(folderData.name || 'Unknown Folder');
+              } else if (folderResponse.status === 403) {
+                // Permission error - show helpful message
+                const errorData = await folderResponse.json();
+                if (errorData.requiresReauth) {
+                  setCurrentFolderName('⚠️ Re-authentication required for folder names');
                 } else {
-                  // Fallback to loan-based name
-                  const folderName = `${loanData.loan.borrowerName || 'Borrower'} - ${loanData.loan.propertyAddress || loanData.loan.loanNumber}`;
-                  setCurrentFolderName(folderName);
+                  setCurrentFolderName('⚠️ Permission denied for folder access');
                 }
-              } catch (folderError) {
-                console.error('Error fetching folder name:', folderError);
+              } else {
                 // Fallback to loan-based name
                 const folderName = `${loanData.loan.borrowerName || 'Borrower'} - ${loanData.loan.propertyAddress || loanData.loan.loanNumber}`;
                 setCurrentFolderName(folderName);
               }
+            } catch (folderError) {
+              console.error('Error fetching folder name:', folderError);
+              // Fallback to loan-based name
+              const folderName = `${loanData.loan.borrowerName || 'Borrower'} - ${loanData.loan.propertyAddress || loanData.loan.loanNumber}`;
+              setCurrentFolderName(folderName);
             }
-          } catch (error) {
-            console.error('Error fetching loan folder info:', error);
           }
-        } else if (!data.connected) {
-          setCurrentFolderName('');
+        } catch (error) {
+          console.error('Error fetching loan folder info:', error);
         }
-      } catch (error) {
-        console.error('Error checking connection status:', error);
+      } else if (!data.connected) {
+        setCurrentFolderName('');
       }
-    };
+    } catch (error) {
+      console.error('Error checking connection status:', error);
+    }
+  };
 
-    // Check immediately
+  // Poll for connection status changes and fetch folder info
+  useEffect(() => {
     checkConnectionStatus();
-
-    // Poll every 2 seconds for real-time updates
-    const interval = setInterval(checkConnectionStatus, 2000);
-
+    
+    // Poll every 5 minutes to keep connection fresh
+    const interval = setInterval(checkConnectionStatus, 5 * 60 * 1000);
+    
     return () => clearInterval(interval);
   }, [loanId]);
 
@@ -88,9 +88,30 @@ export default function GoogleDriveConnect({ loanId, onConnect, isConnected }: G
     try {
       setIsLoading(true);
       
-      // Use direct OAuth endpoint instead of getting URL first
-      // This avoids potential CORS/security issues with iframe blocking
-      window.location.href = '/api/auth/google';
+      // Open Google OAuth in a new tab to avoid blocking issues
+      const popup = window.open('/api/auth/google', 'googleAuth', 'width=600,height=700,scrollbars=yes,resizable=yes');
+      
+      // Poll for popup closure or successful authentication
+      const checkClosed = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkClosed);
+          setIsLoading(false);
+          // Check if authentication was successful
+          setTimeout(() => {
+            checkConnectionStatus();
+          }, 1000);
+        }
+      }, 1000);
+      
+      // Fallback timeout
+      setTimeout(() => {
+        if (popup && !popup.closed) {
+          popup.close();
+          clearInterval(checkClosed);
+          setIsLoading(false);
+        }
+      }, 60000); // 1 minute timeout
+      
     } catch (error) {
       console.error('Error connecting to Google:', error);
       toast({
