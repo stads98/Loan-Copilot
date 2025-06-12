@@ -2761,26 +2761,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 'east': 'e', 'west': 'w'
               };
               
-              Object.entries(abbreviations).forEach(([full, abbrev]) => {
-                if (streetName.toLowerCase().includes(full)) {
-                  streetVariations.push(`${streetNumber} ${streetName.toLowerCase().replace(full, abbrev)}`);
-                }
-                if (streetName.toLowerCase().includes(abbrev)) {
-                  streetVariations.push(`${streetNumber} ${streetName.toLowerCase().replace(abbrev, full)}`);
-                }
-              });
-              
-              Object.entries(directions).forEach(([full, abbrev]) => {
-                if (streetAddress.toLowerCase().includes(full)) {
-                  streetVariations.push(streetAddress.toLowerCase().replace(full, abbrev));
-                }
-                if (streetAddress.toLowerCase().includes(abbrev)) {
-                  streetVariations.push(streetAddress.toLowerCase().replace(abbrev, full));
-                }
-              });
-              
-              // Search for any street variation with attachment requirement
-              const streetSearches = streetVariations.map(variation => `("${variation}" AND has:attachment)`).join(' OR ');
+              // Add street variations without attachment requirement
+              const streetSearches = streetVariations.map(variation => `"${variation}"`).join(' OR ');
               searchTerms.push(`(${streetSearches}) after:${dateQuery}`);
             }
           }
