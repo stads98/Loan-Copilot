@@ -33,7 +33,7 @@ interface GmailInboxProps {
   loanId?: number;
 }
 
-export function GmailInbox({ className, loanId }: GmailInboxProps) {
+export default function GmailInbox({ className, loanId }: GmailInboxProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState<GmailMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
