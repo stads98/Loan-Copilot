@@ -28,33 +28,114 @@ interface ParsedEmail {
   content: string;
 }
 
+
+
 interface GmailInboxProps {
   className?: string;
   loanId?: number;
 }
 
 export default function GmailInbox({ className, loanId }: GmailInboxProps) {
-  const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState<GmailMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<GmailMessage | null>(null);
-  const [messageContent, setMessageContent] = useState('');
+  const [messageContent, setMessageContent] = useState<string>("");
   const [messageAttachments, setMessageAttachments] = useState<any[]>([]);
   const [isLoadingMessage, setIsLoadingMessage] = useState(false);
-  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
-  const [isScanningSelected, setIsScanningSelected] = useState(false);
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
+  const [messageCache, setMessageCache] = useState<Map<string, {content: string, attachments: any[]}>>(new Map());
   const [showReply, setShowReply] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [isSendingReply, setIsSendingReply] = useState(false);
-  
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
+  const [isScanningSelected, setIsScanningSelected] = useState(false);
   const { toast } = useToast();
+
+  // Function to parse email threads and separate individual messages
+  const parseEmailThread = (emailContent: string): ParsedEmail[] => {
+    if (!emailContent) return [{ header: false, from: '', subject: '', date: '', content: 'No content available' }];
+    
+    const emails: ParsedEmail[] = [];
+    
+    // Only split on clear email thread separators that indicate multiple different emails
+    // Be more conservative to avoid splitting single emails into multiple parts
+    const sections = emailContent.split(/(?=^From:\s*.+?\n.*?Subject:\s*.+?\n)/gm);
+    
+    for (let i = 0; i < sections.length; i++) {
+      const section = sections[i].trim();
+      if (!section) continue;
+      
+      // Only treat as separate email if it has a complete email header structure
+      const hasCompleteHeader = section.match(/^From:\s*.+?\n.*?Subject:\s*.+?\n/m);
+      
+      let content = section;
+      let hasHeader = false;
+      let from = '';
+      let subject = '';
+      let date = '';
+      
+      if (hasCompleteHeader) {
+        hasHeader = true;
+        
+        // Extract header information
+        const fromMatch = section.match(/From:\s*(.+?)(?:\n|$)/i);
+        const sentMatch = section.match(/Sent:\s*(.+?)(?:\n|$)/i);
+        const subjectMatch = section.match(/Subject:\s*(.+?)(?:\n|$)/i);
+        
+        from = fromMatch ? fromMatch[1].trim() : '';
+        subject = subjectMatch ? subjectMatch[1].trim() : '';
+        date = sentMatch ? sentMatch[1].trim() : '';
+        
+        // Remove header lines from content
+        content = content
+          .replace(/From:\s*.+?\n/gi, '')
+          .replace(/Sent:\s*.+?\n/gi, '')
+          .replace(/To:\s*.+?\n/gi, '')
+          .replace(/Cc:\s*.+?\n/gi, '')
+          .replace(/Subject:\s*.+?\n/gi, '')
+          .trim();
+      }
+      
+      // Clean up content
+      content = content
+        .replace(/^[\s\n\r]+/, '')
+        .replace(/[\s\n\r]+$/, '')
+        .replace(/\n{3,}/g, '\n\n');
+      
+      if (content) {
+        emails.push({
+          header: hasHeader,
+          from,
+          subject,
+          date,
+          content
+        });
+      }
+    }
+    
+    // If no sections were found, treat the entire content as one email
+    if (emails.length === 0) {
+      emails.push({
+        header: false,
+        from: '',
+        subject: '',
+        date: '',
+        content: emailContent
+      });
+    }
+    
+    return emails;
+  };
 
   const checkGmailConnection = async () => {
     try {
       const response = await apiRequest("GET", "/api/gmail/status");
       setIsConnected(response.connected);
+      if (response.connected) {
+        fetchMessages();
+      }
     } catch (error) {
       setIsConnected(false);
     }
@@ -149,159 +230,153 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
     setExpandedThreads(newExpanded);
   };
 
-  const openMessage = (message: GmailMessage) => {
+  const openMessage = async (message: GmailMessage) => {
     setSelectedMessage(message);
-    setMessageContent('');
-    setMessageAttachments([]);
     setIsLoadingMessage(true);
     
-    apiRequest("GET", `/api/gmail/messages/${message.id}`)
-      .then(response => {
-        setMessageContent(response.content || 'No content available');
-        setMessageAttachments(response.attachments || []);
-      })
-      .catch(error => {
-        console.error('Error fetching message:', error);
-        setMessageContent('Error loading message content');
-      })
-      .finally(() => {
-        setIsLoadingMessage(false);
+    // Check cache first
+    const cached = messageCache.get(message.id);
+    if (cached) {
+      setMessageContent(cached.content);
+      setMessageAttachments(cached.attachments);
+      setIsLoadingMessage(false);
+      
+      // Auto-download PDFs if not already processed
+      autoDownloadPDFs(cached.attachments, message.id);
+      return;
+    }
+    
+    try {
+      const response = await apiRequest("GET", `/api/gmail/messages/${message.id}`);
+      const content = response.content || message.snippet;
+      const attachments = response.attachments || [];
+      
+      // Cache the response
+      setMessageCache(prev => new Map(prev).set(message.id, { content, attachments }));
+      
+      setMessageContent(content);
+      setMessageAttachments(attachments);
+      
+      // Auto-download PDFs when message opens
+      autoDownloadPDFs(attachments, message.id, message.from, message.subject);
+    } catch (error) {
+      setMessageContent(message.snippet);
+      setMessageAttachments([]);
+      toast({
+        title: "Could not load full email",
+        description: "Showing preview instead",
+        variant: "destructive"
       });
+    } finally {
+      setIsLoadingMessage(false);
+    }
   };
 
   const closeMessage = () => {
     setSelectedMessage(null);
-    setShowReply(false);
-    setReplyContent("");
+    setMessageContent("");
+    setMessageAttachments([]);
   };
 
-  const toggleEmailSelection = (emailId: string) => {
-    const newSelected = new Set(selectedEmails);
-    if (newSelected.has(emailId)) {
-      newSelected.delete(emailId);
-    } else {
-      newSelected.add(emailId);
-    }
-    setSelectedEmails(newSelected);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedEmails.size === messages.length) {
-      setSelectedEmails(new Set());
-    } else {
-      setSelectedEmails(new Set(messages.map(m => m.id)));
-    }
-  };
-
-  // Function to parse email threads and separate individual messages
-  const parseEmailThread = (emailContent: string): ParsedEmail[] => {
-    if (!emailContent) return [{ header: false, from: '', subject: '', date: '', content: 'No content available' }];
+  // Auto-download PDFs function
+  const autoDownloadPDFs = async (attachments: any[], messageId: string, messageFrom?: string, messageSubject?: string) => {
+    const pdfAttachments = attachments.filter(att => att.mimeType?.includes('pdf'));
     
-    const emails: ParsedEmail[] = [];
-    
-    // Only split on clear email thread separators that indicate multiple different emails
-    // Be more conservative to avoid splitting single emails into multiple parts
-    const sections = emailContent.split(/(?=^From:\s*.+?\n.*?Subject:\s*.+?\n)/gm);
-    
-    for (let i = 0; i < sections.length; i++) {
-      const section = sections[i].trim();
-      if (!section) continue;
-      
-      // Only treat as separate email if it has a complete email header structure
-      const hasCompleteHeader = section.match(/^From:\s*.+?\n.*?Subject:\s*.+?\n/m);
-      
-      let content = section;
-      let hasHeader = false;
-      let from = '';
-      let subject = '';
-      let date = '';
-      
-      if (hasCompleteHeader) {
-        hasHeader = true;
+    for (const attachment of pdfAttachments) {
+      try {
+        console.log('Auto-downloading PDF:', attachment.filename);
+        const response = await apiRequest("GET", `/api/gmail/messages/${messageId}/attachments/${attachment.attachmentId}`);
         
-        // Extract header information
-        const fromMatch = section.match(/From:\s*(.+?)(?:\n|$)/i);
-        const sentMatch = section.match(/Sent:\s*(.+?)(?:\n|$)/i);
-        const subjectMatch = section.match(/Subject:\s*(.+?)(?:\n|$)/i);
+        if (!response || !response.data) {
+          console.log('No attachment data for:', attachment.filename);
+          continue;
+        }
         
-        from = fromMatch ? fromMatch[1].trim() : '';
-        subject = subjectMatch ? subjectMatch[1].trim() : '';
-        date = sentMatch ? sentMatch[1].trim() : '';
+        // Save PDF to loan documents and Google Drive
+        await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
+          attachmentData: response.data,
+          filename: attachment.filename,
+          mimeType: attachment.mimeType,
+          size: attachment.size,
+          emailSubject: messageSubject || selectedMessage?.subject,
+          emailFrom: messageFrom || selectedMessage?.from
+        });
         
-        // Remove the header from content
-        content = section.replace(/^From:\s*.+?\n.*?Subject:\s*.+?\n.*?(?:Sent|Date):\s*.+?\n/m, '').trim();
+        console.log('Auto-downloaded PDF:', attachment.filename);
+      } catch (error) {
+        console.error('Auto-download failed for:', attachment.filename, error);
       }
-      
-      emails.push({
-        header: hasHeader,
-        from,
-        subject,
-        date,
-        content: content || section
-      });
     }
     
-    return emails.length > 0 ? emails : [{ header: false, from: '', subject: '', date: '', content: emailContent }];
+    if (pdfAttachments.length > 0) {
+      // Refresh documents list after auto-downloads
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId] });
+    }
   };
 
-  const downloadAttachment = async (messageId: string, attachment: any) => {
+  const downloadAttachment = async (attachment: any) => {
     try {
-      const response = await fetch(`/api/gmail/messages/${messageId}/attachments/${attachment.attachmentId}`, {
-        method: 'GET'
-      });
+      console.log('Downloading attachment:', attachment);
+      const response = await apiRequest("GET", `/api/gmail/messages/${selectedMessage?.id}/attachments/${attachment.attachmentId}`);
+      console.log('Attachment response:', response);
       
-      if (!response.ok) {
-        throw new Error('Failed to download attachment');
+      // The server returns { data: base64String }
+      if (!response || !response.data) {
+        throw new Error('No attachment data received');
       }
       
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
+      // Save files (images only via manual save) to loan documents and Google Drive
+      const saveResponse = await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
+        attachmentData: response.data, // Use the base64 data directly
+        filename: attachment.filename,
+        mimeType: attachment.mimeType,
+        size: attachment.size,
+        emailSubject: selectedMessage?.subject,
+        emailFrom: selectedMessage?.from
+      });
       
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = attachment.filename || 'attachment';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // Invalidate documents cache to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId, 'documents'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId] });
+      
+      const fileType = attachment.mimeType?.includes('pdf') ? 'PDF' : 
+                       attachment.mimeType?.includes('image') ? 'Image' : 'File';
       
       toast({
-        title: "Download Complete",
-        description: `Downloaded ${attachment.filename}`
+        title: `${fileType} Saved Successfully`,
+        description: `${attachment.filename} has been added to loan documents and uploaded to Google Drive`,
       });
     } catch (error) {
       console.error('Download error:', error);
       toast({
         title: "Download Failed",
-        description: "Could not download attachment. Please try again.",
+        description: error instanceof Error ? error.message : "Could not download attachment. Please try again.",
         variant: "destructive"
       });
     }
   };
 
-  const previewAttachment = async (messageId: string, attachment: any) => {
+  const previewAttachment = async (attachment: any) => {
     try {
       console.log('Previewing attachment:', attachment);
+      const response = await apiRequest("GET", `/api/gmail/messages/${selectedMessage?.id}/attachments/${attachment.attachmentId}`);
       
-      const response = await fetch(`/api/gmail/messages/${messageId}/attachments/${attachment.attachmentId}`, {
-        method: 'GET'
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to load attachment');
+      if (!response || !response.data) {
+        throw new Error('No attachment data received');
       }
       
-      const arrayBuffer = await response.arrayBuffer();
-      const binaryData = new Uint8Array(arrayBuffer);
-      
-      console.log('Gmail API attachment response:', {
-        hasData: !!arrayBuffer,
-        dataKeys: Object.keys(arrayBuffer),
-        size: arrayBuffer.byteLength,
-        hasAttachmentData: binaryData.length > 0
-      });
-      
-      if (!binaryData || binaryData.length === 0) {
+      // Decode base64 data safely (Gmail uses URL-safe base64)
+      let binaryData;
+      try {
+        let base64Data = response.data;
+        base64Data = base64Data.replace(/-/g, '+').replace(/_/g, '/');
+        while (base64Data.length % 4) {
+          base64Data += '=';
+        }
+        binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+      } catch (decodeError) {
+        console.error('Base64 decode error:', decodeError);
         throw new Error('Failed to decode attachment data');
       }
       
@@ -404,82 +479,103 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
       for (const emailId of Array.from(selectedEmails)) {
         try {
           // Get email details and attachments
-          const emailResponse = await apiRequest("GET", `/api/gmail/messages/${emailId}`);
-          const attachments = emailResponse.attachments || [];
+          const response = await apiRequest("GET", `/api/gmail/messages/${emailId}`);
+          const attachments = response.attachments || [];
           
           // Filter for PDF attachments
           const pdfAttachments = attachments.filter((att: any) => 
             att.mimeType?.includes('pdf') || att.filename?.toLowerCase().endsWith('.pdf')
           );
 
-          if (pdfAttachments.length > 0) {
-            console.log(`Found ${pdfAttachments.length} PDFs in email ${emailId}`);
-            
-            // Process each PDF attachment
-            for (const attachment of pdfAttachments) {
-              try {
-                // First download the attachment data
-                const attachmentResponse = await fetch(`/api/gmail/messages/${emailId}/attachments/${attachment.attachmentId}`, {
-                  method: 'GET'
-                });
-                
-                if (!attachmentResponse.ok) {
-                  throw new Error('Failed to download attachment');
-                }
-                
-                const attachmentData = await attachmentResponse.json();
-                
-                // Now save to documents using the correct endpoint
-                const result = await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
-                  attachmentData: attachmentData.data,
+          // Download each PDF attachment
+          for (const attachment of pdfAttachments) {
+            try {
+              const attachmentResponse = await apiRequest("GET", `/api/gmail/messages/${emailId}/attachments/${attachment.attachmentId}`);
+              
+              if (attachmentResponse && attachmentResponse.data) {
+                const saveResponse = await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
+                  attachmentData: attachmentResponse.data,
                   filename: attachment.filename,
                   mimeType: attachment.mimeType,
                   size: attachment.size,
-                  emailSubject: emailResponse.subject || 'No Subject',
-                  emailFrom: emailResponse.from || 'Unknown Sender'
+                  emailSubject: response.subject,
+                  emailFrom: response.from
                 });
                 
-                if (result) {
-                  totalPDFs++;
-                }
-              } catch (attachmentError) {
-                console.error(`Error processing attachment ${attachment.filename}:`, attachmentError);
+                totalPDFs++;
               }
+            } catch (attachmentError) {
+              console.error(`Failed to download attachment ${attachment.filename}:`, attachmentError);
             }
           }
         } catch (emailError) {
-          console.error(`Error processing email ${emailId}:`, emailError);
+          console.error(`Failed to process email ${emailId}:`, emailError);
         }
       }
 
-      if (totalPDFs > 0) {
-        toast({
-          title: "Documents Added",
-          description: `Successfully added ${totalPDFs} PDF documents to the loan.`,
-        });
-        
-        // Clear selection and refresh data
-        setSelectedEmails(new Set());
-        queryClient.invalidateQueries({ queryKey: ['/api/loans', loanId] });
-        queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
-      } else {
-        toast({
-          title: "No PDFs Found",
-          description: "No PDF attachments were found in the selected emails.",
-          variant: "destructive"
-        });
-      }
+      // Targeted cache refresh - only for document-related data
+      console.log('Refreshing documents cache...');
+      
+      // Only refresh loan data to show new documents, preserve Gmail interface
+      queryClient.removeQueries({ queryKey: [`/api/loans/${loanId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}`] });
+      
+      // Small delay then refresh just the loan data
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: [`/api/loans/${loanId}`] });
+        console.log('Documents updated successfully');
+      }, 200);
+
+      // Clear selection
+      setSelectedEmails(new Set());
+
+      toast({
+        title: "Scan Complete",
+        description: `Found and downloaded ${totalPDFs} PDF documents from ${selectedEmails.size} selected emails`,
+      });
+
     } catch (error) {
-      console.error('Error scanning selected emails:', error);
+      console.error("Error scanning selected emails:", error);
       toast({
         title: "Scan Failed",
-        description: "Failed to scan selected emails. Please try again.",
+        description: "Failed to scan selected emails for PDFs",
         variant: "destructive"
       });
     } finally {
       setIsScanningSelected(false);
     }
   };
+
+  // Toggle email selection
+  const toggleEmailSelection = (emailId: string) => {
+    const newSelected = new Set(selectedEmails);
+    if (newSelected.has(emailId)) {
+      newSelected.delete(emailId);
+    } else {
+      newSelected.add(emailId);
+    }
+    setSelectedEmails(newSelected);
+  };
+
+  // Select/deselect all emails
+  const toggleSelectAll = () => {
+    if (selectedEmails.size === messages.length) {
+      setSelectedEmails(new Set());
+    } else {
+      setSelectedEmails(new Set(messages.map(msg => msg.id)));
+    }
+  };
+
+  useEffect(() => {
+    // Auto-refresh every minute
+    const interval = setInterval(() => {
+      if (isConnected) {
+        fetchMessages();
+      }
+    }, 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [isConnected]);
 
   const unreadCount = messages.filter(msg => msg.unread).length;
 
@@ -597,170 +693,106 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                 </label>
               </div>
             )}
-            {(() => {
-              // Group messages by thread
-              const threadGroups = new Map();
-              messages.forEach(message => {
-                if (!threadGroups.has(message.threadId)) {
-                  threadGroups.set(message.threadId, []);
-                }
-                threadGroups.get(message.threadId).push(message);
-              });
-
-              // Sort threads by most recent message
-              const sortedThreads = Array.from(threadGroups.entries()).sort((a, b) => {
-                const aLatest = Math.max(...a[1].map((m: any) => new Date(m.date).getTime()));
-                const bLatest = Math.max(...b[1].map((m: any) => new Date(m.date).getTime()));
-                return bLatest - aLatest;
-              });
-
-              return sortedThreads.map(([threadId, threadMessages]) => {
-                // Sort messages within thread by date (oldest first)
-                const sortedMessages = threadMessages.sort((a: any, b: any) => 
-                  new Date(a.date).getTime() - new Date(b.date).getTime()
-                );
-                
-                const latestMessage = sortedMessages[sortedMessages.length - 1];
-                const isExpanded = expandedThreads.has(threadId);
-                const threadCount = sortedMessages.length;
-                const unreadInThread = sortedMessages.filter((m: any) => m.unread).length;
-
-                return (
-                  <div key={threadId} className="border rounded-lg bg-white border-gray-200 overflow-hidden mb-2">
-                    {/* Thread Header - Latest Message */}
-                    <div 
-                      className={`group relative transition-colors hover:bg-gray-50 cursor-pointer ${
-                        latestMessage.unread ? 'bg-blue-50' : 'bg-white'
-                      } ${selectedEmails.has(latestMessage.id) ? 'ring-2 ring-blue-500' : ''}`}
-                      onClick={() => threadCount > 1 ? toggleThread(threadId) : openMessage(latestMessage)}
-                    >
-                      <div className="p-3">
-                        <div className="flex items-start gap-3">
-                          {loanId && (
-                            <div className="flex items-center mt-1">
-                              <Checkbox
-                                checked={selectedEmails.has(latestMessage.id)}
-                                onCheckedChange={() => toggleEmailSelection(latestMessage.id)}
-                                onClick={(e) => e.stopPropagation()}
-                              />
+            {messages.map((message, index) => {
+              // Check if this message is part of a thread
+              const isThreadStart = index === 0 || messages[index - 1].threadId !== message.threadId;
+              const isThreadEnd = index === messages.length - 1 || messages[index + 1].threadId !== message.threadId;
+              const hasThread = messages.some(m => m.threadId === message.threadId && m.id !== message.id);
+              
+              return (
+                <div key={message.id} className={`relative ${hasThread && !isThreadEnd ? 'border-l-4 border-l-gray-300 ml-2 pl-4' : ''}`}>
+                  {hasThread && isThreadStart && (
+                    <div className="text-xs text-gray-500 font-medium mb-2 flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-gray-300 rounded-full flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                      </div>
+                      CONVERSATION THREAD
+                    </div>
+                  )}
+                  <div
+                    className={`p-3 rounded-lg border hover:bg-gray-50 transition-colors ${
+                      message.unread ? 'bg-blue-50 border-blue-200' : 'bg-white'
+                    } ${hasThread ? 'ml-4' : ''} ${selectedEmails.has(message.id) ? 'ring-2 ring-blue-500' : ''}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      {loanId && (
+                        <div className="flex items-center mt-1">
+                          <Checkbox
+                            id={`email-${message.id}`}
+                            checked={selectedEmails.has(message.id)}
+                            onCheckedChange={() => toggleEmailSelection(message.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openMessage(message)}>
+                        <div className="flex items-center gap-2 mb-1">
+                          {message.subject?.startsWith('Re:') ? (
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <span className="inline-flex items-center px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded-full font-medium">
+                                REPLY
+                              </span>
+                            </div>
+                          ) : message.subject?.startsWith('Fwd:') ? (
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              <span className="inline-flex items-center px-2 py-0.5 text-xs bg-green-50 text-green-700 rounded-full font-medium">
+                                FORWARD
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                              <span className="inline-flex items-center px-2 py-0.5 text-xs bg-gray-50 text-gray-700 rounded-full font-medium">
+                                ORIGINAL
+                              </span>
                             </div>
                           )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                                <span className="text-sm font-medium text-gray-900 truncate">
-                                  {latestMessage.from.split('<')[0].trim() || latestMessage.from}
-                                </span>
-                                {threadCount > 1 && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    {threadCount} messages
-                                  </Badge>
-                                )}
-                                {unreadInThread > 0 && (
-                                  <Badge variant="destructive" className="text-xs">
-                                    {unreadInThread} new
-                                  </Badge>
-                                )}
-                                {latestMessage.hasAttachments && (
-                                  <Paperclip className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                <span className="text-xs text-gray-500">
-                                  {format(new Date(latestMessage.date), 'MMM d')}
-                                </span>
-                              </div>
-                            </div>
-                            <h4 className={`text-sm mb-1 line-clamp-1 ${latestMessage.unread ? 'font-semibold text-black' : 'font-normal text-gray-800'}`}>
-                              {latestMessage.subject || '(No Subject)'}
-                            </h4>
-                            <p className="text-sm text-gray-600 line-clamp-2">
-                              {latestMessage.snippet}
-                            </p>
+                          {message.hasAttachments && (
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs bg-orange-50 text-orange-700 rounded-full font-medium">
+                              <Paperclip className="w-3 h-3 mr-1" />
+                              ATTACHMENTS
+                            </span>
+                          )}
+                        </div>
+                        <div className="space-y-1 mb-2">
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                            <span className="text-xs text-gray-500 font-medium">FROM:</span>
+                            <span className={`text-sm font-medium ${message.unread ? 'text-black' : 'text-gray-700'}`}>
+                              {message.from}
+                            </span>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openMessage(latestMessage);
-                            }}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
+                        </div>
+                        <h4 className={`text-sm mb-1 ${message.unread ? 'font-semibold text-black' : 'font-normal text-gray-800'}`}>
+                          {message.subject?.replace(/^(Re:|Fwd:)\s*/, '') || '(No Subject)'}
+                        </h4>
+                        <p className="text-xs text-gray-600 line-clamp-2 mt-1">
+                          {message.snippet}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                          {message.unread ? (
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                              <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">UNREAD</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400 uppercase tracking-wide">READ</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <Calendar className="w-3 h-3" />
+                          {format(new Date(message.date), 'MMM dd, h:mm a')}
                         </div>
                       </div>
                     </div>
-
-                    {/* Expanded Thread Messages */}
-                    {isExpanded && threadCount > 1 && (
-                      <div className="border-t border-gray-200 bg-gray-50">
-                        {sortedMessages.slice(0, -1).reverse().map((message: any, index: any) => (
-                          <div 
-                            key={message.id}
-                            className={`border-b border-gray-200 last:border-b-0 hover:bg-gray-100 transition-colors cursor-pointer ${
-                              message.unread ? 'bg-blue-50' : 'bg-white'
-                            } ${selectedEmails.has(message.id) ? 'ring-2 ring-blue-500' : ''}`}
-                            onClick={() => openMessage(message)}
-                          >
-                            <div className="p-3 pl-8">
-                              <div className="flex items-start gap-3">
-                                {loanId && (
-                                  <div className="flex items-center mt-1">
-                                    <Checkbox
-                                      checked={selectedEmails.has(message.id)}
-                                      onCheckedChange={() => toggleEmailSelection(message.id)}
-                                      onClick={(e) => e.stopPropagation()}
-                                    />
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between mb-1">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <User className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                                      <span className="text-xs font-medium text-gray-700 truncate">
-                                        {message.from.split('<')[0].trim() || message.from}
-                                      </span>
-                                      {message.hasAttachments && (
-                                        <Paperclip className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                                      )}
-                                      {message.unread && (
-                                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0"></div>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                      <span className="text-xs text-gray-500">
-                                        {format(new Date(message.date), 'MMM d, HH:mm')}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <p className="text-xs text-gray-600 line-clamp-1">
-                                    {message.snippet}
-                                  </p>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openMessage(message);
-                                  }}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
-                                >
-                                  <Eye className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
-                );
-              });
-            })()}
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>
@@ -775,166 +807,237 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
                   variant="ghost"
                   size="sm"
                   onClick={closeMessage}
+                  className="h-8 w-8 p-0"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <span className="truncate">
-                  {selectedMessage?.subject || '(No Subject)'}
-                </span>
+                {selectedMessage?.subject || "No Subject"}
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">
-                  {selectedMessage && format(new Date(selectedMessage.date), 'MMM d, yyyy HH:mm')}
-                </span>
+                {selectedMessage?.hasAttachments && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Paperclip className="w-3 h-3 mr-1" />
+                    Attachments
+                  </Badge>
+                )}
               </div>
             </DialogTitle>
           </DialogHeader>
-
-          {/* Email Content */}
-          <div className="max-h-96 overflow-y-auto">
-            {isLoadingMessage ? (
-              <div className="flex items-center justify-center py-8">
-                <RefreshCw className="w-6 h-6 animate-spin" />
+          
+          {selectedMessage && (
+            <div className="space-y-4">
+              {/* Email Header */}
+              <div className="border-b pb-4">
+                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                  <User className="w-4 h-4" />
+                  <span className="font-medium">{selectedMessage.from}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Calendar className="w-4 h-4" />
+                  <span>{format(new Date(selectedMessage.date), "PPp")}</span>
+                </div>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {parseEmailThread(messageContent).map((email, index) => (
-                  <div 
-                    key={index} 
-                    className={`p-4 rounded-lg border-2 ${
-                      index === 0 
-                        ? 'border-blue-200 bg-blue-50' 
-                        : 'border-gray-200 bg-gray-50'
-                    }`}
-                  >
-                    {email.header && (
-                      <div className="border-b border-gray-300 pb-2 mb-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                            {index === 0 ? 'Latest Message' : `Previous Message ${index}`}
-                          </span>
-                          {email.date && (
-                            <span className="text-xs text-gray-500">{email.date}</span>
-                          )}
-                        </div>
-                        {email.from && (
-                          <div className="mt-1">
-                            <span className="text-xs text-gray-500 font-medium">FROM: </span>
-                            <span className="text-sm font-medium text-gray-800">{email.from}</span>
+
+              {/* Email Content */}
+              <div className="max-h-96 overflow-y-auto">
+                {isLoadingMessage ? (
+                  <div className="flex items-center justify-center py-8">
+                    <RefreshCw className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {parseEmailThread(messageContent).map((email, index) => (
+                      <div 
+                        key={index} 
+                        className={`p-4 rounded-lg border-2 ${
+                          index === 0 
+                            ? 'border-blue-200 bg-blue-50' 
+                            : 'border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        {email.header && (
+                          <div className="border-b border-gray-300 pb-2 mb-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                                {index === 0 ? 'Latest Message' : `Previous Message ${index}`}
+                              </span>
+                              {email.date && (
+                                <span className="text-xs text-gray-500">{email.date}</span>
+                              )}
+                            </div>
+                            {email.from && (
+                              <p className="text-sm font-medium text-gray-800 mt-1">
+                                From: {email.from}
+                              </p>
+                            )}
+                            {email.subject && (
+                              <p className="text-sm text-gray-700">
+                                Subject: {email.subject}
+                              </p>
+                            )}
                           </div>
                         )}
-                        {email.subject && (
-                          <div className="mt-1">
-                            <span className="text-xs text-gray-500 font-medium">SUBJECT: </span>
-                            <span className="text-sm font-medium text-gray-800">{email.subject}</span>
-                          </div>
-                        )}
+                        <div 
+                          className="prose prose-sm max-w-none text-gray-700"
+                          dangerouslySetInnerHTML={{ 
+                            __html: email.content.replace(/\n/g, '<br>') 
+                          }}
+                        />
                       </div>
-                    )}
-                    <div className="text-sm text-gray-700 whitespace-pre-wrap">
-                      {email.content}
-                    </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Attachments Section */}
-          {messageAttachments && messageAttachments.length > 0 && (
-            <div className="border-t pt-4">
-              <h4 className="text-sm font-medium mb-2">
-                Attachments ({messageAttachments.length})
-              </h4>
-              <div className="space-y-2">
-                {messageAttachments.map((attachment, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <div className="flex items-center gap-2">
-                      <Paperclip className="w-4 h-4 text-gray-500" />
-                      <div>
-                        <div className="text-sm font-medium">{attachment.filename}</div>
-                        <div className="text-xs text-gray-500">
-                          {attachment.mimeType} • {attachment.size ? `${(attachment.size / 1024 / 1024).toFixed(2)} MB` : 'Unknown size'}
+              {/* Attachments */}
+              {messageAttachments.length > 0 && (
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <Paperclip className="w-4 h-4" />
+                    Attachments ({messageAttachments.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {messageAttachments.map((attachment, index) => {
+                      const isPDF = attachment.mimeType?.includes('pdf');
+                      const isImage = attachment.mimeType?.includes('image');
+                      
+                      return (
+                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded border hover:bg-gray-100 transition-colors">
+                          <div className="flex items-center gap-3">
+                            {isPDF ? (
+                              <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center">
+                                <span className="text-red-600 text-xs font-bold">PDF</span>
+                              </div>
+                            ) : isImage ? (
+                              <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
+                                <span className="text-blue-600 text-xs font-bold">IMG</span>
+                              </div>
+                            ) : (
+                              <Paperclip className="w-6 h-6 text-gray-500" />
+                            )}
+                            <div>
+                              <span className="text-sm font-medium block">{attachment.filename}</span>
+                              {attachment.size && (
+                                <span className="text-xs text-gray-500">
+                                  {Math.round(attachment.size / 1024)} KB
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {isPDF && (
+                              <Badge variant="secondary" className="text-xs">
+                                Auto-downloaded
+                              </Badge>
+                            )}
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => previewAttachment(attachment)}
+                                className="text-xs"
+                              >
+                                <Eye className="w-3 h-3 mr-1" />
+                                Preview
+                              </Button>
+                              {isImage && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => downloadAttachment(attachment)}
+                                  className="text-xs"
+                                >
+                                  <Save className="w-3 h-3 mr-1" />
+                                  Save
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => previewAttachment(selectedMessage!.id, attachment)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => downloadAttachment(selectedMessage!.id, attachment)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </div>
+                      );
+                    })}
                   </div>
-                ))}
+                </div>
+              )}
+
+              {/* Quick Actions */}
+              <div className="flex gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowReply(!showReply)}
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Reply
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(`https://mail.google.com/mail/u/0/#inbox/${selectedMessage.id}`, '_blank')}
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Open in Gmail
+                </Button>
               </div>
+
+              {/* Reply Composer */}
+              {showReply && (
+                <div className="mt-4 pt-4 border-t space-y-4">
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="text-sm text-blue-800 mb-2">
+                      Replying to: <strong>{selectedMessage.from}</strong>
+                    </p>
+                    <p className="text-sm text-blue-600">
+                      Subject: {selectedMessage.subject.startsWith('Re:') ? selectedMessage.subject : `Re: ${selectedMessage.subject}`}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Your Reply:
+                    </label>
+                    <textarea
+                      value={replyContent}
+                      onChange={(e) => setReplyContent(e.target.value)}
+                      placeholder="Type your reply here..."
+                      rows={6}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowReply(false);
+                        setReplyContent("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={sendReply}
+                      disabled={!replyContent.trim() || isSendingReply}
+                    >
+                      {isSendingReply ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-4 h-4 mr-2" />
+                          Send Reply
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
-
-          {/* Reply Section */}
-          <div className="border-t pt-4">
-            <Button
-              onClick={() => setShowReply(!showReply)}
-              variant="outline"
-              size="sm"
-              className="mb-3"
-            >
-              {showReply ? 'Cancel Reply' : 'Reply'}
-            </Button>
-
-            {showReply && (
-              <div className="space-y-3">
-                <div className="text-sm">
-                  <strong>To:</strong> {selectedMessage?.from}
-                  <br />
-                  <strong>Subject:</strong> {selectedMessage?.subject?.startsWith('Re:') ? selectedMessage.subject : `Re: ${selectedMessage?.subject}`}
-                </div>
-                <textarea
-                  value={replyContent}
-                  onChange={(e) => setReplyContent(e.target.value)}
-                  placeholder="Type your reply..."
-                  className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={() => {
-                      setShowReply(false);
-                      setReplyContent("");
-                    }}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={sendReply}
-                    disabled={!replyContent.trim() || isSendingReply}
-                    size="sm"
-                  >
-                    {isSendingReply ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Sending...
-                      </>
-                    ) : (
-                      'Send Reply'
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
         </DialogContent>
       </Dialog>
     </Card>
