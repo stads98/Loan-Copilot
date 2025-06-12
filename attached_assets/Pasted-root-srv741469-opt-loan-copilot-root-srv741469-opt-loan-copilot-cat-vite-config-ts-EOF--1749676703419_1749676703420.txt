@@ -1,0 +1,139 @@
+root@srv741469:/opt/loan-copilot# root@srv741469:/opt/loan-copilot# cat > vite.config.ts << 'EOF'
+> import { defineConfig } from "vite";
+> import react from "@vitejs/plugin-react";
+> import path from "path";
+> import { fileURLToPath } from "url";
+> const __filename = fileURLToPath(import.meta.url);
+> const __dirname = path.dirname(__filename);
+> export default defineConfig({
+>   plugins: [react()],
+>   root: path.resolve(__dirname, "client"),
+>   build: {
+>     outDir: path.resolve(__dirname, "dist/public"),
+>     emptyOutDir: true,
+>   },
+>   resolve: {
+>     alias: {
+>       "@": path.resolve(__dirname, "client", "src"),
+>       "@shared": path.resolve(__dirname, "shared"),
+>       "@assets": path.resolve(__dirname, "attached_assets"),
+>     },
+>   },
+> });
+> EOF
+root@srv741469:/opt/loan-copilot# cat > Dockerfile << 'EOF'
+> FROM node:18-alpine
+> WORKDIR /app
+> COPY package*.json ./
+> RUN npm install
+> COPY . .
+> # Build the client
+> RUN npm run build
+> # Create uploads directory
+> RUN mkdir -p uploads
+> EXPOSE 5000
+> ENV NODE_ENV=production
+> ENV PORT=5000
+> # Use the simple production start
+> CMD ["node", "start-production.js"]
+> EOF
+root@srv741469:/opt/loan-copilot# cat > start-production.js << 'EOF'
+> import express from 'express';
+> import path from 'path';
+> import { fileURLToPath } from 'url';
+> import { createServer } from 'http';
+> import { readFileSync } from 'fs';
+> const __filename = fileURLToPath(import.meta.url);
+> const __dirname = path.dirname(__filename);
+> const app = express();
+> const port = process.env.PORT || 5000;
+> // Basic middleware
+> app.use(express.json({ limit: '50mb' }));
+> app.use(express.urlencoded({ extended: true }));
+> // Serve static files
+> app.use(express.static(path.join(__dirname, 'dist/public')));
+> // Basic API routes for testing
+> app.get('/api/health', (req, res) => {
+>   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+> });
+> // Catch all for client-side routing
+> app.get('*', (req, res) => {
+>   const indexPath = path.join(__dirname, 'dist/public/index.html');
+>   try {
+>     const html = readFileSync(indexPath, 'utf8');
+>     res.send(html);
+>   } catch (err) {
+>     res.status(404).send('App not built properly');
+>   }
+> });
+> const server = createServer(app);
+> server.listen(port, '0.0.0.0', () => {
+>   console.log(`Server running on port ${port}`);
+>   console.log(`Environment: ${process.env.NODE_ENV}`);
+> });
+> EOF
+root@srv741469:/opt/loan-copilot# docker-compose build --no-cache
+WARN[0000] The "POSTGRES_PASSWORD" variable is not set. Defaulting to a blank string.
+[+] Building 66.5s (12/12) FINISHED
+ => [app internal] load build definition from Dockerfile                                                           0.0s
+ => => transferring dockerfile: 324B                                                                               0.0s
+ => [app internal] load metadata for docker.io/library/node:18-alpine                                              1.3s
+ => [app internal] load .dockerignore                                                                              0.0s
+ => => transferring context: 2B                                                                                    0.0s
+ => [app 1/7] FROM docker.io/library/node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc  0.0s
+ => [app internal] load build context                                                                              1.0s
+ => => transferring context: 2.28MB                                                                                1.0s
+ => CACHED [app 2/7] WORKDIR /app                                                                                  0.0s
+ => [app 3/7] COPY package*.json ./                                                                                0.2s
+ => [app 4/7] RUN npm install                                                                                     14.1s
+ => [app 5/7] COPY . .                                                                                            20.6s
+ => [app 6/7] RUN npm run build                                                                                    8.0s
+ => [app 7/7] RUN mkdir -p uploads                                                                                 0.2s
+ => [app] exporting to image                                                                                      20.9s
+ => => exporting layers                                                                                           20.9s
+ => => writing image sha256:c216e28397cce5de02d4a6b5dc78938cc90b0294ddf605705f25f7248e95c0a2                       0.0s
+ => => naming to docker.io/library/loan-copilot-app                                                                0.0s
+root@srv741469:/opt/loan-copilot# docker-compose up -d
+WARN[0000] The "POSTGRES_PASSWORD" variable is not set. Defaulting to a blank string.
+[+] Running 3/3
+ ✔ Network loan-copilot_default       Created                                                                      0.1s
+ ✔ Container loan-copilot-postgres-1  Started                                                                      0.3s
+ ✔ Container loan-copilot-app-1       Started                                                                      0.4s
+root@srv741469:/opt/loan-copilot# docker-compose ps
+WARN[0000] The "POSTGRES_PASSWORD" variable is not set. Defaulting to a blank string.
+NAME                      IMAGE                COMMAND                  SERVICE             CREATED             STATUS              PORTS
+loan-copilot-app-1        loan-copilot-app     "docker-entrypoint.s…"   app                 10 seconds ago      Up 10 seconds       0.0.0.0:5000->5000/tcp, :::5000->5000/tcp
+loan-copilot-postgres-1   postgres:15-alpine   "docker-entrypoint.s…"   postgres            11 seconds ago      Up 10 seconds       5432/tcp
+root@srv741469:/opt/loan-copilot# docker-compose logs app
+WARN[0000] The "POSTGRES_PASSWORD" variable is not set. Defaulting to a blank string.
+loan-copilot-app-1  | Server running on port 5000
+loan-copilot-app-1  | Environment: production
+root@srv741469:/opt/loan-copilot# curl -I http://localhost:5000
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Accept-Ranges: bytes
+Cache-Control: public, max-age=0
+Last-Modified: Wed, 11 Jun 2025 21:16:06 GMT
+ETag: W/"44b-19760d9a77d"
+Content-Type: text/html; charset=UTF-8
+Content-Length: 1099
+Date: Wed, 11 Jun 2025 21:17:11 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+root@srv741469:/opt/loan-copilot# curl http://localhost:5000/api/health
+{"status":"ok","timestamp":"2025-06-11T21:17:21.469Z"}root@srv741469:/opt/loan-copilot#
+root@srv741469:/opt/loan-copilot# curl -I http://adlercapital.pro
+HTTP/1.1 200 OK
+Server: nginx/1.24.0 (Ubuntu)
+Date: Wed, 11 Jun 2025 21:17:42 GMT
+Content-Type: text/html; charset=UTF-8
+Content-Length: 1099
+Connection: keep-alive
+X-Powered-By: Express
+Accept-Ranges: bytes
+Cache-Control: public, max-age=0
+Last-Modified: Wed, 11 Jun 2025 21:16:06 GMT
+ETag: W/"44b-19760d9a77d"
+
+root@srv741469:/opt/loan-copilot#

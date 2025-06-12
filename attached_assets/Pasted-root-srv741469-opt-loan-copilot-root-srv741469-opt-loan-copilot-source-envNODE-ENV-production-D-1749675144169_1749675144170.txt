@@ -1,0 +1,121 @@
+root@srv741469:/opt/loan-copilot# root@srv741469:/opt/loan-copilot# source .envNODE_ENV=production DATABASE_URL="$DATABASE_URL" GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET" GOOGLE_SERVICE_ACCOUNT_KEY="$GOOGLE_SERVICE_ACCOUNT_KEY" OPENAI_API_KEY="$OPENAI_API_KEY" PORT=5000 node dist/index.js
+-bash: .envNODE_ENV=production: No such file or directory
+root@srv741469:/opt/loan-copilot# source .env NODE_ENV=production DATABASE_URL="$DATABASE_URL" GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET" GOOGLE_SERVICE_ACCOUNT_KEY="$GOOGLE_SERVICE_ACCOUNT_KEY" OPENAI_API_KEY="$OPENAI_API_KEY" PORT=5000 node dist/index.js
+root@srv741469:/opt/loan-copilot# cat > /etc/systemd/system/loan-copilot.service << 'EOF'
+> [Unit]
+> Description=Loan Copilot Application
+> After=network.target
+> [Service]
+> Type=simple
+> User=root
+> WorkingDirectory=/opt/loan-copilot
+> Environment=NODE_ENV=production
+> Environment=PORT=5000
+> EnvironmentFile=/opt/loan-copilot/.env
+> ExecStart=/usr/bin/node dist/index.js
+> Restart=always
+> RestartSec=10
+> [Install]
+> WantedBy=multi-user.target
+> EOF
+root@srv741469:/opt/loan-copilot# systemctl daemon-reload
+root@srv741469:/opt/loan-copilot# systemctl enable loan-copilot
+Created symlink /etc/systemd/system/multi-user.target.wants/loan-copilot.service → /etc/systemd/system/loan-copilot.service.
+root@srv741469:/opt/loan-copilot# systemctl start loan-copilot
+root@srv741469:/opt/loan-copilot# systemctl status loan-copilot
+● loan-copilot.service - Loan Copilot Application
+     Loaded: loaded (/etc/systemd/system/loan-copilot.service; enabled; preset: enabled)
+     Active: activating (auto-restart) (Result: exit-code) since Wed 2025-06-11 20:49:02 UTC; 6s ago
+    Process: 2095649 ExecStart=/usr/bin/node dist/index.js (code=exited, status=1/FAILURE)
+   Main PID: 2095649 (code=exited, status=1/FAILURE)
+        CPU: 1.992s
+
+Jun 11 20:49:02 srv741469 systemd[1]: loan-copilot.service: Consumed 1.992s CPU time.
+root@srv741469:/opt/loan-copilot# journalctl -u loan-copilot -f --no-pager
+Jun 11 20:49:13 srv741469 node[2095670]:     at ModuleJob.run (node:internal/modules/esm/module_job:195:25)
+Jun 11 20:49:13 srv741469 node[2095670]:     at async ModuleLoader.import (node:internal/modules/esm/loader:336:24)
+Jun 11 20:49:13 srv741469 node[2095670]:     at async loadESM (node:internal/process/esm_loader:34:7)
+Jun 11 20:49:13 srv741469 node[2095670]:     at async handleMainPromise (node:internal/modules/run_main:106:12) {
+Jun 11 20:49:13 srv741469 node[2095670]:   code: 'ERR_INVALID_ARG_TYPE'
+Jun 11 20:49:13 srv741469 node[2095670]: }
+Jun 11 20:49:13 srv741469 node[2095670]: Node.js v18.19.1
+Jun 11 20:49:13 srv741469 systemd[1]: loan-copilot.service: Main process exited, code=exited, status=1/FAILURE
+Jun 11 20:49:13 srv741469 systemd[1]: loan-copilot.service: Failed with result 'exit-code'.
+Jun 11 20:49:13 srv741469 systemd[1]: loan-copilot.service: Consumed 1.879s CPU time.
+Jun 11 20:49:23 srv741469 systemd[1]: loan-copilot.service: Scheduled restart job, restart counter is at 7.
+Jun 11 20:49:23 srv741469 systemd[1]: Started loan-copilot.service - Loan Copilot Application.
+Jun 11 20:49:25 srv741469 node[2095687]: OpenAI configuration: API key is set
+Jun 11 20:49:25 srv741469 node[2095687]: node:internal/errors:496
+Jun 11 20:49:25 srv741469 node[2095687]:     ErrorCaptureStackTrace(err);
+Jun 11 20:49:25 srv741469 node[2095687]:     ^
+Jun 11 20:49:25 srv741469 node[2095687]: TypeError [ERR_INVALID_ARG_TYPE]: The "paths[0]" argument must be of type string. Received undefined
+Jun 11 20:49:25 srv741469 node[2095687]:     at new NodeError (node:internal/errors:405:5)
+Jun 11 20:49:25 srv741469 node[2095687]:     at validateString (node:internal/validators:162:11)
+Jun 11 20:49:25 srv741469 node[2095687]:     at Object.resolve (node:path:1097:7)
+Jun 11 20:49:25 srv741469 node[2095687]:     at file:///opt/loan-copilot/dist/index.js:4796:18
+Jun 11 20:49:25 srv741469 node[2095687]:     at ModuleJob.run (node:internal/modules/esm/module_job:195:25)
+Jun 11 20:49:25 srv741469 node[2095687]:     at async ModuleLoader.import (node:internal/modules/esm/loader:336:24)
+Jun 11 20:49:25 srv741469 node[2095687]:     at async loadESM (node:internal/process/esm_loader:34:7)
+Jun 11 20:49:25 srv741469 node[2095687]:     at async handleMainPromise (node:internal/modules/run_main:106:12) {
+Jun 11 20:49:25 srv741469 node[2095687]:   code: 'ERR_INVALID_ARG_TYPE'
+Jun 11 20:49:25 srv741469 node[2095687]: }
+Jun 11 20:49:25 srv741469 node[2095687]: Node.js v18.19.1
+Jun 11 20:49:25 srv741469 systemd[1]: loan-copilot.service: Main process exited, code=exited, status=1/FAILURE
+Jun 11 20:49:25 srv741469 systemd[1]: loan-copilot.service: Failed with result 'exit-code'.
+Jun 11 20:49:25 srv741469 systemd[1]: loan-copilot.service: Consumed 1.710s CPU time.
+^C
+root@srv741469:/opt/loan-copilot# ^C
+root@srv741469:/opt/loan-copilot# nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+root@srv741469:/opt/loan-copilot# systemctl restart nginx
+root@srv741469:/opt/loan-copilot# systemctl status nginx
+● nginx.service - A high performance web server and a reverse proxy server
+     Loaded: loaded (/usr/lib/systemd/system/nginx.service; enabled; preset: enabled)
+     Active: active (running) since Wed 2025-06-11 20:50:03 UTC; 7s ago
+       Docs: man:nginx(8)
+    Process: 2095758 ExecStartPre=/usr/sbin/nginx -t -q -g daemon on; master_process on; (code=exited, status=0/SUCCESS)
+    Process: 2095759 ExecStart=/usr/sbin/nginx -g daemon on; master_process on; (code=exited, status=0/SUCCESS)
+   Main PID: 2095761 (nginx)
+      Tasks: 3 (limit: 9478)
+     Memory: 3.1M (peak: 3.1M)
+        CPU: 45ms
+     CGroup: /system.slice/nginx.service
+             ├─2095761 "nginx: master process /usr/sbin/nginx -g daemon on; master_process on;"
+             ├─2095762 "nginx: worker process"
+             └─2095763 "nginx: worker process"
+
+Jun 11 20:50:02 srv741469 systemd[1]: Starting nginx.service - A high performance web server and a reverse proxy server>
+Jun 11 20:50:03 srv741469 systemd[1]: Started nginx.service - A high performance web server and a reverse proxy server.
+
+root@srv741469:/opt/loan-copilot# curl -I http://localhost:5000
+curl: (7) Failed to connect to localhost port 5000 after 0 ms: Couldn't connect to server
+root@srv741469:/opt/loan-copilot# curl -I http://localhost/
+HTTP/1.1 200 OK
+Server: nginx/1.24.0 (Ubuntu)
+Date: Wed, 11 Jun 2025 20:50:38 GMT
+Content-Type: text/html
+Content-Length: 615
+Last-Modified: Fri, 28 Mar 2025 03:03:03 GMT
+Connection: keep-alive
+ETag: "67e61167-267"
+Accept-Ranges: bytes
+
+root@srv741469:/opt/loan-copilot# nslookup adlercapital.pro
+up www.adlercapital.proServer:          127.0.0.53
+Address:        127.0.0.53#53
+
+Non-authoritative answer:
+Name:   adlercapital.pro
+Address: 82.25.104.87
+
+root@srv741469:/opt/loan-copilot# nslookup www.adlercapital.pro
+Server:         127.0.0.53
+Address:        127.0.0.53#53
+
+Non-authoritative answer:
+www.adlercapital.pro    canonical name = adlercapital.pro.
+Name:   adlercapital.pro
+Address: 82.25.104.87
+
+root@srv741469:/opt/loan-copilot#

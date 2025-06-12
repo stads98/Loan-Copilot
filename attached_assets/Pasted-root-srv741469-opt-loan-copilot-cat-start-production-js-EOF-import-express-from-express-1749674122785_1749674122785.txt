@@ -1,0 +1,119 @@
+root@srv741469:/opt/loan-copilot# cat > start-production.js << 'EOF'
+> import express from 'express';
+> import path from 'path';
+> import { fileURLToPath } from 'url';
+> const __filename = fileURLToPath(import.meta.url);
+> const __dirname = path.dirname(__filename);
+> const app = express();
+> const port = process.env.PORT || 5000;
+> // Import the compiled server
+> const { registerRoutes } = await import('./dist/index.js');
+> // Serve static files from dist/public
+> app.use(express.static(path.join(__dirname, 'dist/public')));
+> // Register API routes
+> await registerRoutes(app);
+> // Catch all handler for client-side routing
+> app.get('*', (req, res) => {
+>   res.sendFile(path.join(__dirname, 'dist/public/index.html'));
+> });
+> app.listen(port, '0.0.0.0', () => {
+>   console.log(`Server running on port ${port}`);
+> });
+> EOF
+root@srv741469:/opt/loan-copilot# NODE_ENV=production PORT=5000 node dist/index.js
+file:///opt/loan-copilot/dist/index.js:958
+  throw new Error(
+        ^
+
+Error: DATABASE_URL must be set. Did you forget to provision a database?
+    at file:///opt/loan-copilot/dist/index.js:958:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:195:25)
+    at async ModuleLoader.import (node:internal/modules/esm/loader:336:24)
+    at async loadESM (node:internal/process/esm_loader:34:7)
+    at async handleMainPromise (node:internal/modules/run_main:106:12)
+
+Node.js v18.19.1
+root@srv741469:/opt/loan-copilot# cat > /etc/nginx/sites-available/adlercapital.pro << 'EOF'
+> server {
+>     listen 80;
+>     server_name adlercapital.pro www.adlercapital.pro;
+>     location / {
+>         proxy_pass http://localhost:5000;
+>         proxy_http_version 1.1;
+>         proxy_set_header Upgrade $http_upgrade;
+>         proxy_set_header Connection 'upgrade';
+>         proxy_set_header Host $host;
+>         proxy_set_header X-Real-IP $remote_addr;
+>         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+>         proxy_set_header X-Forwarded-Proto $scheme;
+>         proxy_cache_bypass $http_upgrade;
+>     }
+> }
+> EOF
+root@srv741469:/opt/loan-copilot# ln -s /etc/nginx/sites-available/adlercapital.pro /etc/nginx/sites-enabled/
+root@srv741469:/opt/loan-copilot# apt update && apt install -y certbot python3-certbot-nginx
+Hit:1 https://download.docker.com/linux/ubuntu noble InRelease
+Get:2 https://dl.google.com/linux/chrome/deb stable InRelease [1825 B]
+Get:3 https://dl.google.com/linux/chrome/deb stable/main amd64 Packages [1212 B]
+Hit:4 http://in.archive.ubuntu.com/ubuntu noble InRelease
+Get:5 http://in.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Get:6 http://in.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Get:7 http://in.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Get:8 http://in.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1118 kB]
+Get:9 http://in.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [161 kB]
+Get:10 http://in.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1078 kB]
+Get:11 http://in.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Components [376 kB]
+Get:12 http://in.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Components [212 B]
+Get:13 http://in.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Components [940 B]
+Get:14 http://in.archive.ubuntu.com/ubuntu noble-backports/main amd64 Components [7092 B]
+Get:15 http://in.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Components [16.3 kB]
+Get:16 http://in.archive.ubuntu.com/ubuntu noble-backports/restricted amd64 Components [216 B]
+Get:17 http://in.archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Components [212 B]
+Get:18 http://in.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [868 kB]
+Get:19 http://in.archive.ubuntu.com/ubuntu noble-security/main amd64 Components [21.6 kB]
+Get:20 http://in.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [849 kB]
+Get:21 http://in.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [52.1 kB]
+Get:22 http://in.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Components [212 B]
+Get:23 http://in.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Components [208 B]
+Fetched 4930 kB in 4s (1311 kB/s)
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+6 packages can be upgraded. Run 'apt list --upgradable' to see them.
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+certbot is already the newest version (2.9.0-1).
+python3-certbot-nginx is already the newest version (2.9.0-1).
+0 upgraded, 0 newly installed, 0 to remove and 6 not upgraded.
+root@srv741469:/opt/loan-copilot# certbot --nginx -d adlercapital.pro -d www.adlercapital.pro
+Saving debug log to /var/log/letsencrypt/letsencrypt.log
+Requesting a certificate for adlercapital.pro and www.adlercapital.pro
+
+Certbot failed to authenticate some domains (authenticator: nginx). The Certificate Authority reported these problems:
+  Domain: adlercapital.pro
+  Type:   unauthorized
+  Detail: 84.32.84.32: Invalid response from http://adlercapital.pro/.well-known/acme-challenge/z2hCiO-m8i4v_SL3Su1i2ncixN2vc-gQAU33lyrhqT0: 500
+
+  Domain: www.adlercapital.pro
+  Type:   unauthorized
+  Detail: 84.32.84.32: Invalid response from http://www.adlercapital.pro/.well-known/acme-challenge/sJ_ZZxGE2KoobxsMLn4Dv7w_nyywdQfCDpxYQbBv8pI: 500
+
+Hint: The Certificate Authority failed to verify the temporary nginx configuration changes made by Certbot. Ensure the listed domains point to this nginx server and that it is accessible from the internet.
+
+Some challenges have failed.
+Ask for help or search for solutions at https://community.letsencrypt.org. See the logfile /var/log/letsencrypt/letsencrypt.log or re-run Certbot with -v for more details.
+root@srv741469:/opt/loan-copilot# NODE_ENV=production PORT=5000 node dist/index.js
+file:///opt/loan-copilot/dist/index.js:958
+  throw new Error(
+        ^
+
+Error: DATABASE_URL must be set. Did you forget to provision a database?
+    at file:///opt/loan-copilot/dist/index.js:958:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:195:25)
+    at async ModuleLoader.import (node:internal/modules/esm/loader:336:24)
+    at async loadESM (node:internal/process/esm_loader:34:7)
+    at async handleMainPromise (node:internal/modules/run_main:106:12)
+
+Node.js v18.19.1
+root@srv741469:/opt/loan-copilot#

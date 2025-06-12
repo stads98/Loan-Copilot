@@ -1,0 +1,203 @@
+root@srv741469:/opt/loan-copilot# chmod +x deploy.sh
+root@srv741469:/opt/loan-copilot# ls -la deploy.sh
+-rwxr-xr-x 1 root root 2060 Jun 11  2025 deploy.sh
+root@srv741469:/opt/loan-copilot# ./deploy.sh
+Starting deployment process...
+Installing Docker...
+# Executing docker install script, commit: 53a22f61c0628e58e1d6680b49e82993d304b449
++ sh -c apt-get -qq update >/dev/null
++ sh -c DEBIAN_FRONTEND=noninteractive apt-get -y -qq install ca-certificates curl >/dev/null
++ sh -c install -m 0755 -d /etc/apt/keyrings
++ sh -c curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" -o /etc/apt/keyrings/docker.asc
++ sh -c chmod a+r /etc/apt/keyrings/docker.asc
++ sh -c echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable" > /etc/apt/sources.list.d/docker.list
++ sh -c apt-get -qq update >/dev/null
++ sh -c DEBIAN_FRONTEND=noninteractive apt-get -y -qq install docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-ce-rootless-extras docker-buildx-plugin >/dev/null
+Scanning processes...
+Scanning candidates...
+Scanning linux images...
++ sh -c docker version
+Client: Docker Engine - Community
+ Version:           28.2.2
+ API version:       1.50
+ Go version:        go1.24.3
+ Git commit:        e6534b4
+ Built:             Fri May 30 12:07:27 2025
+ OS/Arch:           linux/amd64
+ Context:           default
+
+Server: Docker Engine - Community
+ Engine:
+  Version:          28.2.2
+  API version:      1.50 (minimum version 1.24)
+  Go version:       go1.24.3
+  Git commit:       45873be
+  Built:            Fri May 30 12:07:27 2025
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          1.7.27
+  GitCommit:        05044ec0a9a75232cad458027ca83437aae3f4da
+ runc:
+  Version:          1.2.5
+  GitCommit:        v1.2.5-0-g59923ef
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+
+================================================================================
+
+To run Docker as a non-privileged user, consider setting up the
+Docker daemon in rootless mode for your user:
+
+    dockerd-rootless-setuptool.sh install
+
+Visit https://docs.docker.com/go/rootless/ to learn about rootless mode.
+
+
+To run the Docker daemon as a fully privileged service, but granting non-root
+users access, refer to https://docs.docker.com/go/daemon-access/
+
+WARNING: Access to the remote API on a privileged Docker daemon is equivalent
+         to root access on the host. Refer to the 'Docker daemon attack surface'
+         documentation for details: https://docs.docker.com/go/attack-surface/
+
+================================================================================
+
+Installing Docker Compose...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100 57.6M  100 57.6M    0     0  15.8M      0  0:00:03  0:00:03 --:--:-- 28.2M
+Creating .env file from template...
+cp: cannot stat '.env.example': No such file or directory
+Please edit .env file with your actual configuration values
+Required variables:
+- DATABASE_URL
+- GOOGLE_CLIENT_ID
+- GOOGLE_CLIENT_SECRET
+- GOOGLE_SERVICE_ACCOUNT_KEY
+- OPENAI_API_KEY
+- POSTGRES_PASSWORD
+Press enter when .env is configured...
+Generating self-signed SSL certificates...
+.+...+..+......+.........+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.+............+......+...+.+......+..+.+......+...+.....+.......+.....+...+..........+............+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*..+.+........+....+..+.+.........+........+.+..+...+..........+...........+.+..+................+...........+.........+.......+.....+...+....+.................................+.........+......+..+.............+..+......+.......+........+.......+.....+.......+..+...+...+............+...+............+..........................................+.+..+............+....+..+...+.......+...+...........+...+.+............+...+......+......+..+......................+...+..............................+...+..+...+..................+....+......+..+.......+............+......+............+...............+...+........+.......+..+..........+........+....+.........+..+....+...+..+.+.........+.....+......+...............+....+.....+.+............+..+....+.........+..+...+...+.............+......+...+.................+.+...+..+....+...+...+..+................+..+.........+...+...+....+...............+...+...+..+.............+....................+.......+.....+................+.........+..+......+....+..................+.....+.......+..............+........................+......+.+......+..............+........................+.+.........+..+.........................+..+.+...........+.+..+..........+...+...+.....+....+.................+...+...+.......+...+..+...+....+...+..........................+....+..+..........+.....+......+.......+..+...............+..........+........+.+......+........+..................+.......+..+......+...+.+.....+.............+............+...........+....+...+...+.....+............................+.........+..+......+...+......+....+..+.......+...+.........+........+..................+.........+.+..+..................+....+...+...........+......+.........+.........+.+..+.......+.....+.+.....+.+......+.....+...................+......+..+..........+...............+..+....+..+...............+.............+......+...+........+...+....+...+........+...................+...............+......+..............+...+.........+....+..+....+.........+......+.........+.....+............+....+......+.....+...+....+..+.........+....+........+.............+..+...+.......+..............+....+......+...............+........+......+....+......+..............+..........+.....+...+.......+......+......+.....+...+.+...........+.+......................................+....+..+.+.................+.............+........+...............+......+................+..+...+...+............+.......+........+..................+..........+.....+......+.........+.+...........+....+...........+...............+.......+.....+.......+.................................+.....+.+......+....................+...............+......+.........+...+...............+.......+.........+...........+....+.....+............+.........................+...............+..+.+..............+...+.......+...+...+..+...+....+......+............+..+..........+............+...........+......................+..+....+......+...........+...+.........+.............+.....+...+......+.+..+......+......+..................+..........+..+....+.....+....+........+...................+.........+..+....+...+...........+.+...+..+.+........+......+......+............+..........+........+....+...+..+.+........+.......+........+....+..+.............+........+...+.......+..+.+...............+...............+..+...................+.....+.+........+.+......+..+................+.........+......+..+...............+.......+...+...............+..+......+.......+..............+.............+...........+.........+.......+...............+........+.+..+.......+......+.....+.+.........+..+.......+...+.....+.......+......+...........+.+.................+.+..+.......+.....+.......+...+......+......+.....+...+............+..........+.........+.....+............+.......+........+.......+...+.....+...+....+..+.+.........+......+...+.....+......+......+.......+...+........+....+..+....+.........+........+....+...+...........+................+.....+...+...+....+......+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+..+..+...+.+..+..................+.+.....+...+......+...............+....+........+.............+..+.......+..+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*....+...+.....+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.........+........................+..........+..............+...+.........+.+..............+....+..+...+....+........+.......+..+......+.......+........+..........+..................+......+.....+.............+..+......+...+......+...+.....................+.+......+..+............+.+..............+....+.....+.+......+.....+....+.................................+..+....+......+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+-----
+Building and starting services...
+WARN[0000] The "DATABASE_URL" variable is not set. Defaulting to a blank string.
+WARN[0000] The "GOOGLE_CLIENT_ID" variable is not set. Defaulting to a blank string.
+WARN[0000] The "GOOGLE_CLIENT_SECRET" variable is not set. Defaulting to a blank string.
+WARN[0000] The "GOOGLE_SERVICE_ACCOUNT_KEY" variable is not set. Defaulting to a blank string.
+WARN[0000] The "OPENAI_API_KEY" variable is not set. Defaulting to a blank string.
+WARN[0000] The "POSTGRES_PASSWORD" variable is not set. Defaulting to a blank string.
+WARN[0000] The "DATABASE_URL" variable is not set. Defaulting to a blank string.
+WARN[0000] The "GOOGLE_CLIENT_ID" variable is not set. Defaulting to a blank string.
+WARN[0000] The "GOOGLE_CLIENT_SECRET" variable is not set. Defaulting to a blank string.
+WARN[0000] The "GOOGLE_SERVICE_ACCOUNT_KEY" variable is not set. Defaulting to a blank string.
+WARN[0000] The "OPENAI_API_KEY" variable is not set. Defaulting to a blank string.
+WARN[0000] The "POSTGRES_PASSWORD" variable is not set. Defaulting to a blank string.
+[+] Building 67.3s (10/11)
+ => [app internal] load build definition from Dockerfile                                                           0.0s
+ => => transferring dockerfile: 489B                                                                               0.0s
+ => [app internal] load metadata for docker.io/library/node:18-alpine                                              2.3s
+ => [app internal] load .dockerignore                                                                              0.0s
+ => => transferring context: 2B                                                                                    0.0s
+ => [app 1/7] FROM docker.io/library/node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc  5.5s
+ => => resolve docker.io/library/node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8c  0.0s
+ => => sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e 7.67kB / 7.67kB                     0.0s
+ => => sha256:929b04d7c782f04f615cf785488fed452b6569f87c73ff666ad553a7554f0006 1.72kB / 1.72kB                     0.0s
+ => => sha256:ee77c6cd7c1886ecc802ad6cedef3a8ec1ea27d1fb96162bf03dd3710839b8da 6.18kB / 6.18kB                     0.0s
+ => => sha256:f18232174bc91741fdf3da96d85011092101a032a93a388b79e99e69c2d5c870 3.64MB / 3.64MB                     0.3s
+ => => sha256:dd71dde834b5c203d162902e6b8994cb2309ae049a0eabc4efea161b2b5a3d0e 40.01MB / 40.01MB                   1.1s
+ => => sha256:1e5a4c89cee5c0826c540ab06d4b6b491c96eda01837f430bd47f0d26702d6e3 1.26MB / 1.26MB                     0.8s
+ => => extracting sha256:f18232174bc91741fdf3da96d85011092101a032a93a388b79e99e69c2d5c870                          0.4s
+ => => sha256:25ff2da83641908f65c3a74d80409d6b1b62ccfaab220b9ea70b80df5a2e0549 446B / 446B                         0.7s
+ => => extracting sha256:dd71dde834b5c203d162902e6b8994cb2309ae049a0eabc4efea161b2b5a3d0e                          3.8s
+ => => extracting sha256:1e5a4c89cee5c0826c540ab06d4b6b491c96eda01837f430bd47f0d26702d6e3                          0.1s
+ => => extracting sha256:25ff2da83641908f65c3a74d80409d6b1b62ccfaab220b9ea70b80df5a2e0549                          0.0s
+ => [app internal] load build context                                                                             28.9s
+ => => transferring context: 2.69GB                                                                               28.8s
+ => [app 2/7] WORKDIR /app                                                                                         0.4s
+ => [app 3/7] COPY package*.json ./                                                                                0.5s
+ => [app 4/7] RUN npm ci --only=production                                                                        13.4s
+ => [app 5/7] COPY . .                                                                                            21.5s
+ => ERROR [app 6/7] RUN npm run build                                                                              0.5s
+------
+ > [app 6/7] RUN npm run build:
+0.434
+0.434 > rest-express@1.0.0 build
+0.434 > vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+0.434
+0.439 sh: vite: Permission denied
+------
+failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 126
+WARN[0000] The "DATABASE_URL" variable is not set. Defaulting to a blank string.
+WARN[0000] The "GOOGLE_CLIENT_ID" variable is not set. Defaulting to a blank string.
+WARN[0000] The "GOOGLE_CLIENT_SECRET" variable is not set. Defaulting to a blank string.
+WARN[0000] The "GOOGLE_SERVICE_ACCOUNT_KEY" variable is not set. Defaulting to a blank string.
+WARN[0000] The "OPENAI_API_KEY" variable is not set. Defaulting to a blank string.
+WARN[0000] The "POSTGRES_PASSWORD" variable is not set. Defaulting to a blank string.
+[+] Running 21/21
+ ✔ nginx 8 layers [⣿⣿⣿⣿⣿⣿⣿⣿]      0B/0B      Pulled                                                                6.4s
+   ✔ f18232174bc9 Already exists                                                                                   0.0s
+   ✔ 61ca4f733c80 Pull complete                                                                                    0.9s
+   ✔ b464cfdf2a63 Pull complete                                                                                    0.9s
+   ✔ d7e507024086 Pull complete                                                                                    0.9s
+   ✔ 81bd8ed7ec67 Pull complete                                                                                    1.4s
+   ✔ 197eb75867ef Pull complete                                                                                    1.4s
+   ✔ 34a64644b756 Pull complete                                                                                    1.5s
+   ✔ 39c2ddfd6010 Pull complete                                                                                    3.0s
+ ✔ postgres 11 layers [⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿]      0B/0B      Pulled                                                        11.0s
+   ✔ fe07684b16b8 Pull complete                                                                                    2.2s
+   ✔ 2777460b63f4 Pull complete                                                                                    2.3s
+   ✔ 642e176e7683 Pull complete                                                                                    2.8s
+   ✔ b4dcca6808e5 Pull complete                                                                                    3.0s
+   ✔ 77b69ff8bb36 Pull complete                                                                                    3.0s
+   ✔ 45886f8a09ca Pull complete                                                                                    7.5s
+   ✔ 331cba96f288 Pull complete                                                                                    7.5s
+   ✔ 6380a3c9c68c Pull complete                                                                                    7.5s
+   ✔ f2ee91c57ab1 Pull complete                                                                                    7.5s
+   ✔ 8e7dfe758b13 Pull complete                                                                                    7.6s
+   ✔ 639ffb3d4c66 Pull complete                                                                                    7.6s
+[+] Building 3.0s (10/11)
+ => [app internal] load build definition from Dockerfile                                                           0.0s
+ => => transferring dockerfile: 489B                                                                               0.0s
+ => [app internal] load metadata for docker.io/library/node:18-alpine                                              0.7s
+ => [app internal] load .dockerignore                                                                              0.0s
+ => => transferring context: 2B                                                                                    0.0s
+ => [app 1/7] FROM docker.io/library/node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc  0.0s
+ => [app internal] load build context                                                                              1.6s
+ => => transferring context: 2.25MB                                                                                1.6s
+ => CACHED [app 2/7] WORKDIR /app                                                                                  0.0s
+ => CACHED [app 3/7] COPY package*.json ./                                                                         0.0s
+ => CACHED [app 4/7] RUN npm ci --only=production                                                                  0.0s
+ => CACHED [app 5/7] COPY . .                                                                                      0.0s
+ => ERROR [app 6/7] RUN npm run build                                                                              0.6s
+------
+ > [app 6/7] RUN npm run build:
+0.397
+0.397 > rest-express@1.0.0 build
+0.397 > vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+0.397
+0.402 sh: vite: Permission denied
+------
+failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 126
+Waiting for services to start...
+Checking service status...
+WARN[0000] The "DATABASE_URL" variable is not set. Defaulting to a blank string.
+WARN[0000] The "GOOGLE_CLIENT_ID" variable is not set. Defaulting to a blank string.
+WARN[0000] The "GOOGLE_CLIENT_SECRET" variable is not set. Defaulting to a blank string.
+WARN[0000] The "GOOGLE_SERVICE_ACCOUNT_KEY" variable is not set. Defaulting to a blank string.
+WARN[0000] The "OPENAI_API_KEY" variable is not set. Defaulting to a blank string.
+WARN[0000] The "POSTGRES_PASSWORD" variable is not set. Defaulting to a blank string.
+NAME                IMAGE               COMMAND             SERVICE             CREATED             STATUS              PORTS
+Deployment complete!
+Application should be available at:
+- HTTP: http://your-server-ip
+- HTTPS: https://your-server-ip
+
+To view logs: docker-compose logs -f
+To stop services: docker-compose down
+To restart: docker-compose restart
+root@srv741469:/opt/loan-copilot#

@@ -1,0 +1,45 @@
+root@srv741469:/opt/loan-copilot# docker-compose ps
+NAME                      IMAGE                COMMAND                  SERVICE             CREATED             STATUS                        PORTS
+loan-copilot-app-1        loan-copilot-app     "docker-entrypoint.s…"   app                 19 seconds ago      Restarting (1) 1 second ago
+loan-copilot-nginx-1      nginx:alpine         "/docker-entrypoint.…"   nginx               19 seconds ago      Up 18 seconds                 0.0.0.0:80->80/tcp, :::80->80/tcp, 0.0.0.0:443->443/tcp, :::443->443/tcp
+loan-copilot-postgres-1   postgres:15-alpine   "docker-entrypoint.s…"   postgres            19 seconds ago      Up 18 seconds                 0.0.0.0:5432->5432/tcp, :::5432->5432/tcp
+root@srv741469:/opt/loan-copilot# systemctl start nginx
+Job for nginx.service failed because the control process exited with error code.
+See "systemctl status nginx.service" and "journalctl -xeu nginx.service" for details.
+root@srv741469:/opt/loan-copilot# cat > docker-compose.yml << 'EOF'
+> version: '3.8'
+> services:
+>   app:
+>     build: .
+>     ports:
+>       - "5000:5000"
+>     environment:
+>       - NODE_ENV=production
+>       - DATABASE_URL=${DATABASE_URL}
+>       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+>       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+>       - GOOGLE_SERVICE_ACCOUNT_KEY=${GOOGLE_SERVICE_ACCOUNT_KEY}
+>       - OPENAI_API_KEY=${OPENAI_API_KEY}
+>     volumes:
+>       - ./uploads:/app/uploads
+>     depends_on:
+>       - postgres
+>     restart: unless-stopped
+>   postgres:
+>     image: postgres:15-alpine
+>     environment:
+>       - POSTGRES_DB=loancopilot
+>       - POSTGRES_USER=loanuser
+>       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+>     volumes:
+>       - postgres_data:/var/lib/postgresql/data
+>     restart: unless-stopped
+> volumes:
+>   postgres_data:
+> EOF
+root@srv741469:/opt/loan-copilot# docker-compose down
+[+] Running 3/2
+ ✔ Container loan-copilot-app-1       Removed                                                                      0.0s
+ ✔ Container loan-copilot-postgres-1  Removed                                                                      0.2s
+ ! Network loan-copilot_default       Resource is still in use                                                     0.0s
+root@srv741469:/opt/loan-copilot#

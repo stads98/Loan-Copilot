@@ -1,0 +1,192 @@
+Microsoft Windows [Version 10.0.22000.2538]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\Windows\system32>ssh root@82.25.104.87
+root@82.25.104.87's password:
+Welcome to Ubuntu 24.04.2 LTS (GNU/Linux 6.8.0-53-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ System information as of Wed Jun 11 23:55:29 UTC 2025
+
+  System load:  0.0                Processes:             167
+  Usage of /:   39.9% of 95.82GB   Users logged in:       0
+  Memory usage: 22%                IPv4 address for eth0: 82.25.104.87
+  Swap usage:   0%                 IPv6 address for eth0: 2a02:4780:12:bc9::1
+
+ * Strictly confined Kubernetes makes edge and IoT secure. Learn how MicroK8s
+   just raised the bar for easy, resilient and secure K8s cluster deployment.
+
+   https://ubuntu.com/engage/secure-kubernetes-at-the-edge
+
+Expanded Security Maintenance for Applications is not enabled.
+
+2 updates can be applied immediately.
+2 of these updates are standard security updates.
+To see these additional updates run: apt list --upgradable
+
+5 additional security updates can be applied with ESM Apps.
+Learn more about enabling ESM Apps service at https://ubuntu.com/esm
+
+
+*** System restart required ***
+Last login: Wed Jun 11 20:58:57 2025 from 116.90.103.62
+root@srv741469:~# cd /opt/loan-copilot/
+root@srv741469:/opt/loan-copilot# docker-compose down
+WARN[0000] The "POSTGRES_PASSWORD" variable is not set. Defaulting to a blank string.
+[+] Running 3/3
+ ✔ Container loan-copilot-app-1       Removed                                                                     10.2s
+ ✔ Container loan-copilot-postgres-1  Removed                                                                      0.1s
+ ✔ Network loan-copilot_default       Removed                                                                      0.1s
+root@srv741469:/opt/loan-copilot# cat > start-production.js << 'EOF'
+> import express from 'express';
+> import { registerRoutes } from './server/routes.js';
+> import path from 'path';
+> import { fileURLToPath } from 'url';
+> import { readFileSync } from 'fs';
+> const __filename = fileURLToPath(import.meta.url);
+> const __dirname = path.dirname(__filename);
+> const app = express();
+> const port = process.env.PORT || 5000;
+> // Serve static files from dist/public
+> app.use(express.static(path.join(__dirname, 'dist/public')));
+> try {
+>   // Register all API routes including authentication
+>   await registerRoutes(app);
+> } catch (error) {
+>   console.error('Failed to register routes:', error);
+>
+>   // Fallback basic server if routes fail
+>   app.use(express.json());
+>   app.get('/api/health', (req, res) => {
+>     res.json({ status: 'ok', message: 'Basic server running' });
+>   });
+> }
+> // Catch all handler for client-side routing
+> app.get('*', (req, res) => {
+>   const indexPath = path.join(__dirname, 'dist/public/index.html');
+>   try {
+>     const html = readFileSync(indexPath, 'utf8');
+>     res.send(html);
+>   } catch (err) {
+>     res.status(404).send('App not built properly');
+>   }
+> });
+> app.listen(port, '0.0.0.0', () => {
+>   console.log(`Loan Processing Co-Pilot running on port ${port}`);
+>   console.log(`Environment: ${process.env.NODE_ENV}`);
+>   console.log(`Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
+> });
+> EOF
+root@srv741469:/opt/loan-copilot# cat > Dockerfile << 'EOF'
+> FROM node:18-alpine
+> WORKDIR /app
+> COPY package*.json ./
+> RUN npm install
+> COPY . .
+> # Build the client
+> RUN npm run build
+> # Create uploads directory
+> RUN mkdir -p uploads
+> EXPOSE 5000
+> ENV NODE_ENV=production
+> ENV PORT=5000
+> # Use tsx to handle TypeScript imports
+> CMD ["npx", "tsx", "start-production.js"]
+> EOF
+root@srv741469:/opt/loan-copilot# echo 'POSTGRES_PASSWORD=Adlercapital111' >> .env
+root@srv741469:/opt/loan-copilot# cat > start-production.js << 'EOF'
+> import express from 'express';
+> import { registerRoutes } from './server/routes.js';
+> import path from 'path';
+> import { fileURLToPath } from 'url';
+> import { readFileSync } from 'fs';
+> const __filename = fileURLToPath(import.meta.url);
+> const __dirname = path.dirname(__filename);
+> const app = express();
+> const port = process.env.PORT || 5000;
+> // Serve static files from dist/public
+> app.use(express.static(path.join(__dirname, 'dist/public')));
+> try {
+>   // Register all API routes including authentication
+>   await registerRoutes(app);
+> } catch (error) {
+>   console.error('Failed to register routes:', error);
+>
+>   // Fallback basic server if routes fail
+>   app.use(express.json());
+>   app.get('/api/health', (req, res) => {
+>     res.json({ status: 'ok', message: 'Basic server running' });
+>   });
+> }
+> // Catch all handler for client-side routing
+> app.get('*', (req, res) => {
+>   const indexPath = path.join(__dirname, 'dist/public/index.html');
+>   try {
+>     const html = readFileSync(indexPath, 'utf8');
+>     res.send(html);
+>   } catch (err) {
+>     res.status(404).send('App not built properly');
+>   }
+> });
+> app.listen(port, '0.0.0.0', () => {
+>   console.log(`Loan Processing Co-Pilot running on port ${port}`);
+>   console.log(`Environment: ${process.env.NODE_ENV}`);
+>   console.log(`Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
+> });
+> EOF
+root@srv741469:/opt/loan-copilot# cat > Dockerfile << 'EOF'
+> FROM node:18-alpine
+> WORKDIR /app
+> COPY package*.json ./
+> RUN npm install
+> COPY . .
+> # Build the client
+> RUN npm run build
+> # Create uploads directory
+> RUN mkdir -p uploads
+> EXPOSE 5000
+> ENV NODE_ENV=production
+> ENV PORT=5000
+> # Use tsx to handle TypeScript imports
+> CMD ["npx", "tsx", "start-production.js"]
+> EOF
+root@srv741469:/opt/loan-copilot# echo 'POSTGRES_PASSWORD=Adlercapital111' >> .env
+root@srv741469:/opt/loan-copilot# docker-compose build --no-cache
+[+] Building 119.7s (12/12) FINISHED
+ => [app internal] load build definition from Dockerfile                                                           0.0s
+ => => transferring dockerfile: 335B                                                                               0.0s
+ => [app internal] load metadata for docker.io/library/node:18-alpine                                              1.6s
+ => [app internal] load .dockerignore                                                                              0.0s
+ => => transferring context: 2B                                                                                    0.0s
+ => [app 1/7] FROM docker.io/library/node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc  0.0s
+ => [app internal] load build context                                                                              1.0s
+ => => transferring context: 2.28MB                                                                                1.0s
+ => CACHED [app 2/7] WORKDIR /app                                                                                  0.0s
+ => [app 3/7] COPY package*.json ./                                                                                0.2s
+ => [app 4/7] RUN npm install                                                                                     16.2s
+ => [app 5/7] COPY . .                                                                                            22.3s
+ => [app 6/7] RUN npm run build                                                                                   22.2s
+ => [app 7/7] RUN mkdir -p uploads                                                                                 0.4s
+ => [app] exporting to image                                                                                      55.6s
+ => => exporting layers                                                                                           55.6s
+ => => writing image sha256:6974fbcc39de496dfc03a445b1e24c27b01874de3588bac0f4abbf3d69888076                       0.0s
+ => => naming to docker.io/library/loan-copilot-app                                                                0.0s
+root@srv741469:/opt/loan-copilot# docker-compose up -d
+[+] Running 3/3
+ ✔ Network loan-copilot_default       Created                                                                      0.1s
+ ✔ Container loan-copilot-postgres-1  Started                                                                      0.3s
+ ✔ Container loan-copilot-app-1       Started                                                                      0.5s
+root@srv741469:/opt/loan-copilot# docker-compose logs app
+loan-copilot-app-1  | OpenAI configuration: API key is set
+loan-copilot-app-1  | Loan Processing Co-Pilot running on port 5000
+loan-copilot-app-1  | Environment: production
+loan-copilot-app-1  | Database: Connected
+root@srv741469:/opt/loan-copilot# docker-compose logs app
+loan-copilot-app-1  | OpenAI configuration: API key is set
+loan-copilot-app-1  | Loan Processing Co-Pilot running on port 5000
+loan-copilot-app-1  | Environment: production
+loan-copilot-app-1  | Database: Connected
+root@srv741469:/opt/loan-copilot#

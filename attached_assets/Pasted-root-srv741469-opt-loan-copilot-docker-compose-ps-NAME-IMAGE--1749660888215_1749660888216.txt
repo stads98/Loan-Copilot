@@ -1,0 +1,290 @@
+root@srv741469:/opt/loan-copilot# docker-compose ps
+NAME                      IMAGE                COMMAND                  SERVICE             CREATED             STATUS                        PORTS
+loan-copilot-app-1        loan-copilot-app     "docker-entrypoint.s…"   app                 19 seconds ago      Restarting (1) 1 second ago
+loan-copilot-nginx-1      nginx:alpine         "/docker-entrypoint.…"   nginx               19 seconds ago      Up 18 seconds                 0.0.0.0:80->80/tcp, :::80->80/tcp, 0.0.0.0:443->443/tcp, :::443->443/tcp
+loan-copilot-postgres-1   postgres:15-alpine   "docker-entrypoint.s…"   postgres            19 seconds ago      Up 18 seconds                 0.0.0.0:5432->5432/tcp, :::5432->5432/tcp
+root@srv741469:/opt/loan-copilot# systemctl start nginx
+Job for nginx.service failed because the control process exited with error code.
+See "systemctl status nginx.service" and "journalctl -xeu nginx.service" for details.
+root@srv741469:/opt/loan-copilot# cat > docker-compose.yml << 'EOF'
+> version: '3.8'
+> services:
+>   app:
+>     build: .
+>     ports:
+>       - "5000:5000"
+>     environment:
+>       - NODE_ENV=production
+>       - DATABASE_URL=${DATABASE_URL}
+>       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+>       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+>       - GOOGLE_SERVICE_ACCOUNT_KEY=${GOOGLE_SERVICE_ACCOUNT_KEY}
+>       - OPENAI_API_KEY=${OPENAI_API_KEY}
+>     volumes:
+>       - ./uploads:/app/uploads
+>     depends_on:
+>       - postgres
+>     restart: unless-stopped
+>   postgres:
+>     image: postgres:15-alpine
+>     environment:
+>       - POSTGRES_DB=loancopilot
+>       - POSTGRES_USER=loanuser
+>       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+>     volumes:
+>       - postgres_data:/var/lib/postgresql/data
+>     restart: unless-stopped
+> volumes:
+>   postgres_data:
+> EOF
+root@srv741469:/opt/loan-copilot# docker-compose down
+[+] Running 3/2
+ ✔ Container loan-copilot-app-1       Removed                                                                      0.0s
+ ✔ Container loan-copilot-postgres-1  Removed                                                                      0.2s
+ ! Network loan-copilot_default       Resource is still in use                                                     0.0s
+root@srv741469:/opt/loan-copilot# docker-compose logs app
+root@srv741469:/opt/loan-copilot# docker network prune -f
+root@srv741469:/opt/loan-copilot# docker-compose up -d
+WARN[0000] Found orphan containers ([loan-copilot-nginx-1]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+[+] Running 2/2
+ ✔ Container loan-copilot-postgres-1  Started                                                                      0.3s
+ ✔ Container loan-copilot-app-1       Started                                                                      0.4s
+root@srv741469:/opt/loan-copilot# ufw allow 5000/tcp
+Rules updated
+Rules updated (v6)
+root@srv741469:/opt/loan-copilot# docker-compose logs app
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | > rest-express@1.0.0 start
+loan-copilot-app-1  | > NODE_ENV=production node dist/index.js
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | node:internal/errors:496
+loan-copilot-app-1  |     ErrorCaptureStackTrace(err);
+loan-copilot-app-1  |     ^
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+loan-copilot-app-1  |     at new NodeError (node:internal/errors:405:5)
+loan-copilot-app-1  |     at packageResolve (node:internal/modules/esm/resolve:916:9)
+loan-copilot-app-1  |     at moduleResolve (node:internal/modules/esm/resolve:973:20)
+loan-copilot-app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1206:11)
+loan-copilot-app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:404:12)
+loan-copilot-app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:373:25)
+loan-copilot-app-1  |     at ModuleLoader.getModuleJob (node:internal/modules/esm/loader:250:38)
+loan-copilot-app-1  |     at ModuleWrap.<anonymous> (node:internal/modules/esm/module_job:76:39)
+loan-copilot-app-1  |     at link (node:internal/modules/esm/module_job:75:36) {
+loan-copilot-app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+loan-copilot-app-1  | }
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Node.js v18.20.8
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | > rest-express@1.0.0 start
+loan-copilot-app-1  | > NODE_ENV=production node dist/index.js
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | node:internal/errors:496
+loan-copilot-app-1  |     ErrorCaptureStackTrace(err);
+loan-copilot-app-1  |     ^
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+loan-copilot-app-1  |     at new NodeError (node:internal/errors:405:5)
+loan-copilot-app-1  |     at packageResolve (node:internal/modules/esm/resolve:916:9)
+loan-copilot-app-1  |     at moduleResolve (node:internal/modules/esm/resolve:973:20)
+loan-copilot-app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1206:11)
+loan-copilot-app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:404:12)
+loan-copilot-app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:373:25)
+loan-copilot-app-1  |     at ModuleLoader.getModuleJob (node:internal/modules/esm/loader:250:38)
+loan-copilot-app-1  |     at ModuleWrap.<anonymous> (node:internal/modules/esm/module_job:76:39)
+loan-copilot-app-1  |     at link (node:internal/modules/esm/module_job:75:36) {
+loan-copilot-app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+loan-copilot-app-1  | }
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Node.js v18.20.8
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | > rest-express@1.0.0 start
+loan-copilot-app-1  | > NODE_ENV=production node dist/index.js
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | node:internal/errors:496
+loan-copilot-app-1  |     ErrorCaptureStackTrace(err);
+loan-copilot-app-1  |     ^
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+loan-copilot-app-1  |     at new NodeError (node:internal/errors:405:5)
+loan-copilot-app-1  |     at packageResolve (node:internal/modules/esm/resolve:916:9)
+loan-copilot-app-1  |     at moduleResolve (node:internal/modules/esm/resolve:973:20)
+loan-copilot-app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1206:11)
+loan-copilot-app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:404:12)
+loan-copilot-app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:373:25)
+loan-copilot-app-1  |     at ModuleLoader.getModuleJob (node:internal/modules/esm/loader:250:38)
+loan-copilot-app-1  |     at ModuleWrap.<anonymous> (node:internal/modules/esm/module_job:76:39)
+loan-copilot-app-1  |     at link (node:internal/modules/esm/module_job:75:36) {
+loan-copilot-app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+loan-copilot-app-1  | }
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Node.js v18.20.8
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | > rest-express@1.0.0 start
+loan-copilot-app-1  | > NODE_ENV=production node dist/index.js
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | node:internal/errors:496
+loan-copilot-app-1  |     ErrorCaptureStackTrace(err);
+loan-copilot-app-1  |     ^
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+loan-copilot-app-1  |     at new NodeError (node:internal/errors:405:5)
+loan-copilot-app-1  |     at packageResolve (node:internal/modules/esm/resolve:916:9)
+loan-copilot-app-1  |     at moduleResolve (node:internal/modules/esm/resolve:973:20)
+loan-copilot-app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1206:11)
+loan-copilot-app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:404:12)
+loan-copilot-app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:373:25)
+loan-copilot-app-1  |     at ModuleLoader.getModuleJob (node:internal/modules/esm/loader:250:38)
+loan-copilot-app-1  |     at ModuleWrap.<anonymous> (node:internal/modules/esm/module_job:76:39)
+loan-copilot-app-1  |     at link (node:internal/modules/esm/module_job:75:36) {
+loan-copilot-app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+loan-copilot-app-1  | }
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Node.js v18.20.8
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | > rest-express@1.0.0 start
+loan-copilot-app-1  | > NODE_ENV=production node dist/index.js
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | node:internal/errors:496
+loan-copilot-app-1  |     ErrorCaptureStackTrace(err);
+loan-copilot-app-1  |     ^
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+loan-copilot-app-1  |     at new NodeError (node:internal/errors:405:5)
+loan-copilot-app-1  |     at packageResolve (node:internal/modules/esm/resolve:916:9)
+loan-copilot-app-1  |     at moduleResolve (node:internal/modules/esm/resolve:973:20)
+loan-copilot-app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1206:11)
+loan-copilot-app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:404:12)
+loan-copilot-app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:373:25)
+loan-copilot-app-1  |     at ModuleLoader.getModuleJob (node:internal/modules/esm/loader:250:38)
+loan-copilot-app-1  |     at ModuleWrap.<anonymous> (node:internal/modules/esm/module_job:76:39)
+loan-copilot-app-1  |     at link (node:internal/modules/esm/module_job:75:36) {
+loan-copilot-app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+loan-copilot-app-1  | }
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Node.js v18.20.8
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | > rest-express@1.0.0 start
+loan-copilot-app-1  | > NODE_ENV=production node dist/index.js
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | node:internal/errors:496
+loan-copilot-app-1  |     ErrorCaptureStackTrace(err);
+loan-copilot-app-1  |     ^
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+loan-copilot-app-1  |     at new NodeError (node:internal/errors:405:5)
+loan-copilot-app-1  |     at packageResolve (node:internal/modules/esm/resolve:916:9)
+loan-copilot-app-1  |     at moduleResolve (node:internal/modules/esm/resolve:973:20)
+loan-copilot-app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1206:11)
+loan-copilot-app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:404:12)
+loan-copilot-app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:373:25)
+loan-copilot-app-1  |     at ModuleLoader.getModuleJob (node:internal/modules/esm/loader:250:38)
+loan-copilot-app-1  |     at ModuleWrap.<anonymous> (node:internal/modules/esm/module_job:76:39)
+loan-copilot-app-1  |     at link (node:internal/modules/esm/module_job:75:36) {
+loan-copilot-app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+loan-copilot-app-1  | }
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Node.js v18.20.8
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | > rest-express@1.0.0 start
+loan-copilot-app-1  | > NODE_ENV=production node dist/index.js
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | node:internal/errors:496
+loan-copilot-app-1  |     ErrorCaptureStackTrace(err);
+loan-copilot-app-1  |     ^
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+loan-copilot-app-1  |     at new NodeError (node:internal/errors:405:5)
+loan-copilot-app-1  |     at packageResolve (node:internal/modules/esm/resolve:916:9)
+loan-copilot-app-1  |     at moduleResolve (node:internal/modules/esm/resolve:973:20)
+loan-copilot-app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1206:11)
+loan-copilot-app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:404:12)
+loan-copilot-app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:373:25)
+loan-copilot-app-1  |     at ModuleLoader.getModuleJob (node:internal/modules/esm/loader:250:38)
+loan-copilot-app-1  |     at ModuleWrap.<anonymous> (node:internal/modules/esm/module_job:76:39)
+loan-copilot-app-1  |     at link (node:internal/modules/esm/module_job:75:36) {
+loan-copilot-app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+loan-copilot-app-1  | }
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Node.js v18.20.8
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | > rest-express@1.0.0 start
+loan-copilot-app-1  | > NODE_ENV=production node dist/index.js
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | node:internal/errors:496
+loan-copilot-app-1  |     ErrorCaptureStackTrace(err);
+loan-copilot-app-1  |     ^
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+loan-copilot-app-1  |     at new NodeError (node:internal/errors:405:5)
+loan-copilot-app-1  |     at packageResolve (node:internal/modules/esm/resolve:916:9)
+loan-copilot-app-1  |     at moduleResolve (node:internal/modules/esm/resolve:973:20)
+loan-copilot-app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1206:11)
+loan-copilot-app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:404:12)
+loan-copilot-app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:373:25)
+loan-copilot-app-1  |     at ModuleLoader.getModuleJob (node:internal/modules/esm/loader:250:38)
+loan-copilot-app-1  |     at ModuleWrap.<anonymous> (node:internal/modules/esm/module_job:76:39)
+loan-copilot-app-1  |     at link (node:internal/modules/esm/module_job:75:36) {
+loan-copilot-app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+loan-copilot-app-1  | }
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Node.js v18.20.8
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | > rest-express@1.0.0 start
+loan-copilot-app-1  | > NODE_ENV=production node dist/index.js
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | node:internal/errors:496
+loan-copilot-app-1  |     ErrorCaptureStackTrace(err);
+loan-copilot-app-1  |     ^
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+loan-copilot-app-1  |     at new NodeError (node:internal/errors:405:5)
+loan-copilot-app-1  |     at packageResolve (node:internal/modules/esm/resolve:916:9)
+loan-copilot-app-1  |     at moduleResolve (node:internal/modules/esm/resolve:973:20)
+loan-copilot-app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1206:11)
+loan-copilot-app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:404:12)
+loan-copilot-app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:373:25)
+loan-copilot-app-1  |     at ModuleLoader.getModuleJob (node:internal/modules/esm/loader:250:38)
+loan-copilot-app-1  |     at ModuleWrap.<anonymous> (node:internal/modules/esm/module_job:76:39)
+loan-copilot-app-1  |     at link (node:internal/modules/esm/module_job:75:36) {
+loan-copilot-app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+loan-copilot-app-1  | }
+loan-copilot-app-1  |
+loan-copilot-app-1  |
+loan-copilot-app-1  | Node.js v18.20.8
+root@srv741469:/opt/loan-copilot#

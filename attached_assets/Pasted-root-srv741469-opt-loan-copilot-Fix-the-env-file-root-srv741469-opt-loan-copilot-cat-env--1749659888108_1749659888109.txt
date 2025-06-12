@@ -1,0 +1,48 @@
+root@srv741469:/opt/loan-copilot# # Fix the .env file
+root@srv741469:/opt/loan-copilot# cat > .env << 'EOF'
+> DATABASE_URL=postgresql://loanuser:Adlercapital111@postgres:5432/loancopilot
+> PGHOST=postgres
+> PGPORT=5432
+> PGUSER=loanuser
+> PGPASSWORD=Adlercapital111
+> PGDATABASE=loancopilot
+> GOOGLE_CLIENT_ID=721881555750-oftvbfc93jcs27m2s8lf2172191rrhg6.apps.googleusercontent.com
+> GOOGLE_CLIENT_SECRET=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
+> GOOGLE_SERVICE_ACCOUNT_KEY={"type":"service_account","project_id":"loan-copilot","private_key_id":"94c15cd95b0e62aedc4c817480648d75d79325cf","private_key":"-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCyOeaKeF7p+QIk\npLX3BcGKIbmpweImfrGze4e0wCfFarYsOgrHJa7BbKDVaZ/VPG1MeuOFK5Pa0D+I\n2xf4snp9ctIEmKU71bYMdcgzG1p9qNN2xpjM1JXNcZNNdTcArB4pCD3fS4kNfv3j\nj3YBEA80lVJK+oB7far8afeOkLTJQTe97BrT0/DdZ30c5+2IhoTKrpwOnMdF1OWt\nbgsb8xUx7JjAt0PXUyWoUuiQ0MDMJLHdLoxg5hOSmBhKyQKPYYRV6AelPFXBZNhT\n4bz5+5lOsGDQ7rMq8k9SxfCJhZFbZ/eYcWc7gZrqKXz5YZzX5VcCAwEAAaOCAV8w\nggFbMA0GCSqGSIb3DQEBCwUAA4IBAQASfYbC2iHPqNa7v/S+RwAGdoE/OhKyFSHs\nQbxLVVB7BbA+aFQaDVx7r+OIp9I4Zt/m0gf3Ky3k5Z9mWfOz9a3ZfZ5ZfZ5Zf\nZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5Z\nfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5Z\nfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5Z\nfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5Z\nfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5Z\nfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5Z\nfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5Z\n-----END PRIVATE KEY-----\n","client_email":"loan-copilot@loan-copilot.iam.gserviceaccount.com","client_id":"108157686031088849476","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url":"https://www.googleapis.com/robot/v1/metadata/x509/loan-copilot%40loan-copilot.iam.gserviceaccount.com","universe_domain":"googleapis.com"}
+> OPENAI_API_KEY=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
+> NODE_ENV=production
+> PORT=5000
+> SESSION_SECRET=f7a9e24b8c3d5f1a7b9c2e4d6f8a1b3c5e7d9f2a4c6e8b1d3f5a7c9e2b4d6f8
+> EOF
+root@srv741469:/opt/loan-copilot# export $(grep -v '^#' .env | xargs)
+pose build --no-cache
+docker-compose up -d-bash: export: `KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCyOeaKeF7p+QIk\npLX3BcGKIbmpweImfrGze4e0wCfFarYsOgrHJa7BbKDVaZ/VPG1MeuOFK5Pa0D+I\n2xf4snp9ctIEmKU71bYMdcgzG1p9qNN2xpjM1JXNcZNNdTcArB4pCD3fS4kNfv3j\nj3YBEA80lVJK+oB7far8afeOkLTJQTe97BrT0/DdZ30c5+2IhoTKrpwOnMdF1OWt\nbgsb8xUx7JjAt0PXUyWoUuiQ0MDMJLHdLoxg5hOSmBhKyQKPYYRV6AelPFXBZNhT\n4bz5+5lOsGDQ7rMq8k9SxfCJhZFbZ/eYcWc7gZrqKXz5YZzX5VcCAwEAAaOCAV8w\nggFbMA0GCSqGSIb3DQEBCwUAA4IBAQASfYbC2iHPqNa7v/S+RwAGdoE/OhKyFSHs\nQbxLVVB7BbA+aFQaDVx7r+OIp9I4Zt/m0gf3Ky3k5Z9mWfOz9a3ZfZ5ZfZ5Zf\nZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5Z\nfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5Z\nfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5Z\nfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5Z\nfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5Z\nfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5Z\nfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5ZfZ5Z\n-----END': not a valid identifier
+-bash: export: `KEY-----\n,client_email:loan-copilot@loan-copilot.iam.gserviceaccount.com,client_id:108157686031088849476,auth_uri:https://accounts.google.com/o/oauth2/auth,token_uri:https://oauth2.googleapis.com/token,auth_provider_x509_cert_url:https://www.googleapis.com/oauth2/v1/certs,client_x509_cert_url:https://www.googleapis.com/robot/v1/metadata/x509/loan-copilot%40loan-copilot.iam.gserviceaccount.com,universe_domain:googleapis.com}': not a valid identifier
+root@srv741469:/opt/loan-copilot# docker-compose down
+WARN[0000] The "POSTGRES_PASSWORD" variable is not set. Defaulting to a blank string.
+root@srv741469:/opt/loan-copilot# docker-compose build --no-cache
+WARN[0000] The "POSTGRES_PASSWORD" variable is not set. Defaulting to a blank string.
+[+] Building 34.7s (10/11)
+ => [app internal] load build definition from Dockerfile                                                           0.0s
+ => => transferring dockerfile: 489B                                                                               0.0s
+ => [app internal] load metadata for docker.io/library/node:18-alpine                                              1.3s
+ => [app internal] load .dockerignore                                                                              0.0s
+ => => transferring context: 2B                                                                                    0.0s
+ => [app 1/7] FROM docker.io/library/node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc  0.0s
+ => [app internal] load build context                                                                              1.1s
+ => => transferring context: 2.25MB                                                                                1.0s
+ => CACHED [app 2/7] WORKDIR /app                                                                                  0.0s
+ => [app 3/7] COPY package*.json ./                                                                                0.3s
+ => [app 4/7] RUN npm ci --only=production                                                                        11.3s
+ => [app 5/7] COPY . .                                                                                            20.1s
+ => ERROR [app 6/7] RUN npm run build                                                                              0.5s
+------
+ > [app 6/7] RUN npm run build:
+0.422
+0.422 > rest-express@1.0.0 build
+0.422 > vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+0.422
+0.428 sh: vite: Permission denied
+------
+failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 126
+root@srv741469:/opt/loan-copilot# docker-compose up -d
