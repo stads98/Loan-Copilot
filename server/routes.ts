@@ -2180,54 +2180,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Add property-specific searches (subject line only - street address variations)
+      // Add property address search (street variations only, no borrower name)
       if (loan.loan?.propertyAddress) {
         const streetAddress = loan.loan.propertyAddress.split(',')[0].trim();
-        const streetMatch = streetAddress.match(/^(\d+)\s+(.+?)(\s+(st|street|dr|drive|ave|avenue|rd|road|ln|lane|blvd|boulevard|way|ct|court|pl|place|cir|circle|pkwy|parkway))?$/i);
         
-        if (streetMatch) {
-          const streetNumber = streetMatch[1];
-          const streetName = streetMatch[2];
-          
-          // Create variations for street types and directions
-          const streetVariations = [streetAddress];
-          
-          // Add common abbreviations
-          const abbreviations = {
-            'street': 'st', 'drive': 'dr', 'avenue': 'ave', 'road': 'rd',
-            'boulevard': 'blvd', 'court': 'ct', 'lane': 'ln', 'place': 'pl',
-            'circle': 'cir', 'parkway': 'pkwy', 'way': 'way'
-          };
-          
-          // Add directional variations
-          const directions = {
-            'north': 'n', 'northeast': 'ne', 'northwest': 'nw',
-            'south': 's', 'southeast': 'se', 'southwest': 'sw',
-            'east': 'e', 'west': 'w'
-          };
-          
-          Object.entries(abbreviations).forEach(([full, abbrev]) => {
-            if (streetName.toLowerCase().includes(full)) {
-              streetVariations.push(`${streetNumber} ${streetName.toLowerCase().replace(full, abbrev)}`);
-            }
-            if (streetName.toLowerCase().includes(abbrev)) {
-              streetVariations.push(`${streetNumber} ${streetName.toLowerCase().replace(abbrev, full)}`);
-            }
-          });
-          
-          Object.entries(directions).forEach(([full, abbrev]) => {
-            if (streetAddress.toLowerCase().includes(full)) {
-              streetVariations.push(streetAddress.toLowerCase().replace(full, abbrev));
-            }
-            if (streetAddress.toLowerCase().includes(abbrev)) {
-              streetVariations.push(streetAddress.toLowerCase().replace(abbrev, full));
-            }
-          });
-          
-          // Search subject lines for any street variation
-          const streetSearches = streetVariations.map(variation => `subject:"${variation}"`).join(' OR ');
-          searchTerms.push(`(${streetSearches}) after:${dateQuery}`);
-        }
+        // Simple search for the street address and common variations
+        const streetVariations = [
+          streetAddress,
+          streetAddress.replace(' DR', ' DRIVE'),
+          streetAddress.replace(' DRIVE', ' DR'),
+          streetAddress.replace(' ST', ' STREET'),
+          streetAddress.replace(' STREET', ' ST'),
+          streetAddress.replace(' AVE', ' AVENUE'),
+          streetAddress.replace(' AVENUE', ' AVE'),
+          streetAddress.replace(' RD', ' ROAD'),
+          streetAddress.replace(' ROAD', ' RD')
+        ];
+        
+        // Search for any street variation (no attachment requirement)
+        const streetSearches = streetVariations.map(variation => `"${variation}"`).join(' OR ');
+        searchTerms.push(`(${streetSearches}) after:${dateQuery}`);
       }
       
       // Add loan number search (subject line only)
@@ -2738,33 +2710,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Add property address search (street variations only, no borrower name)
           if (loan.loan?.propertyAddress) {
             const streetAddress = loan.loan.propertyAddress.split(',')[0].trim();
-            const streetMatch = streetAddress.match(/^(\d+)\s+(.+?)(\s+(st|street|dr|drive|ave|avenue|rd|road|ln|lane|blvd|boulevard|way|ct|court|pl|place|cir|circle|pkwy|parkway))?$/i);
             
-            if (streetMatch) {
-              const streetNumber = streetMatch[1];
-              const streetName = streetMatch[2];
-              
-              // Create variations for street types and directions
-              const streetVariations = [streetAddress];
-              
-              // Add common abbreviations
-              const abbreviations = {
-                'street': 'st', 'drive': 'dr', 'avenue': 'ave', 'road': 'rd',
-                'boulevard': 'blvd', 'court': 'ct', 'lane': 'ln', 'place': 'pl',
-                'circle': 'cir', 'parkway': 'pkwy', 'way': 'way'
-              };
-              
-              // Add directional variations
-              const directions = {
-                'north': 'n', 'northeast': 'ne', 'northwest': 'nw',
-                'south': 's', 'southeast': 'se', 'southwest': 'sw',
-                'east': 'e', 'west': 'w'
-              };
-              
-              // Add street variations without attachment requirement
-              const streetSearches = streetVariations.map(variation => `"${variation}"`).join(' OR ');
-              searchTerms.push(`(${streetSearches}) after:${dateQuery}`);
-            }
+            // Simple search for the street address and common variations
+            const streetVariations = [
+              streetAddress,
+              streetAddress.replace(' DR', ' DRIVE'),
+              streetAddress.replace(' DRIVE', ' DR'),
+              streetAddress.replace(' ST', ' STREET'),
+              streetAddress.replace(' STREET', ' ST'),
+              streetAddress.replace(' AVE', ' AVENUE'),
+              streetAddress.replace(' AVENUE', ' AVE'),
+              streetAddress.replace(' RD', ' ROAD'),
+              streetAddress.replace(' ROAD', ' RD')
+            ];
+            
+            // Search for any street variation (no attachment requirement)
+            const streetSearches = streetVariations.map(variation => `"${variation}"`).join(' OR ');
+            searchTerms.push(`(${streetSearches}) after:${dateQuery}`);
           }
           
           // Add loan number search (subject line only)
