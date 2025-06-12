@@ -404,8 +404,8 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
       for (const emailId of Array.from(selectedEmails)) {
         try {
           // Get email details and attachments
-          const response = await apiRequest("GET", `/api/gmail/messages/${emailId}`);
-          const attachments = response.attachments || [];
+          const emailResponse = await apiRequest("GET", `/api/gmail/messages/${emailId}`);
+          const attachments = emailResponse.attachments || [];
           
           // Filter for PDF attachments
           const pdfAttachments = attachments.filter((att: any) => 
@@ -418,13 +418,25 @@ export default function GmailInbox({ className, loanId }: GmailInboxProps) {
             // Process each PDF attachment
             for (const attachment of pdfAttachments) {
               try {
-                const result = await apiRequest("POST", "/api/documents", {
-                  loanId: loanId,
+                // First download the attachment data
+                const attachmentResponse = await fetch(`/api/gmail/messages/${emailId}/attachments/${attachment.attachmentId}`, {
+                  method: 'GET'
+                });
+                
+                if (!attachmentResponse.ok) {
+                  throw new Error('Failed to download attachment');
+                }
+                
+                const attachmentData = await attachmentResponse.json();
+                
+                // Now save to documents using the correct endpoint
+                const result = await apiRequest("POST", `/api/loans/${loanId}/documents/from-email`, {
+                  attachmentData: attachmentData.data,
                   filename: attachment.filename,
-                  source: 'gmail',
-                  sourceId: emailId,
-                  attachmentId: attachment.attachmentId,
-                  category: 'other' // Will be auto-categorized by the server
+                  mimeType: attachment.mimeType,
+                  size: attachment.size,
+                  emailSubject: emailResponse.subject || 'No Subject',
+                  emailFrom: emailResponse.from || 'Unknown Sender'
                 });
                 
                 if (result) {
