@@ -4,3 +4,25 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Environment variables and secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Google OAuth credentials
+client_secret_*.json
+*client_secret*.json
+
+# Other sensitive files
+*.key
+*.pem
+*.p12
+*.pfx
+config/secrets.js
+config/secrets.json
+
+# Local development files
+.local/
